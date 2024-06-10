@@ -1,3 +1,7 @@
+import org.gradle.kotlin.dsl.support.kotlinCompilerOptions
+import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     application
     // https://kotlinlang.org/docs/multiplatform-full-stack-app.html
@@ -15,6 +19,7 @@ repositories {
 kotlin {
     jvm {
         withJava()
+
     }
 
     js(IR) {
@@ -44,9 +49,10 @@ kotlin {
             }
         }
 
-        val jvmTest by getting {}
-        val jsMain by getting {}
-        val jsTest by getting {}
+        val jvmTest by getting
+
+        val jsMain by getting
+        val jsTest by getting
     }
 
     jvmToolchain {
@@ -56,5 +62,11 @@ kotlin {
     tasks.withType<JavaCompile> {
         sourceCompatibility = "8"
         targetCompatibility = "8"
+    }
+
+    tasks.withType<KotlinCompile> {
+        compilerOptions {
+            freeCompilerArgs.add("-Xjvm-default=all")
+        }
     }
 }
