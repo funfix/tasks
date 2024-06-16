@@ -1,11 +1,10 @@
-import org.gradle.kotlin.dsl.support.kotlinCompilerOptions
-import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     application
     // https://kotlinlang.org/docs/multiplatform-full-stack-app.html
     id(libs.plugins.kotlin.multiplatform.get().pluginId)
+    id(libs.plugins.kotlinx.kover.get().pluginId)
 }
 
 tasks.withType<Test> {
@@ -45,8 +44,7 @@ kotlin {
         }
 
         val jvmMain by getting {
-            dependencies {
-            }
+            dependencies {}
         }
 
         val jvmTest by getting

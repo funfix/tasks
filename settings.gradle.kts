@@ -23,6 +23,9 @@ dependencyResolutionManagement {
             plugin("kotlin-jvm", "org.jetbrains.kotlin.jvm").versionRef("kotlin")
             plugin("kotlin-multiplatform", "org.jetbrains.kotlin.multiplatform").versionRef("kotlin")
 
+            // https://github.com/Kotlin/kotlinx-kover
+            plugin("kotlinx-kover", "org.jetbrains.kotlinx.kover").version("0.8.1")
+
             // https://github.com/ben-manes/gradle-versions-plugin
             plugin("versions", "com.github.ben-manes.versions").version("0.51.0")
 

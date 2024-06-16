@@ -4,8 +4,10 @@ import java.util.concurrent.Callable
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
-import java.util.function.Supplier
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.AbstractQueuedSynchronizer
 
+@FunctionalInterface
 interface Task<out T> {
     fun executeAsync(onComplete: CompletionHandler<T>): Cancellable
 
@@ -22,86 +24,112 @@ interface Task<out T> {
     @Throws(ExecutionException::class, InterruptedException::class)
     fun executeBlocking(): T {
         val h = BlockingCompletionHandler<T>()
-        executeAsync(h)
-        return h.await()
+        val cancelToken = executeAsync(h)
+        return h.await(cancelToken)
     }
 
     companion object {
         @JvmStatic fun <T> fromFuture(builder: Callable<CompletableFuture<T>>): Task<T> =
-            object : Task<T> {
-                override fun executeAsync(onComplete: CompletionHandler<T>): Cancellable {
-                    var future: CompletableFuture<T>? = null
-                    var userError = true
-                    try {
-                        future = builder.call()
-                        userError = false
-
-                        future.whenComplete { value, error ->
-                            when {
-                                error is InterruptedException -> onComplete.onCancellation()
-                                error is CancellationException -> onComplete.onCancellation()
-                                error != null -> onComplete.onException(error)
-                                else -> onComplete.onSuccess(value)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        if (userError) onComplete.onException(e)
-                        else throw e
-                    }
-
-                    if (future == null) {
-                        return Cancellable.EMPTY
-                    }
-
-                    return object : Cancellable {
-                        override fun cancel() {
-                            future.cancel(true)
-                            onComplete.onCancellation()
-                        }
-                    }
-                }
-            }
+            TaskFromFuture(builder)
     }
 }
 
-private class BlockingCompletionHandler<T> : CompletionHandler<T> {
-    private val latch = java.util.concurrent.CountDownLatch(1)
+private class BlockingCompletionHandler<T>: AbstractQueuedSynchronizer(), CompletionHandler<T> {
+    private val isDone = AtomicBoolean(false)
     private var result: T? = null
     private var error: Throwable? = null
     private var interrupted: InterruptedException? = null
-    private var isDone = false
 
-    override fun onSuccess(value: T) {
-        result = value
-        isDone = true
-        latch.countDown()
+    override fun trySuccess(value: T): Boolean {
+        if (!isDone.getAndSet(true)) {
+            result = value
+            releaseShared(1)
+            return true
+        }
+        return false
     }
 
-    override fun onException(e: Throwable) {
-        error = e
-        isDone = true
-        latch.countDown()
+    override fun tryFailure(e: Throwable): Boolean {
+        if (!isDone.getAndSet(true)) {
+            error = e
+            releaseShared(1)
+            return true
+        }
+        return false
     }
 
-    override fun onCancellation() {
-        interrupted = interrupted ?: InterruptedException("Task was cancelled")
-        isDone = true
-        latch.countDown()
+    override fun tryCancel(): Boolean {
+        if (!isDone.getAndSet(true)) {
+            interrupted = InterruptedException("Task was cancelled")
+            releaseShared(1)
+            return true
+        }
+        return false
+    }
+
+    override fun tryAcquireShared(arg: Int): Int =
+        if (state != 0) 1 else -1
+
+    override fun tryReleaseShared(arg: Int): Boolean {
+        state = 1
+        return true
     }
 
     @Throws(InterruptedException::class, ExecutionException::class)
-    fun await(): T {
-        while (!isDone) {
+    fun await(cancelToken: Cancellable): T {
+        while (true) {
             try {
-                latch.await()
+                acquireSharedInterruptibly(1)
+                break
             } catch (e: InterruptedException) {
-                interrupted = e
+                if (interrupted == null) {
+                    // Tries to cancel the task
+                    cancelToken.cancel()
+                    interrupted = e
+                }
+                // Clearing the interrupted flag may not be necessary,
+                // but doesn't hurt, and we should have a cleared flag before
+                // re-throwing the exception
                 Thread.interrupted()
             }
         }
-
         if (interrupted != null) throw interrupted!!
         if (error != null) throw ExecutionException(error)
         return result!!
+    }
+}
+
+private class TaskFromFuture<T>(
+    private val builder: Callable<CompletableFuture<T>>
+): Task<T> {
+    override fun executeAsync(onComplete: CompletionHandler<T>): Cancellable {
+        var future: CompletableFuture<T>? = null
+        var userError = true
+        try {
+            future = builder.call()
+            userError = false
+
+            future.whenComplete { value, error ->
+                when {
+                    error is InterruptedException -> onComplete.cancel()
+                    error is CancellationException -> onComplete.cancel()
+                    error != null -> onComplete.failure(error)
+                    else -> onComplete.success(value)
+                }
+            }
+        } catch (e: Exception) {
+            if (userError) onComplete.failure(e)
+            else throw e
+        }
+
+        if (future == null) {
+            return Cancellable.EMPTY
+        }
+
+        return object : Cancellable {
+            override fun cancel() {
+                future.cancel(true)
+            }
+        }
     }
 }
