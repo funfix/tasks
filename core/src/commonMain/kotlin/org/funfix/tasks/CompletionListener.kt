@@ -8,39 +8,39 @@ package org.funfix.tasks
  *
  * MUST BE idempotent AND thread-safe.
  */
-interface CompletionHandler<in T> {
+interface CompletionListener<in T> {
     /**
      * Must be called when the task completes successfully.
      */
-    fun trySuccess(value: T): Boolean
+    fun tryOnSuccess(value: T): Boolean
 
     /**
      * Must be called when the task completes with an exception.
      */
-    fun tryFailure(e: Throwable): Boolean
+    fun tryOnFailure(e: Throwable): Boolean
 
     /**
      * Must be called when the task is cancelled.
      */
-    fun tryCancel(): Boolean
+    fun tryOnCancel(): Boolean
 
-    fun success(value: T) {
-        if (!trySuccess(value))
+    fun onSuccess(value: T) {
+        if (!tryOnSuccess(value))
             throw IllegalStateException(
                 "CompletionHandler was already completed, cannot call `success`"
             )
     }
 
-    fun failure(e: Throwable) {
-        if (!tryFailure(e))
+    fun onFailure(e: Throwable) {
+        if (!tryOnFailure(e))
             throw IllegalStateException(
                 "CompletionHandler was already completed, cannot call `failure`",
                 e
             )
     }
 
-    fun cancel() {
-        if (!tryCancel())
+    fun onCancel() {
+        if (!tryOnCancel())
             throw IllegalStateException(
                 "CompletionHandler was already completed, cannot call `cancel`"
             )

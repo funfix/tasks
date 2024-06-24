@@ -1,3 +1,5 @@
+import org.gradle.kotlin.dsl.support.kotlinCompilerOptions
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -18,7 +20,6 @@ repositories {
 kotlin {
     jvm {
         withJava()
-
     }
 
     js(IR) {
@@ -53,9 +54,9 @@ kotlin {
         val jsTest by getting
     }
 
-    jvmToolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
-    }
+//    jvmToolchain {
+//        languageVersion.set(JavaLanguageVersion.of(21))
+//    }
 
     tasks.withType<JavaCompile> {
         sourceCompatibility = "8"
@@ -64,6 +65,7 @@ kotlin {
 
     tasks.withType<KotlinCompile> {
         compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_1_8)
             freeCompilerArgs.add("-Xjvm-default=all")
         }
     }
