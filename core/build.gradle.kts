@@ -69,4 +69,16 @@ kotlin {
             freeCompilerArgs.add("-Xjvm-default=all")
         }
     }
+
+    tasks.register<Test>("testsOn21") {
+        javaLauncher = javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    tasks.register<Test>("testsOn8") {
+        javaLauncher = javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(8)
+        }
+    }
 }

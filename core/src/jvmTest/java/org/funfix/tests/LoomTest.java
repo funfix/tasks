@@ -2,7 +2,6 @@ package org.funfix.tests;
 
 import org.funfix.tasks.IOPool;
 import org.funfix.tasks.VirtualThreads;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CountDownLatch;
@@ -44,7 +43,10 @@ public class LoomTest {
 
         assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
         assertTrue(isVirtual.get(), "isVirtual");
-        assertTrue(name.get().startsWith("io-common-virtual-thread-"), "name.startsWith(io-common-virtual-thread-)");
+        assertTrue(
+            name.get().matches("io-common-virtual-thread-\\d+"),
+            "name.matches(\"io-common-virtual-thread-\\\\d+\")"
+        );
     }
 
     @Test
@@ -66,7 +68,10 @@ public class LoomTest {
 
         assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
         assertTrue(isVirtual.get(), "isVirtual");
-        assertTrue(name.get().startsWith("my-vt-virtual-thread-"), "name.startsWith(my-vt-virtual-thread-)");
+        assertTrue(
+            name.get().matches("my-vt-virtual-thread-\\d+"),
+            "name.matches(\"my-vt-virtual-thread-\\\\d+\")"
+        );
     }
 
     @Test
@@ -87,14 +92,49 @@ public class LoomTest {
 
         assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
         assertTrue(isVirtual.get(), "isVirtual");
-        assertTrue(name.get().startsWith("my-vt-virtual-thread-"), "name.startsWith(my-vt-virtual-thread-)");
+        assertTrue(
+            name.get().matches("my-vt-virtual-thread-\\d+"),
+            "name.matches(\"my-vt-virtual-thread-\\\\d+\")"
+        );
     }
 
     @Test
-    public void cannotInitializeFactoryInOlderJava() {
+    public void cannotInitializeLoomUtilsInOlderJava() {
         assumeTrue(javaVersion() < 21, "Requires Java older than 21");
 
-        ThreadFactory f = VirtualThreads.factory("io-common");
-        assertNull(f);
+        ThreadFactory factory = VirtualThreads.factory("io-common");
+        assertNull(factory, "factory");
+
+        ExecutorService executor = VirtualThreads.executorService("io-common");
+        try {
+            assertNull(executor, "executor");
+        } finally {
+            if (executor != null) executor.shutdown();
+        }
+    }
+
+    @Test
+    public void commonPoolInOlderJava() throws InterruptedException {
+        assumeTrue(javaVersion() < 21, "Requires Java older than 21");
+
+        Executor commonPool = IOPool.common();
+        assertNotNull(commonPool, "commonPool");
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicBoolean isVirtual = new AtomicBoolean(true);
+        final AtomicReference<String> name = new AtomicReference<>();
+
+        commonPool.execute(() -> {
+            isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
+            name.set(Thread.currentThread().getName());
+            latch.countDown();
+        });
+
+        assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
+        assertFalse(isVirtual.get(), "isVirtual");
+        assertTrue(
+            name.get().matches("^io-common-\\d+$"),
+            "name.matches(\"^io-common-\\\\d+$\")"
+        );
     }
 }

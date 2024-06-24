@@ -17,18 +17,19 @@ public class TaskFromCompletableFutureTest {
         throws ExecutionException, InterruptedException {
 
         final ExecutorService es = Executors.newCachedThreadPool();
-        final AtomicBoolean isSuspended = new AtomicBoolean(true);
-        Task<String> task =
-            Task.fromCompletableFuture(() -> {
-                isSuspended.set(false);
-                return CompletableFuture.supplyAsync(
-                    () -> "Hello, world!",
-                    es
-                );
-            });
-        // Test that the future is suspended
-        assertTrue(isSuspended.get(), "Future should be suspended");
         try {
+            final AtomicBoolean isSuspended = new AtomicBoolean(true);
+            Task<String> task =
+                Task.fromCompletableFuture(() -> {
+                    isSuspended.set(false);
+                    return CompletableFuture.supplyAsync(
+                        () -> "Hello, world!",
+                        es
+                    );
+                });
+            // Test that the future is suspended
+            assertTrue(isSuspended.get(), "Future should be suspended");
+
             String result = task.executeBlocking();
             assertFalse(isSuspended.get(), "Future should have been executed");
             assertEquals("Hello, world!", result);
