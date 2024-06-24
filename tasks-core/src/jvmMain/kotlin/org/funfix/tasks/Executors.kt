@@ -8,23 +8,44 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
 
-object IOPool {
+/**
+ * Provides utilities for working with [Executor] instances, optimized
+ * for common use-cases.
+ */
+object Executors {
     @Volatile
     private var defaultPool: Executor? = null
 
+    /**
+     * Returns a shared [Executor] meant for blocking I/O tasks.
+     *
+     * Uses [createUnlimitedForIO] to create the executor, which will use
+     * virtual threads on Java 21+, or a plain `newCachedThreadPool` on older
+     * JVM versions.
+     */
     @JvmStatic
-    fun common(): Executor =
+    fun commonIO(): Executor =
         // Using double-checked locking to avoid synchronization
         defaultPool ?: synchronized(this) {
             if (defaultPool == null) {
-                val es = VirtualThreads.executorService("io-common")
-                defaultPool = es ?: Executors.newCachedThreadPool { r ->
-                    val t = Thread(r)
-                    t.name = "io-common-" + t.id
-                    t
-                }
+                defaultPool = createUnlimitedForIO("common-io")
             }
             return@synchronized defaultPool!!
+        }
+
+    /**
+     * Creates an `Executor` meant for blocking I/O tasks, with an
+     * unlimited number of threads.
+     *
+     * On top of Java 21+, the created [Executor] will run tasks on virtual threads.
+     * On older JVM versions, it returns a plain `newCachedThreadPool`.
+     */
+    @JvmStatic
+    fun createUnlimitedForIO(prefix: String): Executor =
+        VirtualThreads.executorService(prefix) ?: Executors.newCachedThreadPool { r ->
+            val t = Thread(r)
+            t.name = prefix + "-platform-" + t.threadId()
+            t
         }
 }
 
@@ -64,10 +85,6 @@ object VirtualThreads {
      * This function only returns a `ThreadFactory` if the current JVM supports
      * virtual threads, therefore, it may only return a non-`null` value if
      * running on Java 21 or later.
-     *
-     * Function copied from the Pekko project, copyright Apache Software Foundation,
-     * licensed under the Apache Public License 2.0:
-     * <https://github.com/apache/pekko/pull/1299/files>
      */
     @JvmStatic
     fun factory(prefix: String): ThreadFactory? =
@@ -83,7 +100,7 @@ object VirtualThreads {
                 MethodType.methodType(ofVirtualClass, String::class.java, Long::class.javaPrimitiveType)
             )
             val factoryMethod = lookup.findVirtual(builderClass, "factory", MethodType.methodType(ThreadFactory::class.java))
-            builder = nameMethod.invoke(builder, "$prefix-virtual-thread-", 0L)
+            builder = nameMethod.invoke(builder, "$prefix-virtual-", 0L)
             factoryMethod.invoke(builder) as ThreadFactory
         } catch (e: Throwable) {
             null

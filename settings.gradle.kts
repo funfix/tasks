@@ -1,6 +1,6 @@
 rootProject.name = "tasks"
 
-include("core")
+include("tasks-core")
 
 pluginManagement {
     repositories {
@@ -28,6 +28,9 @@ dependencyResolutionManagement {
 
             // https://github.com/ben-manes/gradle-versions-plugin
             plugin("versions", "com.github.ben-manes.versions").version("0.51.0")
+
+            // https://github.com/Kotlin/dokka
+            plugin("dokka", "org.jetbrains.dokka").version("1.9.20")
 
             // https://kotlinlang.org/api/latest/kotlin.test/
             library("kotlin-test", "org.jetbrains.kotlin", "kotlin-test")

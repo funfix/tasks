@@ -1,6 +1,6 @@
 package org.funfix.tests;
 
-import org.funfix.tasks.IOPool;
+import org.funfix.tasks.Executors;
 import org.funfix.tasks.VirtualThreads;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +28,7 @@ public class LoomTest {
     public void commonPoolInJava21() throws InterruptedException {
         assumeTrue(javaVersion() >= 21, "Requires Java 21+");
 
-        Executor commonPool = IOPool.common();
+        Executor commonPool = Executors.commonIO();
         assertNotNull(commonPool);
 
         final CountDownLatch latch = new CountDownLatch(1);
@@ -43,9 +43,10 @@ public class LoomTest {
 
         assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
         assertTrue(isVirtual.get(), "isVirtual");
+        System.out.println(name.get());
         assertTrue(
-            name.get().matches("io-common-virtual-thread-\\d+"),
-            "name.matches(\"io-common-virtual-thread-\\\\d+\")"
+            name.get().matches("common-io-virtual-\\d+"),
+            "name.matches(\"common-io-virtual-\\\\d+\")"
         );
     }
 
@@ -69,8 +70,8 @@ public class LoomTest {
         assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
         assertTrue(isVirtual.get(), "isVirtual");
         assertTrue(
-            name.get().matches("my-vt-virtual-thread-\\d+"),
-            "name.matches(\"my-vt-virtual-thread-\\\\d+\")"
+            name.get().matches("my-vt-virtual-\\d+"),
+            "name.matches(\"my-vt-virtual-\\\\d+\")"
         );
     }
 
@@ -93,8 +94,8 @@ public class LoomTest {
         assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
         assertTrue(isVirtual.get(), "isVirtual");
         assertTrue(
-            name.get().matches("my-vt-virtual-thread-\\d+"),
-            "name.matches(\"my-vt-virtual-thread-\\\\d+\")"
+            name.get().matches("my-vt-virtual-\\d+"),
+            "name.matches(\"my-vt-virtual-\\\\d+\")"
         );
     }
 
@@ -102,10 +103,10 @@ public class LoomTest {
     public void cannotInitializeLoomUtilsInOlderJava() {
         assumeTrue(javaVersion() < 21, "Requires Java older than 21");
 
-        ThreadFactory factory = VirtualThreads.factory("io-common");
+        ThreadFactory factory = VirtualThreads.factory("common-io");
         assertNull(factory, "factory");
 
-        ExecutorService executor = VirtualThreads.executorService("io-common");
+        ExecutorService executor = VirtualThreads.executorService("common-io");
         try {
             assertNull(executor, "executor");
         } finally {
@@ -117,7 +118,7 @@ public class LoomTest {
     public void commonPoolInOlderJava() throws InterruptedException {
         assumeTrue(javaVersion() < 21, "Requires Java older than 21");
 
-        Executor commonPool = IOPool.common();
+        Executor commonPool = Executors.commonIO();
         assertNotNull(commonPool, "commonPool");
 
         final CountDownLatch latch = new CountDownLatch(1);
@@ -133,8 +134,8 @@ public class LoomTest {
         assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
         assertFalse(isVirtual.get(), "isVirtual");
         assertTrue(
-            name.get().matches("^io-common-\\d+$"),
-            "name.matches(\"^io-common-\\\\d+$\")"
+            name.get().matches("^common-io-platform-\\d+$"),
+            "name.matches(\"^common-io-platform-\\\\d+$\")"
         );
     }
 }

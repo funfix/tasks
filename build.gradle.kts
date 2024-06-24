@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlinx.kover) apply false
+    alias(libs.plugins.dokka) apply false
 }
 
 repositories {
@@ -14,6 +15,25 @@ repositories {
 group = "org.funfix"
 version = "0.0.1-SNAPSHOT"
 
+subprojects {
+    apply(plugin = "maven-publish")
+    apply(plugin = "org.jetbrains.dokka")
+
+    configure<PublishingExtension> {
+        repositories {
+            mavenLocal()
+
+            maven {
+                name = "GitHubPackages"
+                url = uri("https://maven.pkg.github.com/funfix/tasks")
+                credentials {
+                    username = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
+                    password = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
+                }
+            }
+        }
+    }
+}
 
 // TODO: https://docs.gradle.org/current/userguide/sharing_build_logic_between_subprojects.html
 
