@@ -3,14 +3,12 @@ package org.funfix.tasks;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+import javax.swing.plaf.nimbus.State;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
@@ -84,8 +82,37 @@ public interface Task<T> extends Serializable {
         return h.await(cancelToken, timeout);
     }
 
-    static <T> Task<T> fromBlockingIO(final Executor es, final Callable<T> callable) {
-        return new TaskFromExecutor<>(es, callable);
+    static <T> Task<T> fromBlockingIO(final Callable<? extends T> callable) {
+        return fromBlockingIO(Executors.commonIO(), callable);
+    }
+
+    static <T> Task<T> fromBlockingIO(final Executor es, final Callable<? extends T> callable) {
+        return new TaskFromExecutor<T>(es, callable);
+    }
+
+    static <T> Task<T> fromBlockingFuture(final Callable<? extends Future<? extends T>> builder) {
+        return fromBlockingFuture(Executors.commonIO(), builder);
+    }
+
+    static <T> Task<T> fromBlockingFuture(final Executor es, final Callable<? extends Future<? extends T>> builder) {
+        return fromBlockingIO(es, () -> {
+            final var f = builder.call();
+            try {
+                return f.get();
+            } catch (final InterruptedException e) {
+                f.cancel(true);
+                // We need to wait for this future to complete, as we need to
+                // back-pressure on its interruption.
+                while (!f.isDone()) {
+                    // Ignore further interruption signals
+                    //noinspection ResultOfMethodCallIgnored
+                    Thread.interrupted();
+                    try { f.get(); }
+                    catch (final Exception ignored) {}
+                }
+                throw e;
+            }
+        });
     }
 }
 
@@ -458,7 +485,7 @@ final class Trampoline {
 @NullMarked
 final class TaskFromExecutor<T> implements Task<T> {
     private final Executor es;
-    private final Callable<T> callable;
+    private final Callable<? extends T> callable;
 
     private sealed interface State extends Serializable
         permits State.NotStarted, State.Completed, State.Running, State.Interrupting {
@@ -478,7 +505,7 @@ final class TaskFromExecutor<T> implements Task<T> {
         record Interrupting(AwaitSignal wasInterrupted) implements State {}
     }
 
-    public TaskFromExecutor(final Executor es, final Callable<T> callable) {
+    public TaskFromExecutor(final Executor es, final Callable<? extends T> callable) {
         this.es = es;
         this.callable = callable;
     }
