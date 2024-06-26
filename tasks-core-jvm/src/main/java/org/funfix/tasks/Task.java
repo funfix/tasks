@@ -3,7 +3,6 @@ package org.funfix.tasks;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
-import javax.swing.plaf.nimbus.State;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.LinkedList;
@@ -82,18 +81,80 @@ public interface Task<T> extends Serializable {
         return h.await(cancelToken, timeout);
     }
 
+    /**
+     * Creates a task from a {@link Callable} executing blocking IO.
+     * <p>
+     * Similar to {@link #fromBlockingIO(Executor, Callable)}, but uses
+     * the common thread-pool defined by {@link Executors#commonIO()},
+     * which is using virtual threads on Java 21+.
+     * <p>
+     * See {@link #fromBlockingIO(Executor, Callable)} for full details.
+     *
+     * @param callable is the blocking IO operation to execute
+     * @return a new task that will perform the blocking IO operation upon execution
+     *
+     * @see #fromBlockingIO(Executor, Callable)
+     */
     static <T> Task<T> fromBlockingIO(final Callable<? extends T> callable) {
         return fromBlockingIO(Executors.commonIO(), callable);
     }
 
+    /**
+     * Creates a task from a {@link Callable} executing blocking IO
+     * asynchronously (on another thread).
+     * <p>
+     * The given blocking function can listen to Java's interruption
+     * protocol (e.g., {@link Thread#interrupt()}), with the resulting task
+     * being cancellable.
+     *
+     * @param es is the {@link Executor} to use for executing the blocking IO operation
+     * @param callable is the blocking IO operation to execute
+     * @return a new task that will perform the blocking IO operation upon execution
+     */
     static <T> Task<T> fromBlockingIO(final Executor es, final Callable<? extends T> callable) {
-        return new TaskFromExecutor<T>(es, callable);
+        return new TaskFromExecutor<>(es, callable);
     }
 
+    /**
+     * Creates a task from a {@link Future} builder.
+     * <p>
+     * This is similar to {@link #fromBlockingFuture(Executor, Callable)}, but uses
+     * the common thread-pool defined by {@link Executors#commonIO()}, which is
+     * using virtual threads on Java 21+.
+     *
+     * @param builder is the {@link Callable} that will create the {@link Future} upon
+     *                this task's execution.
+     * @return a new task that will complete with the result of the created {@code Future}
+     *        upon execution
+     */
     static <T> Task<T> fromBlockingFuture(final Callable<? extends Future<? extends T>> builder) {
         return fromBlockingFuture(Executors.commonIO(), builder);
     }
 
+    /**
+     * Creates a task from a {@link Future} builder.
+     * <p>
+     * This is compatible with Java's interruption protocol and
+     * {@link Future#cancel(boolean)}, with the resulting task being cancellable.
+     * <p>
+     * The given {@link Executor} is used for executing the blocking IO operation
+     * (i.e., {@link Future#get()}). Note that blocking threads in this way is
+     * perfectly acceptable on top of virtual threads (if supported by the JVM).
+     * <p>
+     * <strong>NOTE:</strong> Use {@link #fromCompletionStage(Callable)} for directly
+     * converting {@link CompletableFuture} builders, because it is not possible to cancel
+     * such values, and the logic needs to reflect it. Better yet, use
+     * {@link #fromCancellableCompletionStage(Callable)} for working with {@link CompletionStage}
+     * values that can be cancelled.
+     *
+     * @param builder is the {@link Callable} that will create the {@link Future} upon
+     *                this task's execution.
+     * @return a new task that will complete with the result of the created {@code Future}
+     *        upon execution
+     *
+     * @see #fromCompletionStage(Callable)
+     * @see #fromCancellableCompletionStage(Callable)
+     */
     static <T> Task<T> fromBlockingFuture(final Executor es, final Callable<? extends Future<? extends T>> builder) {
         return fromBlockingIO(es, () -> {
             final var f = builder.call();
@@ -113,6 +174,49 @@ public interface Task<T> extends Serializable {
                 throw e;
             }
         });
+    }
+
+    /**
+     * Creates tasks from a builder of {@link CompletionStage}.
+     * <p>
+     * <strong>NOTE:</strong> {@code CompletionStage} isn't cancellable, and the
+     * resulting task should reflect this (i.e., on cancellation, the listener should not
+     * receive an `onCancel` signal until the `CompletionStage` actually completes).
+     * <p>
+     * Prefer using {@link #fromCancellableCompletionStage(Callable)} for working with
+     * {@link CompletionStage} values that can be cancelled.
+     *
+     * @see #fromCancellableCompletionStage(Callable)
+     *
+     * @param builder is the {@link Callable} that will create the {@link CompletionStage}
+     *                value. It's a builder because {@link Task} values are cold values
+     *                (lazy, not executed yet).
+     * @return a new task that upon execution will complete with the result of
+     * the created {@code CancellableCompletionStage}
+     */
+    static <T> Task<T> fromCompletionStage(final Callable<? extends CompletionStage<? extends T>> builder) {
+        return fromCancellableCompletionStage(
+            () -> new CancellableCompletionStage<>(builder.call(), Cancellable.EMPTY)
+        );
+    }
+
+    /**
+     * Creates tasks from a builder of {@link CancellableCompletionStage}.
+     * <p>
+     * This is the recommended way to work with {@link CompletionStage} builders,
+     * because cancelling such values (e.g., {@link CompletableFuture}) doesn't work
+     * for cancelling the connecting computation. As such, the user should provide
+     * an explicit {@link Cancellable} token that can be used.
+     *
+     * @param builder is the {@link Callable} that will create the {@link CancellableCompletionStage}
+     *                value. It's a builder because {@link Task} values are cold values
+     *                (lazy, not executed yet).
+     *
+     * @return a new task that upon execution will complete with the result of
+     * the created {@code CancellableCompletionStage}
+     */
+    static <T> Task<T> fromCancellableCompletionStage(final Callable<? extends CancellableCompletionStage<? extends T>> builder) {
+        return new TaskFromCompletionStage<>(builder);
     }
 }
 
@@ -547,7 +651,7 @@ final class TaskFromExecutor<T> implements Task<T> {
             var interrupted = false;
             try {
                 result = callable.call();
-            } catch (final InterruptedException e) {
+            } catch (final InterruptedException | CancellationException | java.util.concurrent.CancellationException e) {
                 interrupted = true;
             } catch (final Exception e) {
                 error = e;
@@ -585,5 +689,46 @@ final class TaskFromExecutor<T> implements Task<T> {
             }
         });
         return () -> triggerCancel(state);
+    }
+}
+
+@NullMarked
+final class TaskFromCompletionStage<T> implements Task<T> {
+    private final Callable<? extends CancellableCompletionStage<? extends T>> builder;
+
+    public TaskFromCompletionStage(final Callable<? extends CancellableCompletionStage<? extends T>> builder) {
+        this.builder = builder;
+    }
+
+    @Override
+    public Cancellable executeAsync(final CompletionListener<? super T> listener) {
+        var userError = true;
+        try {
+            final var future = builder.call();
+            userError = false;
+
+            future.completionStage().whenCompleteAsync((value, error) -> {
+                if (error instanceof InterruptedException || error instanceof CancellationException) {
+                    listener.onCancel();
+                } else if (error instanceof final ExecutionException e && e.getCause() != null) {
+                    listener.onFailure(e.getCause());
+                } else if (error instanceof final CompletionException e && e.getCause() != null) {
+                    listener.onFailure(error.getCause());
+                } else if (error != null) {
+                    listener.onFailure(error);
+                } else {
+                    listener.onSuccess(value);
+                }
+            });
+            return future.cancellable();
+        } catch (final Exception e) {
+            if (userError) {
+                listener.onFailure(e);
+                return Cancellable.EMPTY;
+            }
+            // noinspection ConstantValue
+            if (e instanceof final RuntimeException re) throw re;
+            throw new RuntimeException(e);
+        }
     }
 }

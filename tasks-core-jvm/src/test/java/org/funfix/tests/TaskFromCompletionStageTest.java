@@ -5,22 +5,21 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TaskFromCompletableFutureTest {
+public class TaskFromCompletionStageTest {
     @Test
     public void happyPath()
         throws ExecutionException, InterruptedException {
 
-        final ExecutorService es = Executors.newCachedThreadPool();
+        final var es = Executors.newCachedThreadPool();
         try {
-            final AtomicBoolean isSuspended = new AtomicBoolean(true);
-            Task<String> task =
-                Task.fromCompletableFuture(() -> {
+            final var isSuspended = new AtomicBoolean(true);
+            final var task =
+                Task.fromCompletionStage(() -> {
                     isSuspended.set(false);
                     return CompletableFuture.supplyAsync(
                         () -> "Hello, world!",
@@ -30,7 +29,7 @@ public class TaskFromCompletableFutureTest {
             // Test that the future is suspended
             assertTrue(isSuspended.get(), "Future should be suspended");
 
-            String result = task.executeBlocking();
+            final var result = task.executeBlocking();
             assertFalse(isSuspended.get(), "Future should have been executed");
             assertEquals("Hello, world!", result);
         } finally {
@@ -40,9 +39,9 @@ public class TaskFromCompletableFutureTest {
 
     @Test
     public void yieldingErrorInsideFuture() throws InterruptedException {
-        ExecutorService es = Executors.newCachedThreadPool();
-        Task<String> task =
-            Task.fromCompletableFuture(() ->
+        final var es = Executors.newCachedThreadPool();
+        final Task<String> task =
+            Task.fromCompletionStage(() ->
                 CompletableFuture.supplyAsync(
                     () -> {
                         throw new SampleException("Error");
@@ -54,7 +53,7 @@ public class TaskFromCompletableFutureTest {
         try {
             task.executeBlocking();
             fail("Should have thrown an exception");
-        } catch (ExecutionException ex) {
+        } catch (final ExecutionException ex) {
             assertInstanceOf(SampleException.class, ex.getCause(), "Should have received a SampleException");
         } finally {
             es.shutdown();
@@ -63,16 +62,16 @@ public class TaskFromCompletableFutureTest {
 
     @Test
     public void yieldingErrorInBuilder() throws InterruptedException {
-        ExecutorService es = Executors.newCachedThreadPool();
-        Task<String> task =
-            Task.fromCompletableFuture(() -> {
+        final var es = Executors.newCachedThreadPool();
+        final Task<String> task =
+            Task.fromCompletionStage(() -> {
                 throw new SampleException("Error");
             });
 
         try {
             task.executeBlocking();
             fail("Should have thrown an exception");
-        } catch (ExecutionException ex) {
+        } catch (final ExecutionException ex) {
             assertInstanceOf(SampleException.class, ex.getCause(), "Should have received a SampleException");
         } finally {
             es.shutdown();
@@ -80,7 +79,7 @@ public class TaskFromCompletableFutureTest {
     }
 
     static final class SampleException extends RuntimeException {
-        public SampleException(String message) {
+        public SampleException(final String message) {
             super(message);
         }
     }
