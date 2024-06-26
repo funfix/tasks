@@ -17,7 +17,7 @@ import java.util.concurrent.ThreadFactory;
  * for common use-cases.
  */
 @NullMarked
-public class ThreadPools {
+public final class ThreadPools {
     private static volatile @Nullable Executor sharedIORef = null;
 
     /**
@@ -116,15 +116,10 @@ public class ThreadPools {
         throw e2;
     }
 
-    /**
-     * Create a virtual thread factory, returns `null` if failed.
-     * <p>
-     * This function only returns a {@code ThreadFactory} if the current JVM supports
-     * virtual threads, therefore, it may only return a non-{@code null} value if
-     * running on Java 21 or later.
-     *
-     * @throws NotSupportedException if the current JVM does not support virtual threads.
-     */
+    public static ThreadFactory factory() throws NotSupportedException {
+        return factory(VIRTUAL_THREAD_NAME_PREFIX);
+    }
+
     public static ThreadFactory factory(final String prefix) throws NotSupportedException {
         try {
             final var builderClass = Class.forName("java.lang.Thread$Builder");
@@ -161,11 +156,6 @@ public class ThreadPools {
         isVirtualMethodHandle = tempHandle;
     }
 
-    /**
-     * Returns {@code true} if the given thread is a virtual thread.
-     * <p>
-     * This function only returns {@code true} if the current JVM supports virtual threads.
-     */
     public static boolean isVirtualThread(final Thread th) {
         try {
             if (isVirtualMethodHandle != null) {
@@ -180,4 +170,6 @@ public class ThreadPools {
     public static boolean areVirtualThreadsSupported() {
         return isVirtualMethodHandle != null && newThreadPerTaskExecutorMethodHandle != null;
     }
+
+    public static final String VIRTUAL_THREAD_NAME_PREFIX = "common-io-virtual-";
 }
