@@ -16,8 +16,6 @@ import java.io.Serializable;
  */
 @NullMarked
 public interface CompletionListener<T> extends Serializable {
-    long serialVersionUID = 3302223695157147110L;
-
     /**
      * Must be called when the task completes successfully.
      *

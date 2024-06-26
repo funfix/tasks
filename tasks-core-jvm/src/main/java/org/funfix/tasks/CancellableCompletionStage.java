@@ -1,5 +1,7 @@
 package org.funfix.tasks;
 
+import org.jspecify.annotations.NullMarked;
+
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -11,6 +13,7 @@ import java.util.concurrent.CompletionStage;
  * a task, we need to keep a reference to a {@link Cancellable} object that
  * can do the job.
  */
+@NullMarked
 public record CancellableCompletionStage<T>(
     CompletionStage<T> completionStage,
     Cancellable cancellable

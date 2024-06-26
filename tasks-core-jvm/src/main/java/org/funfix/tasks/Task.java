@@ -20,8 +20,6 @@ import java.util.stream.Stream;
 @NullMarked
 @FunctionalInterface
 public interface Task<T> extends Serializable {
-    long serialVersionUID = 2118085779965856326L;
-
     /**
      * Executes the task asynchronously.
      *
@@ -85,7 +83,7 @@ public interface Task<T> extends Serializable {
      * Creates a task from a {@link Callable} executing blocking IO.
      * <p>
      * Similar to {@link #fromBlockingIO(Executor, Callable)}, but uses
-     * the common thread-pool defined by {@link Executors#commonIO()},
+     * the common thread-pool defined by {@link ThreadPools#sharedIO()},
      * which is using virtual threads on Java 21+.
      * <p>
      * See {@link #fromBlockingIO(Executor, Callable)} for full details.
@@ -96,7 +94,7 @@ public interface Task<T> extends Serializable {
      * @see #fromBlockingIO(Executor, Callable)
      */
     static <T> Task<T> fromBlockingIO(final Callable<T> callable) {
-        return fromBlockingIO(Executors.commonIO(), callable);
+        return fromBlockingIO(ThreadPools.sharedIO(), callable);
     }
 
     /**
@@ -119,7 +117,7 @@ public interface Task<T> extends Serializable {
      * Creates a task from a {@link Future} builder.
      * <p>
      * This is similar to {@link #fromBlockingFuture(Executor, Callable)}, but uses
-     * the common thread-pool defined by {@link Executors#commonIO()}, which is
+     * the common thread-pool defined by {@link ThreadPools#sharedIO()}, which is
      * using virtual threads on Java 21+.
      *
      * @param builder is the {@link Callable} that will create the {@link Future} upon
@@ -128,7 +126,7 @@ public interface Task<T> extends Serializable {
      *        upon execution
      */
     static <T> Task<T> fromBlockingFuture(final Callable<Future<? extends T>> builder) {
-        return fromBlockingFuture(Executors.commonIO(), builder);
+        return fromBlockingFuture(ThreadPools.sharedIO(), builder);
     }
 
     /**
@@ -707,17 +705,17 @@ final class TaskFromCompletionStage<T> implements Task<T> {
             final var future = builder.call();
             userError = false;
 
-            future.completionStage().whenCompleteAsync((value, error) -> {
+            future.completionStage().whenComplete((value, error) -> {
                 if (error instanceof InterruptedException || error instanceof CancellationException) {
-                    listener.onCancel();
+                    Trampoline.execute(listener::onCancel);
                 } else if (error instanceof final ExecutionException e && e.getCause() != null) {
-                    listener.onFailure(e.getCause());
+                    Trampoline.execute(() -> listener.onFailure(e.getCause()));
                 } else if (error instanceof final CompletionException e && e.getCause() != null) {
-                    listener.onFailure(error.getCause());
+                    Trampoline.execute(() -> listener.onFailure(error.getCause()));
                 } else if (error != null) {
-                    listener.onFailure(error);
+                    Trampoline.execute(() -> listener.onFailure(error));
                 } else {
-                    listener.onSuccess(value);
+                    Trampoline.execute(() -> listener.onSuccess(value));
                 }
             });
             return future.cancellable();

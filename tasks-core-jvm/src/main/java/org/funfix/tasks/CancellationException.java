@@ -3,6 +3,8 @@ package org.funfix.tasks;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+import java.io.Serial;
+
 /**
  * Represents an exception that is thrown when a task is cancelled.
  *

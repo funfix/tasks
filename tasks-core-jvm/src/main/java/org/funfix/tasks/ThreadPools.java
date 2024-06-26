@@ -6,11 +6,65 @@ import org.jspecify.annotations.Nullable;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.Objects;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
+/**
+ * Provides utilities for working with [Executor] instances, optimized
+ * for common use-cases.
+ */
 @NullMarked
-public final class VirtualThreads {
+public class ThreadPools {
+    private static volatile @Nullable Executor sharedIORef = null;
+
+    /**
+     * Returns a shared {@link Executor} meant for blocking I/O tasks.
+     * The reference gets lazily initialized on the first call.
+     * <p>
+     * Uses {@link #unlimitedThreadPoolForIO(String)} to create the executor,
+     * which will use virtual threads on Java 21+, or a plain
+     * {@link Executors#newCachedThreadPool()} on older JVM versions.
+     */
+    public static Executor sharedIO() {
+        // Using double-checked locking to avoid synchronization
+        if (sharedIORef == null) {
+            synchronized (ThreadPools.class) {
+                if (sharedIORef == null) {
+                    sharedIORef = unlimitedThreadPoolForIO("common-io");
+                }
+            }
+        }
+        return Objects.requireNonNull(sharedIORef);
+    }
+
+    /**
+     * Creates an {@code Executor} meant for blocking I/O tasks, with an
+     * unlimited number of threads.
+     * <p>
+     * On Java 21 and above, the created {@code Executor} will run tasks on virtual threads.
+     * On older JVM versions, it returns a plain {@code Executors.newCachedThreadPool}.
+     */
+    public static ExecutorService unlimitedThreadPoolForIO(final String prefix) {
+        try {
+            return VirtualThreads.executorService(prefix + "-virtual-");
+        } catch (final VirtualThreads.NotSupportedException ignored) {}
+
+        return java.util.concurrent.Executors.newCachedThreadPool(r -> {
+            final var t = new Thread(r);
+            t.setName(prefix + "-platform-" + t.getId());
+            return t;
+        });
+    }
+}
+
+/**
+ * Internal utilities — not exposed yet, because lacking Loom support is only
+ * temporary.
+ */
+@NullMarked final class VirtualThreads {
     private static final @Nullable MethodHandle newThreadPerTaskExecutorMethodHandle;
 
     public static final class NotSupportedException extends Exception {

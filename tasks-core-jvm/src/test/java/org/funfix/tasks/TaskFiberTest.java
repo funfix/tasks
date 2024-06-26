@@ -1,8 +1,5 @@
-package org.funfix.tests;
+package org.funfix.tasks;
 
-import org.funfix.tasks.CancellationException;
-import org.funfix.tasks.Fiber;
-import org.funfix.tasks.Task;
 import org.junit.jupiter.api.Test;
 import java.util.Objects;
 import java.util.concurrent.*;

@@ -1,6 +1,5 @@
-package org.funfix.tests;
+package org.funfix.tasks;
 
-import org.funfix.tasks.Task;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;

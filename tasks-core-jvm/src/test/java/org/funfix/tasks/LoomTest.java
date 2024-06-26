@@ -1,13 +1,12 @@
-package org.funfix.tests;
+package org.funfix.tasks;
 
-import org.funfix.tasks.Executors;
-import org.funfix.tasks.VirtualThreads;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.funfix.tasks.VirtualThreads.areVirtualThreadsSupported;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -15,9 +14,9 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 public class LoomTest {
     @Test
     public void commonPoolInJava21() throws InterruptedException {
-        assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
+        assumeTrue(areVirtualThreadsSupported(), "Requires Java 21+");
 
-        final var commonPool = Executors.commonIO();
+        final var commonPool = ThreadPools.sharedIO();
         assertNotNull(commonPool);
 
         final var latch = new CountDownLatch(1);
@@ -40,7 +39,7 @@ public class LoomTest {
 
     @Test
     public void canInitializeFactoryInJava21() throws InterruptedException, VirtualThreads.NotSupportedException {
-        assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
+        assumeTrue(areVirtualThreadsSupported(), "Requires Java 21+");
 
         final var f = VirtualThreads.factory("my-vt-");
         assertNotNull(f);
@@ -65,7 +64,7 @@ public class LoomTest {
 
     @Test
     public void canInitializeExecutorInJava21() throws InterruptedException, VirtualThreads.NotSupportedException {
-        assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
+        assumeTrue(areVirtualThreadsSupported(), "Requires Java 21+");
 
         try (final var executor = VirtualThreads.executorService("my-vt-")) {
             assertNotNull(executor, "executor");
@@ -90,7 +89,7 @@ public class LoomTest {
 
     @Test
     public void cannotInitializeLoomUtilsInOlderJava() {
-        assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires Java older than 21");
+        assumeFalse(areVirtualThreadsSupported(), "Requires Java older than 21");
 
         try {
             final var factory = VirtualThreads.factory("common-io");
@@ -101,9 +100,9 @@ public class LoomTest {
 
     @Test
     public void commonPoolInOlderJava() throws InterruptedException {
-        assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires Java older than 21");
+        assumeFalse(areVirtualThreadsSupported(), "Requires Java older than 21");
 
-        final var commonPool = Executors.commonIO();
+        final var commonPool = ThreadPools.sharedIO();
         assertNotNull(commonPool, "commonPool");
 
         final var latch = new CountDownLatch(1);
