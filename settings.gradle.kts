@@ -1,6 +1,7 @@
 rootProject.name = "tasks"
 
-include("tasks-core")
+//include("tasks-core")
+include("tasks-core-jvm")
 
 pluginManagement {
     repositories {
@@ -31,6 +32,10 @@ dependencyResolutionManagement {
 
             // https://github.com/Kotlin/dokka
             plugin("dokka", "org.jetbrains.dokka").version("1.9.20")
+
+            // https://jspecify.dev/docs/start-here
+            library("jspecify", "org.jspecify", "jspecify")
+                .version("0.3.0")
 
             // https://kotlinlang.org/api/latest/kotlin.test/
             library("kotlin-test", "org.jetbrains.kotlin", "kotlin-test")

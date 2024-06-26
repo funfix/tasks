@@ -10,21 +10,23 @@ plugins {
     id("signing")
 }
 
-group = "org.funfix"
-version = "0.0.1-SNAPSHOT"
-
 //val dokkaOutputDir = layout.buildDirectory.dir("dokka").get().asFile
+//
 //tasks.dokkaHtml {
 //    outputDirectory.set(dokkaOutputDir)
 //}
-//val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") { delete(dokkaOutputDir) }
+//
+//val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
+//    delete(dokkaOutputDir)
+//}
+//
 //val javadocJar = tasks.create<Jar>("javadocJar") {
 //    archiveClassifier.set("javadoc")
 //    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 //    dependsOn(deleteDokkaOutputDir, tasks.dokkaHtml)
 //    from(dokkaOutputDir)
 //}
-//
+
 publishing {
     publications {
         register<MavenPublication>("gpr") {
@@ -108,13 +110,13 @@ kotlin {
     }
 
     tasks.withType<JavaCompile> {
-        sourceCompatibility = "8"
-        targetCompatibility = "8"
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
     }
 
     tasks.withType<KotlinCompile> {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1_8)
+            jvmTarget.set(JvmTarget.JVM_17)
             freeCompilerArgs.add("-Xjvm-default=all")
         }
     }
@@ -125,9 +127,9 @@ kotlin {
         }
     }
 
-    tasks.register<Test>("testsOn8") {
+    tasks.register<Test>("testsOn17") {
         javaLauncher = javaToolchains.launcherFor {
-            languageVersion = JavaLanguageVersion.of(8)
+            languageVersion = JavaLanguageVersion.of(17)
         }
     }
 }
