@@ -95,7 +95,7 @@ public interface Task<T> extends Serializable {
      *
      * @see #fromBlockingIO(Executor, Callable)
      */
-    static <T> Task<T> fromBlockingIO(final Callable<? extends T> callable) {
+    static <T> Task<T> fromBlockingIO(final Callable<T> callable) {
         return fromBlockingIO(Executors.commonIO(), callable);
     }
 
@@ -111,7 +111,7 @@ public interface Task<T> extends Serializable {
      * @param callable is the blocking IO operation to execute
      * @return a new task that will perform the blocking IO operation upon execution
      */
-    static <T> Task<T> fromBlockingIO(final Executor es, final Callable<? extends T> callable) {
+    static <T> Task<T> fromBlockingIO(final Executor es, final Callable<T> callable) {
         return new TaskFromExecutor<>(es, callable);
     }
 
@@ -127,7 +127,7 @@ public interface Task<T> extends Serializable {
      * @return a new task that will complete with the result of the created {@code Future}
      *        upon execution
      */
-    static <T> Task<T> fromBlockingFuture(final Callable<? extends Future<? extends T>> builder) {
+    static <T> Task<T> fromBlockingFuture(final Callable<Future<? extends T>> builder) {
         return fromBlockingFuture(Executors.commonIO(), builder);
     }
 
@@ -155,7 +155,7 @@ public interface Task<T> extends Serializable {
      * @see #fromCompletionStage(Callable)
      * @see #fromCancellableCompletionStage(Callable)
      */
-    static <T> Task<T> fromBlockingFuture(final Executor es, final Callable<? extends Future<? extends T>> builder) {
+    static <T> Task<T> fromBlockingFuture(final Executor es, final Callable<Future<? extends T>> builder) {
         return fromBlockingIO(es, () -> {
             final var f = builder.call();
             try {
@@ -194,7 +194,7 @@ public interface Task<T> extends Serializable {
      * @return a new task that upon execution will complete with the result of
      * the created {@code CancellableCompletionStage}
      */
-    static <T> Task<T> fromCompletionStage(final Callable<? extends CompletionStage<? extends T>> builder) {
+    static <T> Task<T> fromCompletionStage(final Callable<CompletionStage<? extends T>> builder) {
         return fromCancellableCompletionStage(
             () -> new CancellableCompletionStage<>(builder.call(), Cancellable.EMPTY)
         );
@@ -215,7 +215,7 @@ public interface Task<T> extends Serializable {
      * @return a new task that upon execution will complete with the result of
      * the created {@code CancellableCompletionStage}
      */
-    static <T> Task<T> fromCancellableCompletionStage(final Callable<? extends CancellableCompletionStage<? extends T>> builder) {
+    static <T> Task<T> fromCancellableCompletionStage(final Callable<CancellableCompletionStage<? extends T>> builder) {
         return new TaskFromCompletionStage<>(builder);
     }
 }
