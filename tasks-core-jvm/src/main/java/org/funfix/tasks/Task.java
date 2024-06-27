@@ -469,13 +469,13 @@ final class CreateAsyncTask<T> extends Task<T> {
         final var cancel = new CreateCancellable();
         final Runnable run = () -> {
             try {
-                final var token = builder.apply(listener);
+                final var token = builder.apply(CompletionListener.protect(listener));
                 cancel.set(token);
             } catch (final Throwable e) {
                 UncaughtExceptionHandler.logException(e);
             }
         };
-        this.es.execute(() -> cancel.set(builder.apply(listener)));
+        this.es.execute(run);
         return cancel;
     }
 }

@@ -97,9 +97,12 @@ public class TaskFromBlockingFutureTest {
     void builderCanBeCancelled() throws InterruptedException, ExecutionException {
         Objects.requireNonNull(es);
 
+        final var wasStarted = new CountDownLatch(1);
         final var latch = new CountDownLatch(1);
+
         final var fiber = Task
             .<Void>fromBlockingFuture(() -> {
+                wasStarted.countDown();
                 try {
                     Thread.sleep(10000);
                     return null;
@@ -109,6 +112,7 @@ public class TaskFromBlockingFutureTest {
                 }
             }).executeConcurrently();
 
+        assertTrue(wasStarted.await(5, TimeUnit.SECONDS), "wasStarted.await");
         fiber.cancel();
         assertTrue(fiber.tryJoinBlockingTimed(Duration.ofSeconds(5)));
 
