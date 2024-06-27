@@ -8,7 +8,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.funfix.tasks.VirtualThreads.areVirtualThreadsSupported;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class LoomTest {
@@ -16,25 +15,24 @@ public class LoomTest {
     public void commonPoolInJava21() throws InterruptedException {
         assumeTrue(areVirtualThreadsSupported(), "Requires Java 21+");
 
-        final var commonPool = ThreadPools.sharedIO();
-        assertNotNull(commonPool);
+        try (final var commonPool = ThreadPools.unlimitedThreadPoolForIO("common-io")) {
+            final var latch = new CountDownLatch(1);
+            final var isVirtual = new AtomicBoolean(false);
+            final var name = new AtomicReference<String>();
 
-        final var latch = new CountDownLatch(1);
-        final var isVirtual = new AtomicBoolean(false);
-        final var name = new AtomicReference<String>();
+            commonPool.execute(() -> {
+                isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
+                name.set(Thread.currentThread().getName());
+                latch.countDown();
+            });
 
-        commonPool.execute(() -> {
-            isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
-            name.set(Thread.currentThread().getName());
-            latch.countDown();
-        });
-
-        assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
-        assertTrue(isVirtual.get(), "isVirtual");
-        assertTrue(
-            name.get().matches("common-io-virtual-\\d+"),
-            "name.matches(\"common-io-virtual-\\\\d+\")"
-        );
+            assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
+            assertTrue(isVirtual.get(), "isVirtual");
+            assertTrue(
+                name.get().matches("common-io-virtual-\\d+"),
+                "name.matches(\"common-io-virtual-\\\\d+\")"
+            );
+        }
     }
 
     @Test
@@ -89,37 +87,40 @@ public class LoomTest {
 
     @Test
     public void cannotInitializeLoomUtilsInOlderJava() {
-        assumeFalse(areVirtualThreadsSupported(), "Requires Java older than 21");
-
-        try {
-            final var factory = VirtualThreads.factory("common-io");
-            VirtualThreads.executorService("common-io").close();
-        } catch (final VirtualThreads.NotSupportedException ignored) {
+        try (final var r = SysProp.withVirtualThreads(false)) {
+            try {
+                final var factory = VirtualThreads.factory("common-io");
+                VirtualThreads.executorService("common-io").close();
+            } catch (final VirtualThreads.NotSupportedException ignored) {
+            }
         }
     }
 
     @Test
     public void commonPoolInOlderJava() throws InterruptedException {
-        assumeFalse(areVirtualThreadsSupported(), "Requires Java older than 21");
+        try (
+            final var r = SysProp.withVirtualThreads(false);
+            final var commonPool = ThreadPools.unlimitedThreadPoolForIO("common-io")
+        ) {
+            assertFalse(areVirtualThreadsSupported(), "areVirtualThreadsSupported");
+            assertNotNull(commonPool, "commonPool");
 
-        final var commonPool = ThreadPools.sharedIO();
-        assertNotNull(commonPool, "commonPool");
+            final var latch = new CountDownLatch(1);
+            final var isVirtual = new AtomicBoolean(true);
+            final var name = new AtomicReference<String>();
 
-        final var latch = new CountDownLatch(1);
-        final var isVirtual = new AtomicBoolean(true);
-        final var name = new AtomicReference<String>();
+            commonPool.execute(() -> {
+                isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
+                name.set(Thread.currentThread().getName());
+                latch.countDown();
+            });
 
-        commonPool.execute(() -> {
-            isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
-            name.set(Thread.currentThread().getName());
-            latch.countDown();
-        });
-
-        assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
-        assertFalse(isVirtual.get(), "isVirtual");
-        assertTrue(
-            name.get().matches("^common-io-platform-\\d+$"),
-            "name.matches(\"^common-io-platform-\\\\d+$\")"
-        );
+            assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
+            assertFalse(isVirtual.get(), "isVirtual");
+            assertTrue(
+                name.get().matches("^common-io-platform-\\d+$"),
+                "name.matches(\"^common-io-platform-\\\\d+$\")"
+            );
+        }
     }
 }

@@ -3,6 +3,8 @@ package org.funfix.tasks;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
+
 /**
  * Represents a {@link Task} that has started execution and is running concurrently.
  *
@@ -26,7 +28,27 @@ public interface Fiber<T> extends Cancellable {
     void joinBlocking() throws InterruptedException;
 
     /**
+     * Blocks the current thread until the result is available or
+     * the given {@code timeout} is reached.
+     *
+     * @param timeout the maximum time to wait
+     *
+     * @throws InterruptedException if the current thread was interrupted; however, the
+     *         interruption of the current thread does not interrupt the fiber.
+     *
+     * @return {@code true} if the task has completed, {@code false} if the timeout was reached
+     */
+    boolean tryJoinBlockingTimed(@Nullable Duration timeout) throws InterruptedException;
+
+    /**
      * Invokes the given `Runnable` when the task completes.
      */
     Cancellable joinAsync(Runnable onComplete);
+
+    /**
+     * @return `true` if the job has completed, `false` otherwise
+     */
+    default boolean isDone() {
+        return outcome() != null;
+    }
 }

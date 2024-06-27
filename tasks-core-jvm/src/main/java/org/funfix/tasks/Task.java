@@ -285,6 +285,9 @@ public abstract class Task<T> implements Serializable {
             final var f = builder.call();
             try {
                 return f.get();
+            } catch (final ExecutionException e) {
+                if (e.getCause() instanceof final RuntimeException re) throw re;
+                throw e;
             } catch (final InterruptedException e) {
                 f.cancel(true);
                 // We need to wait for this future to complete, as we need to
@@ -701,14 +704,23 @@ final class TaskFiber<T> implements Fiber<T> {
 
     @Override
     public void joinBlocking() throws InterruptedException {
+        tryJoinBlockingTimed(null);
+    }
+
+    @Override
+    public boolean tryJoinBlockingTimed(@Nullable final Duration timeout) throws InterruptedException {
         final var latch = new AwaitSignal();
         final Runnable runnable = latch::signal;
         final var token = joinAsync(runnable);
         try {
-            latch.await();
+            if (timeout == null) latch.await();
+            else latch.await(timeout);
+            return true;
         } catch (final InterruptedException e) {
             token.cancel();
             throw e;
+        } catch (final TimeoutException e) {
+            return false;
         }
     }
 

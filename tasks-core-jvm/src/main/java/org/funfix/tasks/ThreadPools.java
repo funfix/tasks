@@ -18,7 +18,8 @@ import java.util.concurrent.ThreadFactory;
  */
 @NullMarked
 public final class ThreadPools {
-    private static volatile @Nullable Executor sharedIORef = null;
+    private static volatile @Nullable Executor sharedVirtualIORef = null;
+    private static volatile @Nullable Executor sharedPlatformIORef = null;
 
     /**
      * Returns a shared {@link Executor} meant for blocking I/O tasks.
@@ -29,15 +30,35 @@ public final class ThreadPools {
      * {@link Executors#newCachedThreadPool()} on older JVM versions.
      */
     public static Executor sharedIO() {
+        if (VirtualThreads.areVirtualThreadsSupported()) {
+            return sharedVirtualIO();
+        } else {
+            return sharedPlatformIO();
+        }
+    }
+
+    private static Executor sharedPlatformIO() {
         // Using double-checked locking to avoid synchronization
-        if (sharedIORef == null) {
+        if (sharedPlatformIORef == null) {
             synchronized (ThreadPools.class) {
-                if (sharedIORef == null) {
-                    sharedIORef = unlimitedThreadPoolForIO("common-io");
+                if (sharedPlatformIORef == null) {
+                    sharedPlatformIORef = unlimitedThreadPoolForIO("common-io");
                 }
             }
         }
-        return Objects.requireNonNull(sharedIORef);
+        return Objects.requireNonNull(sharedPlatformIORef);
+    }
+
+    private static Executor sharedVirtualIO() {
+        // Using double-checked locking to avoid synchronization
+        if (sharedVirtualIORef == null) {
+            synchronized (ThreadPools.class) {
+                if (sharedVirtualIORef == null) {
+                    sharedVirtualIORef = unlimitedThreadPoolForIO("common-io");
+                }
+            }
+        }
+        return Objects.requireNonNull(sharedVirtualIORef);
     }
 
     /**
@@ -48,9 +69,10 @@ public final class ThreadPools {
      * On older JVM versions, it returns a plain {@code Executors.newCachedThreadPool}.
      */
     public static ExecutorService unlimitedThreadPoolForIO(final String prefix) {
-        try {
-            return VirtualThreads.executorService(prefix + "-virtual-");
-        } catch (final VirtualThreads.NotSupportedException ignored) {}
+        if (VirtualThreads.areVirtualThreadsSupported())
+            try {
+                return VirtualThreads.executorService(prefix + "-virtual-");
+            } catch (final VirtualThreads.NotSupportedException ignored) {}
 
         return java.util.concurrent.Executors.newCachedThreadPool(r -> {
             final var t = new Thread(r);
@@ -168,7 +190,13 @@ public final class ThreadPools {
     }
 
     public static boolean areVirtualThreadsSupported() {
-        return isVirtualMethodHandle != null && newThreadPerTaskExecutorMethodHandle != null;
+        final var sp = System.getProperty("funfix.tasks.virtual-threads");
+        final var disableFeature = "off".equalsIgnoreCase(sp)
+            || "false".equalsIgnoreCase(sp)
+            || "no".equalsIgnoreCase(sp)
+            || "0".equals(sp)
+            || "disabled".equalsIgnoreCase(sp);
+        return !disableFeature && isVirtualMethodHandle != null && newThreadPerTaskExecutorMethodHandle != null;
     }
 
     public static final String VIRTUAL_THREAD_NAME_PREFIX = "common-io-virtual-";

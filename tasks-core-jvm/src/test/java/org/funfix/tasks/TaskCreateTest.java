@@ -100,15 +100,15 @@ class TaskCreateAsync1Test extends TaskCreateTest {
 
     @Test
     void olderJava() throws ExecutionException, InterruptedException {
-        assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires Java older than 21");
+        try (final var r = SysProp.withVirtualThreads(false)) {
+            final Task<String> task = createTask(cb -> {
+                cb.onSuccess(Thread.currentThread().getName());
+                return Cancellable.EMPTY;
+            });
 
-        final Task<String> task = createTask(cb -> {
-            cb.onSuccess(Thread.currentThread().getName());
-            return Cancellable.EMPTY;
-        });
-
-        final var result = task.executeBlocking();
-        assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
+            final var result = task.executeBlocking();
+            assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
+        }
     }
 }
 
@@ -138,15 +138,15 @@ class TaskCreateAsync2Test extends TaskCreateTest {
 
     @Test
     void olderJava() throws ExecutionException, InterruptedException {
-        assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires Java older than 21");
+        try (final var r = SysProp.withVirtualThreads(false)) {
+            final Task<String> task = createTask(cb -> {
+                cb.onSuccess(Thread.currentThread().getName());
+                return Cancellable.EMPTY;
+            });
 
-        final Task<String> task = createTask(cb -> {
-            cb.onSuccess(Thread.currentThread().getName());
-            return Cancellable.EMPTY;
-        });
-
-        final var result = task.executeBlocking();
-        assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
+            final var result = task.executeBlocking();
+            assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
+        }
     }
 }
 
