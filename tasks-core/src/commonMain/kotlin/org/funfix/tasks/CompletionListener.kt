@@ -11,38 +11,20 @@ package org.funfix.tasks
 interface CompletionListener<in T> {
     /**
      * Must be called when the task completes successfully.
+     *
+     * @param value is the successful result of the task, to be signaled
      */
-    fun tryOnSuccess(value: T): Boolean
+    fun onSuccess(value: T)
 
     /**
      * Must be called when the task completes with an exception.
+     *
+     * @param e is the exception that the task has failed with
      */
-    fun tryOnFailure(e: Throwable): Boolean
+    fun onFailure(e: Throwable)
 
     /**
      * Must be called when the task is cancelled.
      */
-    fun tryOnCancel(): Boolean
-
-    fun onSuccess(value: T) {
-        if (!tryOnSuccess(value))
-            throw IllegalStateException(
-                "CompletionHandler was already completed, cannot call `success`"
-            )
-    }
-
-    fun onFailure(e: Throwable) {
-        if (!tryOnFailure(e))
-            throw IllegalStateException(
-                "CompletionHandler was already completed, cannot call `failure`",
-                e
-            )
-    }
-
-    fun onCancel() {
-        if (!tryOnCancel())
-            throw IllegalStateException(
-                "CompletionHandler was already completed, cannot call `cancel`"
-            )
-    }
+    fun onCancel()
 }

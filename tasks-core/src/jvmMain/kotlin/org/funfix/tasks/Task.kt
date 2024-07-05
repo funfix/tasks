@@ -96,31 +96,25 @@ private class BlockingCompletionListener<T>: AbstractQueuedSynchronizer(), Compl
     private var error: Throwable? = null
     private var interrupted: InterruptedException? = null
 
-    override fun tryOnSuccess(value: T): Boolean {
+    override fun onSuccess(value: T) {
         if (!isDone.getAndSet(true)) {
             result = value
             releaseShared(1)
-            return true
         }
-        return false
     }
 
-    override fun tryOnFailure(e: Throwable): Boolean {
+    override fun onFailure(e: Throwable) {
         if (!isDone.getAndSet(true)) {
             error = e
             releaseShared(1)
-            return true
         }
-        return false
     }
 
-    override fun tryOnCancel(): Boolean {
+    override fun onCancel() {
         if (!isDone.getAndSet(true)) {
             interrupted = InterruptedException("Task was cancelled")
             releaseShared(1)
-            return true
         }
-        return false
     }
 
     override fun tryAcquireShared(arg: Int): Int =
@@ -342,7 +336,7 @@ private class TaskFiber<T>: Fiber<T> {
     }
 
     val onComplete: CompletionListener<T> = object: CompletionListener<T> {
-        override fun tryOnSuccess(value: T): Boolean =
+        override fun onSuccess(value: T) =
             signalComplete(State.Completed(
                 isSuccessful = true,
                 result = value,
@@ -351,7 +345,7 @@ private class TaskFiber<T>: Fiber<T> {
                 isCancelled = false
             ))
 
-        override fun tryOnFailure(e: Throwable): Boolean =
+        override fun onFailure(e: Throwable) =
             signalComplete(State.Completed(
                 isSuccessful = false,
                 result = null,
@@ -360,7 +354,7 @@ private class TaskFiber<T>: Fiber<T> {
                 isCancelled = false
             ))
 
-        override fun tryOnCancel(): Boolean =
+        override fun onCancel() =
             signalComplete(State.Completed(
                 isSuccessful = false,
                 result = null,
@@ -466,24 +460,20 @@ private class TaskFiber<T>: Fiber<T> {
         }
     }
 
-    private fun signalComplete(state: State.Completed<T>): Boolean {
+    private fun signalComplete(state: State.Completed<T>) {
         while (true) {
             when (val current = ref.get()) {
                 is State.Active -> {
                     if (ref.compareAndSet(current, state)) {
                         current.listeners.forEach { Trampoline.execute(it) }
-                        return true
                     }
                 }
                 is State.Cancelled -> {
                     if (ref.compareAndSet(current, state)) {
                         current.listeners.forEach { Trampoline.execute(it) }
-                        return true
                     }
                 }
-                is State.Completed -> {
-                    return false
-                }
+                is State.Completed -> {}
             }
         }
     }

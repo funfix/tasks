@@ -10,7 +10,7 @@ package org.funfix.tasks
  * depending on the type of blocking operation being performed.
  *
  * We need to distinguish between `InterruptedException` and cancellation,
- * because there are cases where a concurrent job is cancelled without
+ * because there are cases where a concurrent job got cancelled without
  * the current thread being interrupted, and also, the current thread
  * might be interrupted without the concurrent job being cancelled.
  */
