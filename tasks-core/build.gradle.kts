@@ -103,7 +103,11 @@ kotlin {
             dependencies {}
         }
 
-        val jvmTest by getting
+        val jvmTest by getting {
+            dependencies {
+                implementation(libs.jspecify)
+            }
+        }
 
 //        val jsMain by getting
 //        val jsTest by getting

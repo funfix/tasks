@@ -3,9 +3,7 @@ package org.funfix.tests;
 import org.funfix.tasks.CancellationException;
 import org.funfix.tasks.Outcome;
 import org.junit.jupiter.api.Test;
-
 import java.util.concurrent.ExecutionException;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
