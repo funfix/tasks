@@ -12,7 +12,7 @@ import java.io.Serializable
  *
  * @param T is the type of the value that the task will complete with
  */
-interface CompletionListener<in T> : Serializable {
+interface CompletionCallback<in T> : Serializable {
     /**
      * Must be called when the task completes successfully.
      *
@@ -45,28 +45,28 @@ interface CompletionListener<in T> : Serializable {
 
     companion object {
         /**
-         * @return a [CompletionListener] that does nothing.
+         * @return a [CompletionCallback] that does nothing.
          */
         @JvmStatic
-        fun <T> empty(): CompletionListener<T> = object : CompletionListener<T> {
+        fun <T> empty(): CompletionCallback<T> = object : CompletionCallback<T> {
             override fun onSuccess(value: T) {}
             override fun onFailure(e: Throwable) {}
             override fun onCancel() {}
         }
 
         @JvmStatic
-        fun <T> protect(listener: CompletionListener<T>): CompletionListener<T> =
+        fun <T> protect(listener: CompletionCallback<T>): CompletionCallback<T> =
             ProtectedCompletionListener(listener)
     }
 }
 
 /**
- * Protects a given [CompletionListener], by:
+ * Protects a given [CompletionCallback], by:
  * 1. Ensuring that the underlying listener is called at most once.
  * 2. Trampolining the call, such that stack overflows are avoided.
  */
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 internal expect object ProtectedCompletionListener {
     @JvmStatic
-    operator fun <T> invoke(listener: CompletionListener<T>): CompletionListener<T>
+    operator fun <T> invoke(listener: CompletionCallback<T>): CompletionCallback<T>
 }

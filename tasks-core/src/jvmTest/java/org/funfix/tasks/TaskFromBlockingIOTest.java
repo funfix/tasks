@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @NullMarked
 abstract class TaskFromBlockingIOTestBase {
     abstract void testThreadName(String name);
-    abstract <T> Task<T> fromBlockingIO(Delayed<T> delayed);
+    abstract <T> Task<T> fromBlockingIO(DelayedFun<T> delayed);
 
     @Test
     public void happyPath() throws ExecutionException, InterruptedException {
@@ -89,7 +89,7 @@ final class TaskFromBlockingWithExecutorIOTest extends TaskFromBlockingIOTestBas
     }
 
     @Override
-    <T> Task<T> fromBlockingIO(final Delayed<T> builder) {
+    <T> Task<T> fromBlockingIO(final DelayedFun<T> builder) {
         Objects.requireNonNull(es);
         return Task.fromBlockingIO(es, builder);
     }
@@ -124,7 +124,7 @@ final class TaskFromBlockingSimpleVirtualTest extends TaskFromBlockingIOTestBase
     }
 
     @Override
-    <T> Task<T> fromBlockingIO(final Delayed<T> builder) {
+    <T> Task<T> fromBlockingIO(final DelayedFun<T> builder) {
         return Task.fromBlockingIO(builder);
     }
 }
@@ -152,7 +152,7 @@ final class TaskFromBlockingSimplePlatformTest extends TaskFromBlockingIOTestBas
     }
 
     @Override
-    <T> Task<T> fromBlockingIO(final Delayed<T> builder) {
+    <T> Task<T> fromBlockingIO(final DelayedFun<T> builder) {
         return Task.fromBlockingIO(builder);
     }
 }
@@ -169,7 +169,7 @@ final class TaskFromBlockingWithThreadFactoryTest extends TaskFromBlockingIOTest
 
     @SuppressWarnings("deprecation")
     @Override
-    <T> Task<T> fromBlockingIO(final Delayed<T> builder) {
+    <T> Task<T> fromBlockingIO(final DelayedFun<T> builder) {
         return Task.fromBlockingIO(
             r -> {
                 final var th = new Thread(r);

@@ -5,12 +5,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 internal actual object ProtectedCompletionListener {
     @JvmStatic
-    actual operator fun <T> invoke(listener: CompletionListener<T>): CompletionListener<T> =
+    actual operator fun <T> invoke(listener: CompletionCallback<T>): CompletionCallback<T> =
         Implementation(listener)
 
     private class Implementation<T>(
-        private var listener: CompletionListener<T>?
-    ) : CompletionListener<T>, Runnable {
+        private var listener: CompletionCallback<T>?
+    ) : CompletionCallback<T>, Runnable {
         private var isWaiting: AtomicBoolean? = AtomicBoolean(true)
 
         private var value: T? = null
