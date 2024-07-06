@@ -3,29 +3,30 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     application
-    // https://kotlinlang.org/docs/multiplatform-full-stack-app.html
     id(libs.plugins.kotlin.multiplatform.get().pluginId)
     id(libs.plugins.kotlinx.kover.get().pluginId)
+    id(libs.plugins.dokka.get().pluginId)
     id("maven-publish")
     id("signing")
 }
 
-//val dokkaOutputDir = layout.buildDirectory.dir("dokka").get().asFile
-//
-//tasks.dokkaHtml {
-//    outputDirectory.set(dokkaOutputDir)
-//}
-//
-//val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
-//    delete(dokkaOutputDir)
-//}
-//
-//val javadocJar = tasks.create<Jar>("javadocJar") {
-//    archiveClassifier.set("javadoc")
-//    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-//    dependsOn(deleteDokkaOutputDir, tasks.dokkaHtml)
-//    from(dokkaOutputDir)
-//}
+val dokkaOutputDir = layout.buildDirectory.dir("dokka").get().asFile
+
+tasks.dokkaHtml {
+    outputDirectory.set(dokkaOutputDir)
+}
+
+val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
+    delete(dokkaOutputDir)
+}
+
+val javadocJar =
+    tasks.create<Jar>("javadocJar") {
+        archiveClassifier.set("javadoc")
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        dependsOn(deleteDokkaOutputDir, tasks.dokkaHtml)
+        from(dokkaOutputDir)
+    }
 
 publishing {
     publications {
@@ -126,14 +127,16 @@ kotlin {
     }
 
     tasks.register<Test>("testsOn21") {
-        javaLauncher = javaToolchains.launcherFor {
-            languageVersion = JavaLanguageVersion.of(21)
-        }
+        javaLauncher =
+            javaToolchains.launcherFor {
+                languageVersion = JavaLanguageVersion.of(21)
+            }
     }
 
     tasks.register<Test>("testsOn17") {
-        javaLauncher = javaToolchains.launcherFor {
-            languageVersion = JavaLanguageVersion.of(17)
-        }
+        javaLauncher =
+            javaToolchains.launcherFor {
+                languageVersion = JavaLanguageVersion.of(17)
+            }
     }
 }
