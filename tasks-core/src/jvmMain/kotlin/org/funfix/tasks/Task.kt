@@ -502,8 +502,8 @@ private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(), Compl
                 }
             } catch (e: InterruptedException) {
                 if (isNotCancelled) {
-                    cancelToken.cancel()
                     isNotCancelled = false
+                    cancelToken.cancel()
                 }
             }
             // Clearing the interrupted flag may not be necessary,

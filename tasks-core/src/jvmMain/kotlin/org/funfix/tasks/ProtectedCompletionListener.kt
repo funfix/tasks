@@ -34,7 +34,7 @@ internal actual object ProtectedCompletionListener {
             }
         }
 
-        private inline fun signal(modifyInternalState: () -> Unit) {
+        private inline fun signal(modifyInternalState: () -> Unit): Boolean {
             val ref = this.isWaiting
             if (ref != null && ref.getAndSet(false)) {
                 modifyInternalState()
@@ -43,7 +43,9 @@ internal actual object ProtectedCompletionListener {
                 Trampoline.execute(this)
                 // For GC purposes; but it doesn't really matter if we nullify this or not
                 this.isWaiting = null
+                return true
             }
+            return false
         }
 
         override fun onSuccess(value: T) {
@@ -51,7 +53,10 @@ internal actual object ProtectedCompletionListener {
         }
 
         override fun onFailure(e: Throwable) {
-            signal { this.exception = e }
+            val wasSignaled = signal { this.exception = e }
+            if (!wasSignaled) {
+                UncaughtExceptionHandler.logException(e)
+            }
         }
 
         override fun onCancel() {

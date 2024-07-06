@@ -50,8 +50,10 @@ interface CompletionCallback<in T> : Serializable {
         @JvmStatic
         fun <T> empty(): CompletionCallback<T> = object : CompletionCallback<T> {
             override fun onSuccess(value: T) {}
-            override fun onFailure(e: Throwable) {}
             override fun onCancel() {}
+            override fun onFailure(e: Throwable) {
+                UncaughtExceptionHandler.logException(e)
+            }
         }
 
         @JvmStatic

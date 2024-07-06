@@ -20,7 +20,11 @@ internal object Trampoline {
                 return
             }
             val next = current.pollFirst()
-            next?.run()
+            try {
+                next?.run()
+            } catch (e: Exception) {
+                UncaughtExceptionHandler.logException(e)
+            }
         }
     }
 
