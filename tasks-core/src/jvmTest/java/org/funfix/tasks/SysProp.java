@@ -9,7 +9,7 @@ import java.util.concurrent.locks.ReentrantLock;
 @NullMarked
 public class SysProp implements AutoCloseable {
     private static final ConcurrentMap<String, ReentrantLock> locks =
-            new java.util.concurrent.ConcurrentHashMap<>();
+        new java.util.concurrent.ConcurrentHashMap<>();
 
     private final String key;
     private final @Nullable String oldValue;

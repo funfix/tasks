@@ -1,29 +1,18 @@
 package org.funfix.tasks
 
-import java.util.concurrent.ExecutionException
+import java.time.Duration
 
 /**
- * Represents a [Task] that was started concurrently and that can be
- * waited on for its result, or cancelled.
+ * Represents a [Task] that has started execution and is running concurrently.
+ *
+ * @param T is the type of the value that the task will complete with
  */
 interface Fiber<out T> : Cancellable {
     /**
-     * For a concurrent job that finished, returns the result.
-     *
-     * @throws ExecutionException if the concurrent computation threw an exception
-     *
-     * @throws CancellationException if the concurrent computation was cancelled
-     *
-     * @throws NotCompletedException if the computation hasn't completed yet — this
-     * is a protocol violation, a bug, as the caller should have waited for
-     * `join` to complete before calling `resultOrThrow`.
+     * @return the [Outcome] of the task, if it has completed, or `null` if the
+     * task is still running.
      */
-    @Throws(
-        ExecutionException::class,
-        CancellationException::class,
-        NotCompletedException::class
-    )
-    fun resultOrThrow(): T
+    fun outcome(): Outcome<T>?
 
     /**
      * Blocks the current thread until the result is available.
@@ -36,7 +25,26 @@ interface Fiber<out T> : Cancellable {
     fun joinBlocking()
 
     /**
-     * Invokes the given `Runnable` when the task completes.
+     * Blocks the current thread until the result is available or
+     * the given [timeout] is reached.
+     *
+     * @param timeout the maximum time to wait
+     *
+     * @return `true` if the task has completed, `false` if the timeout was reached
+     *
+     * @throws InterruptedException if the current thread was interrupted; however, the
+     *         interruption of the current thread does not interrupt the fiber.
+     */
+    @Throws(InterruptedException::class)
+    fun tryJoinBlockingTimed(timeout: Duration?): Boolean
+
+    /**
+     * Invokes the given [Runnable] when the task completes.
      */
     fun joinAsync(onComplete: Runnable): Cancellable
+
+    /**
+     * @return `true` if the job has completed, `false` otherwise
+     */
+    fun isCompleted(): Boolean = outcome() != null
 }

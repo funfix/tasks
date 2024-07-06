@@ -12,7 +12,7 @@ sealed interface Outcome<out T> {
      * @return the successful value (in case the outcome is [Succeeded])
      *
      * @throws ExecutionException if the task failed with an exception ([Failed])
-     * @throws CancellationException if the task was cancelled ([Canceled])
+     * @throws CancellationException if the task was cancelled ([Cancelled])
      */
     @Throws(ExecutionException::class, CancellationException::class)
     fun getOrThrow(): T
@@ -41,7 +41,7 @@ sealed interface Outcome<out T> {
     /**
      * The concurrent job was cancelled.
      */
-    data object Canceled: Outcome<Nothing> {
+    data object Cancelled: Outcome<Nothing> {
         @Throws(CancellationException::class)
         override fun getOrThrow(): Nothing {
             throw CancellationException()
@@ -53,7 +53,7 @@ sealed interface Outcome<out T> {
             Succeeded(value)
         @JvmStatic fun <T> failed(exception: Throwable): Outcome<T> =
             Failed(exception)
-        @JvmStatic fun <T> canceled(): Outcome<T> =
-            Canceled
+        @JvmStatic fun <T> cancelled(): Outcome<T> =
+            Cancelled
     }
 }

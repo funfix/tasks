@@ -1,7 +1,5 @@
-package org.funfix.tests;
+package org.funfix.tasks;
 
-import org.funfix.tasks.CancellationException;
-import org.funfix.tasks.Outcome;
 import org.junit.jupiter.api.Test;
 import java.util.concurrent.ExecutionException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -57,11 +55,11 @@ public class OutcomeTest {
 
     @Test
     public void outcomeBuildCancelled() {
-        final var outcome1 = Outcome.Canceled.INSTANCE;
-        final var outcome2 = Outcome.<String>canceled();
+        final var outcome1 = Outcome.Cancelled.INSTANCE;
+        final var outcome2 = Outcome.<String>cancelled();
         assertEquals(outcome1, outcome2);
 
-        if (!(outcome2 instanceof Outcome.Canceled)) {
+        if (!(outcome2 instanceof Outcome.Cancelled)) {
             fail("Expected Canceled");
         }
 

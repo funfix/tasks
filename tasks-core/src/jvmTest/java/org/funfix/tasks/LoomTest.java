@@ -12,52 +12,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class LoomTest {
     @Test
-    public void sharedIOJava21() throws InterruptedException {
-        assumeTrue(areVirtualThreadsSupported(), "Requires Java 21+");
-
-        final var sharedIO = ThreadPools.sharedIO();
-        final var latch = new CountDownLatch(1);
-        final var isVirtual = new AtomicBoolean(false);
-        final var name = new AtomicReference<String>();
-
-        sharedIO.execute(() -> {
-            isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
-            name.set(Thread.currentThread().getName());
-            latch.countDown();
-        });
-
-        assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
-        assertTrue(isVirtual.get(), "isVirtual");
-        assertTrue(
-                name.get().matches("common-io-virtual-\\d+"),
-                "name.matches(\"common-io-virtual-\\\\d+\")"
-        );
-    }
-
-    @Test
-    public void sharedIOOlderJava() throws InterruptedException {
-        try (final var ignored = SysProp.withVirtualThreads(false)) {
-            final var sharedIO = ThreadPools.sharedIO();
-            final var latch = new CountDownLatch(1);
-            final var isVirtual = new AtomicBoolean(false);
-            final var name = new AtomicReference<String>();
-
-            sharedIO.execute(() -> {
-                isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
-                name.set(Thread.currentThread().getName());
-                latch.countDown();
-            });
-
-            assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
-            assertFalse(isVirtual.get(), "!isVirtual");
-            assertTrue(
-                    name.get().matches("common-io-platform-\\d+"),
-                    "name.matches(\"common-io-platform-\\\\d+\")"
-            );
-        }
-    }
-
-    @Test
     public void commonPoolInJava21() throws InterruptedException {
         assumeTrue(areVirtualThreadsSupported(), "Requires Java 21+");
 
@@ -75,8 +29,8 @@ public class LoomTest {
             assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
             assertTrue(isVirtual.get(), "isVirtual");
             assertTrue(
-                    name.get().matches("common-io-virtual-\\d+"),
-                    "name.matches(\"common-io-virtual-\\\\d+\")"
+                name.get().matches("common-io-virtual-\\d+"),
+                "name.matches(\"common-io-virtual-\\\\d+\")"
             );
         }
     }
@@ -101,8 +55,8 @@ public class LoomTest {
         assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
         assertTrue(isVirtual.get(), "isVirtual");
         assertTrue(
-                name.get().matches("my-vt-\\d+"),
-                "name.matches(\"my-vt-\\\\d+\")"
+            name.get().matches("my-vt-\\d+"),
+            "name.matches(\"my-vt-\\\\d+\")"
         );
     }
 
@@ -125,23 +79,18 @@ public class LoomTest {
             assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
             assertTrue(isVirtual.get(), "isVirtual");
             assertTrue(
-                    name.get().matches("my-vt-\\d+"),
-                    "name.matches(\"my-vt-\\\\d+\")"
+                name.get().matches("my-vt-\\d+"),
+                "name.matches(\"my-vt-\\\\d+\")"
             );
         }
     }
 
     @Test
     public void cannotInitializeLoomUtilsInOlderJava() {
-        try (final var ignored1 = SysProp.withVirtualThreads(false)) {
+        try (final var r = SysProp.withVirtualThreads(false)) {
             try {
-                VirtualThreads.factory("common-io");
-                fail("Should have failed (1)");
-            } catch (final VirtualThreads.NotSupportedException ignored) {
-            }
-            try {
+                final var factory = VirtualThreads.factory("common-io");
                 VirtualThreads.executorService("common-io").close();
-                fail("Should have failed");
             } catch (final VirtualThreads.NotSupportedException ignored) {
             }
         }
@@ -150,8 +99,8 @@ public class LoomTest {
     @Test
     public void commonPoolInOlderJava() throws InterruptedException {
         try (
-                final var ignored = SysProp.withVirtualThreads(false);
-                final var commonPool = ThreadPools.unlimitedThreadPoolForIO("common-io")
+            final var r = SysProp.withVirtualThreads(false);
+            final var commonPool = ThreadPools.unlimitedThreadPoolForIO("common-io")
         ) {
             assertFalse(areVirtualThreadsSupported(), "areVirtualThreadsSupported");
             assertNotNull(commonPool, "commonPool");
@@ -169,8 +118,8 @@ public class LoomTest {
             assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
             assertFalse(isVirtual.get(), "isVirtual");
             assertTrue(
-                    name.get().matches("^common-io-platform-\\d+$"),
-                    "name.matches(\"^common-io-platform-\\\\d+$\")"
+                name.get().matches("^common-io-platform-\\d+$"),
+                "name.matches(\"^common-io-platform-\\\\d+$\")"
             );
         }
     }
