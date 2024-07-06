@@ -42,9 +42,4 @@ interface Fiber<out T> : Cancellable {
      * Invokes the given [Runnable] when the task completes.
      */
     fun joinAsync(onComplete: Runnable): Cancellable
-
-    /**
-     * @return `true` if the job has completed, `false` otherwise
-     */
-    fun isCompleted(): Boolean = outcome() != null
 }

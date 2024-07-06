@@ -54,8 +54,9 @@ public class CompletionCallbackTest {
                 }
         );
 
-        cb.onSuccess("Hello, world!");
+        cb.onCompletion(Outcome.succeeded("Hello, world!"));
         cb.onSuccess("Hello, world! (2)");
+        cb.onSuccess("Hello, world! (3)");
 
         assertEquals(1, called.get());
         assertEquals(Outcome.succeeded("Hello, world!"), outcome.get());
@@ -86,7 +87,7 @@ public class CompletionCallbackTest {
         );
 
         final var e = new RuntimeException("Boom!");
-        cb.onFailure(e);
+        cb.onCompletion(Outcome.failed(e));
 
         assertEquals(1, called.get());
         assertEquals(Outcome.failed(e), outcome.get());
@@ -99,5 +100,37 @@ public class CompletionCallbackTest {
 
         assertEquals(1, called.get());
         assertEquals(e, logged.get());
+    }
+
+    @Test
+    void protectedCallbackForCancellation() {
+        final var called = new AtomicInteger(0);
+        final var outcome = new AtomicReference<Outcome<String>>(null);
+        final var cb = CompletionCallback.protect(
+                new CompletionCallback<String>() {
+                    @Override
+                    public void onSuccess(String value) {
+                        throw new IllegalStateException("Should not be called");
+                    }
+
+                    @Override
+                    public void onFailure(@NotNull Throwable e) {
+                        throw new IllegalStateException("Should not be called");
+                    }
+
+                    @Override
+                    public void onCancel() {
+                        called.incrementAndGet();
+                        outcome.set(Outcome.cancelled());
+                    }
+                }
+        );
+
+        cb.onCompletion(Outcome.cancelled());
+        cb.onCancel();
+        cb.onCancel();
+
+        assertEquals(1, called.get());
+        assertEquals(Outcome.cancelled(), outcome.get());
     }
 }

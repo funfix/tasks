@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TaskExecuteBlockingTest {
+public class TaskExecuteTest {
     @Test
     void executeBlockingIsCancellable() throws InterruptedException {
         final var started = new CountDownLatch(1);

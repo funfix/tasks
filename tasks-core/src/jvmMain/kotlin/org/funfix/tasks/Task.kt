@@ -308,7 +308,7 @@ class Task<out T> private constructor(
         @JvmStatic
         fun <T> successful(value: T): Task<T> =
             Task { listener ->
-                Trampoline.execute { listener.onSuccess(value) }
+                listener.onSuccess(value)
                 Cancellable.EMPTY
             }
 
@@ -321,7 +321,7 @@ class Task<out T> private constructor(
         @JvmStatic
         fun <T> failed(e: Throwable): Task<T> =
             Task { listener ->
-                Trampoline.execute { listener.onFailure(e) }
+                listener.onFailure(e)
                 Cancellable.EMPTY
             }
 
@@ -333,7 +333,7 @@ class Task<out T> private constructor(
         @JvmStatic
         fun <T> cancelled(): Task<T> =
             Task { listener ->
-                Trampoline.execute { listener.onCancel() }
+                listener.onCancel()
                 Cancellable.EMPTY
             }
     }
