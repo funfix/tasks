@@ -9,12 +9,11 @@ import java.io.Serializable
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
-import java.util.function.Function
 
 /**
- * Represents a function that will execute a job asynchronously.
+ * Functional interface for creating [Task] instances.
  */
-fun interface Task<out T> : Serializable {
+fun interface TaskFunction<out T> : Serializable {
     /**
      * Executes the task asynchronously.
      *
@@ -22,7 +21,12 @@ fun interface Task<out T> : Serializable {
      * @return a [Cancellable] that can be used to cancel a running task
      */
     fun executeAsync(listener: CompletionListener<T>): Cancellable
+}
 
+/**
+ * Represents a suspended computation that can be executed asynchronously.
+ */
+fun interface Task<out T> : TaskFunction<T> {
     /**
      * Executes the task concurrently and returns a [Fiber] that can be
      * used to wait for the result or cancel the task.
@@ -96,7 +100,7 @@ fun interface Task<out T> : Serializable {
          * @return a new task that will execute the given builder function upon execution
          */
         @JvmStatic
-        fun <T> create(builder: Function<CompletionListener<T>, Cancellable>): Task<T> =
+        fun <T> create(builder: TaskFunction<T>): Task<T> =
             CreateAsyncTask(builder, null, null)
 
         /**
@@ -111,7 +115,7 @@ fun interface Task<out T> : Serializable {
          * @return a new task that will execute the given builder function
          */
         @JvmStatic
-        fun <T> createAsync(es: Executor, builder: Function<CompletionListener<T>, Cancellable>): Task<T> =
+        fun <T> createAsync(es: Executor, builder: TaskFunction<T>): Task<T> =
             CreateAsyncTask(builder, es, null)
 
         /**
@@ -125,7 +129,7 @@ fun interface Task<out T> : Serializable {
          * @return a new task that will execute the given builder function
          */
         @JvmStatic
-        fun <T> createAsync(builder: Function<CompletionListener<T>, Cancellable>): Task<T> =
+        fun <T> createAsync(builder: TaskFunction<T>): Task<T> =
             if (VirtualThreads.areVirtualThreadsSupported())
                 try {
                     createAsync(VirtualThreads.factory(), builder)
@@ -150,53 +154,53 @@ fun interface Task<out T> : Serializable {
          * @return a new task that will execute the given builder function on a separate thread
          */
         @JvmStatic
-        fun <T> createAsync(factory: ThreadFactory, builder: Function<CompletionListener<T>, Cancellable>): Task<T> =
+        fun <T> createAsync(factory: ThreadFactory, builder: TaskFunction<T>): Task<T> =
             CreateAsyncTask(builder, null, factory)
 
         /**
-         * Creates a task from a [Callable] executing blocking IO.
+         * Creates a task from a [Delayed] executing blocking IO.
          *
          * Similar to [fromBlockingIO], but uses
          * the common thread-pool defined by [ThreadPools.sharedIO],
          * which is using virtual threads on Java 21+.
          *
-         * @param callable is the blocking IO operation to execute
+         * @param delayed is the blocking IO operation to execute
          * @return a new task that will perform the blocking IO operation upon execution
          */
         @JvmStatic
-        fun <T> fromBlockingIO(callable: Callable<T>): Task<T> =
+        fun <T> fromBlockingIO(delayed: Delayed<T>): Task<T> =
             if (VirtualThreads.areVirtualThreadsSupported())
                 try {
-                    fromBlockingIO(VirtualThreads.factory(), callable)
+                    fromBlockingIO(VirtualThreads.factory(), delayed)
                 } catch (ignored: VirtualThreads.NotSupportedException) {
-                    fromBlockingIO(ThreadPools.sharedIO(), callable)
+                    fromBlockingIO(ThreadPools.sharedIO(), delayed)
                 }
             else
-                fromBlockingIO(ThreadPools.sharedIO(), callable)
+                fromBlockingIO(ThreadPools.sharedIO(), delayed)
 
         /**
-         * Creates a task from a [Callable] executing blocking IO
+         * Creates a task from a [Delayed] executing blocking IO
          * asynchronously (on another thread).
          *
          * @param es is the [Executor] to use for executing the blocking IO operation
-         * @param callable is the blocking IO operation to execute
+         * @param delayed is the blocking IO operation to execute
          * @return a new task that will perform the blocking IO operation upon execution
          */
         @JvmStatic
-        fun <T> fromBlockingIO(es: Executor, callable: Callable<T>): Task<T> =
-            TaskFromExecutor(es, callable)
+        fun <T> fromBlockingIO(es: Executor, delayed: Delayed<T>): Task<T> =
+            TaskFromExecutor(es, delayed)
 
         /**
-         * Creates a task from a [Callable] executing blocking IO, using a
+         * Creates a task from a [Delayed] executing blocking IO, using a
          * different thread created by the given [ThreadFactory].
          *
          * @param factory is the [ThreadFactory] to use for creating the thread
-         * @param callable is the blocking IO operation to execute
+         * @param delayed is the blocking IO operation to execute
          * @return a new task that will perform the blocking IO operation upon execution
          */
         @JvmStatic
-        fun <T> fromBlockingIO(factory: ThreadFactory, callable: Callable<T>): Task<T> =
-            TaskFromThreadFactory(factory, callable)
+        fun <T> fromBlockingIO(factory: ThreadFactory, delayed: Delayed<T>): Task<T> =
+            TaskFromThreadFactory(factory, delayed)
 
         /**
          * Creates a task from a [Future] builder.
@@ -401,7 +405,7 @@ object ThreadPools {
 }
 
 private class CreateAsyncTask<out T>(
-    private val builder: Function<CompletionListener<T>, Cancellable>,
+    private val builder: TaskFunction<T>,
     es: Executor?,
     factory: ThreadFactory?
 ) : Task<T> {
@@ -429,7 +433,7 @@ private class CreateAsyncTask<out T>(
         val cancel = CreateCancellable()
         val run = Runnable {
             try {
-                val token = builder.apply(CompletionListener.protect(listener))
+                val token = builder.executeAsync(CompletionListener.protect(listener))
                 cancel.set(token)
             } catch (e: Throwable) {
                 UncaughtExceptionHandler.logException(e)
@@ -579,7 +583,7 @@ private class AwaitSignal : AbstractQueuedSynchronizer() {
 
 private class TaskFromExecutor<T>(
     private val es: Executor,
-    private val callable: Callable<T>
+    private val delayed: Delayed<T>
 ): Task<T> {
     private sealed interface State
     private data object NotStarted: State
@@ -627,7 +631,7 @@ private class TaskFromExecutor<T>(
             var error: Throwable? = null
             var interrupted = false
             try {
-                result = callable.call()
+                result = delayed()
             } catch (_: InterruptedException) {
                 interrupted = true
             } catch (e: Exception) {
@@ -672,7 +676,7 @@ private class TaskFromExecutor<T>(
 
 private class TaskFromThreadFactory<out T>(
     private val factory: ThreadFactory,
-    private val callable: Callable<out T>
+    private val delayed: Delayed<T>
 ) : Task<T> {
     override fun executeAsync(listener: CompletionListener<T>): Cancellable {
         val thread = factory.newThread(TaskRunnable(listener))
@@ -684,7 +688,7 @@ private class TaskFromThreadFactory<out T>(
         override fun run() {
             var isUserError = true
             try {
-                val result = callable.call()
+                val result = delayed()
                 isUserError = false
                 listener.onSuccess(result)
             } catch (e: InterruptedException) {

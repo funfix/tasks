@@ -14,8 +14,7 @@ public class TaskFromCompletionStageTest {
     public void happyPath()
         throws ExecutionException, InterruptedException {
 
-        final var es = Executors.newCachedThreadPool();
-        try {
+        try (final var es = Executors.newCachedThreadPool()) {
             final var isSuspended = new AtomicBoolean(true);
             final var task =
                 Task.fromCompletionStage(() -> {
@@ -31,49 +30,42 @@ public class TaskFromCompletionStageTest {
             final var result = task.executeBlocking();
             assertFalse(isSuspended.get(), "Future should have been executed");
             assertEquals("Hello, world!", result);
-        } finally {
-            es.shutdown();
         }
     }
 
     @Test
     public void yieldingErrorInsideFuture() throws InterruptedException {
-        final var es = Executors.newCachedThreadPool();
-        final Task<String> task =
-            Task.fromCompletionStage(() ->
-                CompletableFuture.supplyAsync(
-                    () -> {
-                        throw new SampleException("Error");
-                    },
-                    es
-                )
-            );
+        try (final var es = Executors.newCachedThreadPool()) {
+            final Task<String> task =
+                    Task.fromCompletionStage(() ->
+                            CompletableFuture.supplyAsync(
+                                    () -> {
+                                        throw new SampleException("Error");
+                                    },
+                                    es
+                            )
+                    );
 
-        try {
-            task.executeBlocking();
-            fail("Should have thrown an exception");
-        } catch (final ExecutionException ex) {
-            assertInstanceOf(SampleException.class, ex.getCause(), "Should have received a SampleException");
-        } finally {
-            es.shutdown();
+            try {
+                task.executeBlocking();
+                fail("Should have thrown an exception");
+            } catch (final ExecutionException ex) {
+                assertInstanceOf(SampleException.class, ex.getCause(), "Should have received a SampleException");
+            }
         }
     }
 
     @Test
     public void yieldingErrorInBuilder() throws InterruptedException {
-        final var es = Executors.newCachedThreadPool();
         final Task<String> task =
-            Task.fromCompletionStage(() -> {
-                throw new SampleException("Error");
-            });
-
+                Task.fromCompletionStage(() -> {
+                    throw new SampleException("Error");
+                });
         try {
             task.executeBlocking();
             fail("Should have thrown an exception");
         } catch (final ExecutionException ex) {
             assertInstanceOf(SampleException.class, ex.getCause(), "Should have received a SampleException");
-        } finally {
-            es.shutdown();
         }
     }
 

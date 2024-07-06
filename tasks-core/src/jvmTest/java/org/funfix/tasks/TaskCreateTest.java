@@ -9,14 +9,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class TaskCreateTest {
-    protected <T> Task<T> createTask(final Function<CompletionListener<T>, Cancellable> builder) {
+    protected <T> Task<T> createTask(final TaskFunction<? extends T> builder) {
         return Task.create(builder);
     }
 
@@ -79,7 +78,7 @@ public class TaskCreateTest {
 @NullMarked
 class TaskCreateAsync1Test extends TaskCreateTest {
     @Override
-    protected <T> Task<T> createTask(final Function<CompletionListener<T>, Cancellable> builder) {
+    protected <T> Task<T> createTask(final TaskFunction<? extends T> builder) {
         return Task.createAsync(builder);
     }
 
@@ -113,7 +112,7 @@ class TaskCreateAsync1Test extends TaskCreateTest {
 @NullMarked
 class TaskCreateAsync2Test extends TaskCreateTest {
     @Override
-    protected <T> Task<T> createTask(final Function<CompletionListener<T>, Cancellable> builder) {
+    protected <T> Task<T> createTask(final TaskFunction<? extends T> builder) {
         return Task.createAsync(
             ThreadPools.sharedIO(),
             builder
@@ -152,7 +151,7 @@ class TaskCreateAsync2Test extends TaskCreateTest {
 class TaskCreateAsync3Test extends TaskCreateTest {
     @Override
     @SuppressWarnings("deprecation")
-    protected <T> Task<T> createTask(final Function<CompletionListener<T>, Cancellable> builder) {
+    protected <T> Task<T> createTask(final TaskFunction<? extends T> builder) {
         return Task.createAsync(
             r -> {
                 final var t = new Thread(r);
