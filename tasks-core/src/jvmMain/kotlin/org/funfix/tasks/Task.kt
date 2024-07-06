@@ -12,6 +12,13 @@ import java.lang.invoke.MethodType
 
 /**
  * Represents a suspended computation that can be executed asynchronously.
+ *
+ * To create a task, use one of its builders:
+ * - [create]
+ * - [createAsync]
+ * - [fromBlockingIO]
+ * - [fromBlockingFuture]
+ * - [fromCancellableCompletionStage]
  */
 class Task<out T> private constructor(
     private val runAsync: AsyncFun<T>
