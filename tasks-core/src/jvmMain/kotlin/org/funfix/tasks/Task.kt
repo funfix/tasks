@@ -21,7 +21,7 @@ import java.lang.invoke.MethodType
  * - [fromCancellableCompletionStage]
  */
 class Task<out T> private constructor(
-    private val runAsync: AsyncFun<T>
+    private val asyncFun: AsyncFun<T>
 ): Serializable {
     /**
      * Executes the task asynchronously.
@@ -32,7 +32,7 @@ class Task<out T> private constructor(
     fun executeAsync(callback: CompletionCallback<T>): Cancellable {
         val protected = CompletionCallback.protect(callback)
         return try {
-            runAsync(callback)
+            asyncFun(callback)
         } catch (e: Exception) {
             protected.onFailure(e)
             Cancellable.EMPTY

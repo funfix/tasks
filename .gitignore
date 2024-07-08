@@ -41,3 +41,7 @@ bin/
 ### Kotlin 2?
 /.kotlin
 /kotlin-js-store/
+
+### Secrets
+.envrc
+
