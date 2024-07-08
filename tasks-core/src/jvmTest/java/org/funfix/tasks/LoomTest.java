@@ -67,9 +67,9 @@ public class LoomTest {
     public void canInitializeExecutorInJava21() throws InterruptedException, VirtualThreads.NotSupportedException {
         assumeTrue(areVirtualThreadsSupported(), "Requires Java 21+");
 
-        try (final var executor = VirtualThreads.executorService("my-vt-")) {
-            assertNotNull(executor, "executor");
-
+        final var executor = VirtualThreads.executorService("my-vt-");
+        assertNotNull(executor, "executor");
+        try {
             final var latch = new CountDownLatch(1);
             final var isVirtual = new AtomicBoolean(false);
             final var name = new AtomicReference<String>();
@@ -85,17 +85,22 @@ public class LoomTest {
                 name.get().matches("my-vt-\\d+"),
                 "name.matches(\"my-vt-\\\\d+\")"
             );
+        } finally {
+            executor.shutdown();
         }
     }
 
     @Test
     public void cannotInitializeLoomUtilsInOlderJava() {
-        try (final var r = SysProp.withVirtualThreads(false)) {
+        final var r = SysProp.withVirtualThreads(false);
+        try {
             try {
                 final var factory = VirtualThreads.factory("common-io");
                 VirtualThreads.executorService("common-io").shutdown();
             } catch (final VirtualThreads.NotSupportedException ignored) {
             }
+        } finally {
+            r.close();
         }
     }
 

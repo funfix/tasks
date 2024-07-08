@@ -97,7 +97,8 @@ class TaskCreateAsync1Test extends TaskCreateTest {
 
     @Test
     void olderJava() throws ExecutionException, InterruptedException {
-        try (final var ignored = SysProp.withVirtualThreads(false)) {
+        final var ignored = SysProp.withVirtualThreads(false);
+        try {
             final Task<String> task = createTask(cb -> {
                 cb.onSuccess(Thread.currentThread().getName());
                 return Cancellable.EMPTY;
@@ -105,6 +106,8 @@ class TaskCreateAsync1Test extends TaskCreateTest {
 
             final var result = task.executeBlocking();
             assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
+        } finally {
+            ignored.close();
         }
     }
 }
@@ -135,7 +138,8 @@ class TaskCreateAsync2Test extends TaskCreateTest {
 
     @Test
     void olderJava() throws ExecutionException, InterruptedException {
-        try (final var ignored = SysProp.withVirtualThreads(false)) {
+        final var ignored = SysProp.withVirtualThreads(false);
+        try {
             final Task<String> task = createTask(cb -> {
                 cb.onSuccess(Thread.currentThread().getName());
                 return Cancellable.EMPTY;
@@ -143,6 +147,8 @@ class TaskCreateAsync2Test extends TaskCreateTest {
 
             final var result = task.executeBlocking();
             assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
+        } finally {
+            ignored.close();
         }
     }
 }
