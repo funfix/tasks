@@ -45,7 +45,13 @@ class Task<out T> private constructor(
      */
     fun executeConcurrently(): Fiber<T> {
         val fiber = TaskFiber<T>()
-        val token = executeAsync(fiber.onComplete)
+        val token =
+            try {
+                asyncFun(fiber.completionCallback)
+            } catch (e: Exception) {
+                fiber.completionCallback.onFailure(e)
+                Cancellable.EMPTY
+            }
         fiber.registerCancel(token)
         return fiber
     }
@@ -64,7 +70,13 @@ class Task<out T> private constructor(
     @Throws(ExecutionException::class, InterruptedException::class)
     fun executeBlocking(): T {
         val h = BlockingCompletionCallback<T>()
-        val cancelToken = executeAsync(h)
+        val cancelToken =
+            try {
+                asyncFun(h)
+            } catch (e: Exception) {
+                h.onFailure(e)
+                Cancellable.EMPTY
+            }
         return h.await(cancelToken)
     }
 
@@ -85,7 +97,13 @@ class Task<out T> private constructor(
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
     fun executeBlockingTimed(timeout: Duration): T {
         val h = BlockingCompletionCallback<T>()
-        val cancelToken = executeAsync(h)
+        val cancelToken =
+            try {
+                asyncFun(h)
+            } catch (e: Exception) {
+                h.onFailure(e)
+                Cancellable.EMPTY
+            }
         return h.await(cancelToken, timeout)
     }
 
@@ -470,6 +488,8 @@ private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(), Compl
         if (!isDone.getAndSet(true)) {
             error = e
             releaseShared(1)
+        } else {
+            UncaughtExceptionHandler.logException(e)
         }
     }
 
@@ -750,7 +770,7 @@ private class TaskFiber<T> : Fiber<T> {
 
     private val ref = AtomicReference<State<T>>(State.start())
 
-    val onComplete: CompletionCallback<T> = object : CompletionCallback<T> {
+    val completionCallback: CompletionCallback<T> = object : CompletionCallback<T> {
         override fun onSuccess(value: T) =
             signalComplete(Outcome.succeeded(value))
         override fun onFailure(e: Throwable) =

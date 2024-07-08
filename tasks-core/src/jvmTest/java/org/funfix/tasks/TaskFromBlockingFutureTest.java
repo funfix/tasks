@@ -82,13 +82,12 @@ public class TaskFromBlockingFutureTest {
     @Test
     void throwExceptionInFuture() throws InterruptedException {
         Objects.requireNonNull(es);
-
         try {
             Task.fromBlockingFuture(() -> es.submit(() -> {
-                throw new RuntimeException("Error");
-            })).executeBlocking();
+                    throw new RuntimeException("Error");
+                }))
+                .executeBlocking();
         } catch (final ExecutionException ex) {
-            System.out.println(ex.getCause().getMessage());
             assertEquals("Error", ex.getCause().getMessage());
         }
     }
