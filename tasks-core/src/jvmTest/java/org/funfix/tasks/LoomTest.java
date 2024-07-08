@@ -27,7 +27,7 @@ public class LoomTest {
                 latch.countDown();
             });
 
-            assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
+            TimedAwait.latchAndExpectCompletion(latch);
             assertTrue(isVirtual.get(), "isVirtual");
             assertTrue(
                 name.get().matches("common-io-virtual-\\d+"),
@@ -55,7 +55,7 @@ public class LoomTest {
             latch.countDown();
         }).start();
 
-        assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
+        TimedAwait.latchAndExpectCompletion(latch);
         assertTrue(isVirtual.get(), "isVirtual");
         assertTrue(
             name.get().matches("my-vt-\\d+"),
@@ -79,7 +79,7 @@ public class LoomTest {
                 latch.countDown();
             });
 
-            assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
+            TimedAwait.latchAndExpectCompletion(latch);
             assertTrue(isVirtual.get(), "isVirtual");
             assertTrue(
                 name.get().matches("my-vt-\\d+"),
@@ -122,7 +122,7 @@ public class LoomTest {
                 latch.countDown();
             });
 
-            assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "latch");
+            TimedAwait.latchAndExpectCompletion(latch);
             assertFalse(isVirtual.get(), "isVirtual");
             assertTrue(
                 name.get().matches("^common-io-platform-\\d+$"),

@@ -3,7 +3,6 @@ package org.funfix.tasks;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -29,7 +28,7 @@ public class TaskCreateTest {
             noErrors.set(true);
             return Cancellable.EMPTY;
         });
-        final String result = task.executeBlockingTimed(Duration.ofSeconds(10));
+        final String result = task.executeBlockingTimed(TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", result);
         assertTrue(noErrors.get(), "noErrors.get");
     }
@@ -45,7 +44,7 @@ public class TaskCreateTest {
             return Cancellable.EMPTY;
         });
         try {
-            task.executeBlockingTimed(Duration.ofSeconds(10));
+            task.executeBlockingTimed(TimedAwait.TIMEOUT);
         } catch (final ExecutionException | TimeoutException ex) {
             assertEquals("Sample exception", ex.getCause().getMessage());
         }

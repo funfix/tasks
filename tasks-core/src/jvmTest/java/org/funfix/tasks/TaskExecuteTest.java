@@ -3,7 +3,6 @@ package org.funfix.tasks;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,7 +29,7 @@ public class TaskExecuteTest {
         });
 
         final var fiber = task.executeConcurrently();
-        assertTrue(started.await(10, TimeUnit.SECONDS), "started.await");
+        TimedAwait.latchAndExpectCompletion(started, "started");
 
         fiber.cancel();
         fiber.joinBlocking();
