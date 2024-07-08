@@ -47,10 +47,7 @@ abstract class TaskFromBlockingIOTestBase {
             return null;
         });
         final var fiber = task.executeConcurrently();
-        assertTrue(
-            latch.await(5, TimeUnit.SECONDS),
-            "latch"
-        );
+        TimedAwait.latchAndExpectCompletion(latch, "latch");
 
         fiber.cancel();
         fiber.joinBlocking();
@@ -85,7 +82,7 @@ final class TaskFromBlockingWithExecutorIOTest extends TaskFromBlockingIOTestBas
 
     @AfterEach
     void tearDown() {
-        Objects.requireNonNull(es).close();
+        Objects.requireNonNull(es).shutdown();
     }
 
     @Override

@@ -14,7 +14,8 @@ public class TaskFromCompletionStageTest {
     public void happyPath()
         throws ExecutionException, InterruptedException {
 
-        try (final var es = Executors.newCachedThreadPool()) {
+        final var es = Executors.newCachedThreadPool();
+        try {
             final var isSuspended = new AtomicBoolean(true);
             final var task =
                 Task.fromCompletionStage(() -> {
@@ -30,12 +31,15 @@ public class TaskFromCompletionStageTest {
             final var result = task.executeBlocking();
             assertFalse(isSuspended.get(), "Future should have been executed");
             assertEquals("Hello, world!", result);
+        } finally {
+            es.shutdown();
         }
     }
 
     @Test
     public void yieldingErrorInsideFuture() throws InterruptedException {
-        try (final var es = Executors.newCachedThreadPool()) {
+        final var es = Executors.newCachedThreadPool();
+        try {
             final Task<String> task =
                     Task.fromCompletionStage(() ->
                             CompletableFuture.supplyAsync(
@@ -52,6 +56,8 @@ public class TaskFromCompletionStageTest {
             } catch (final ExecutionException ex) {
                 assertInstanceOf(SampleException.class, ex.getCause(), "Should have received a SampleException");
             }
+        } finally {
+            es.shutdown();
         }
     }
 

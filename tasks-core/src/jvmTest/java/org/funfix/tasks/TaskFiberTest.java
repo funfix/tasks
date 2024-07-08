@@ -3,6 +3,7 @@ package org.funfix.tasks;
 import org.junit.jupiter.api.Test;
 import java.util.Objects;
 import java.util.concurrent.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TaskFiberTest {
@@ -42,13 +43,13 @@ public class TaskFiberTest {
                     return "Hello, world!";
                 }).executeConcurrently();
 
-            assertTrue(fiberStarted.await(5, TimeUnit.SECONDS), "fiberStarted");
+            TimedAwait.latchAndExpectCompletion(fiberStarted, "fiberStarted");
             // Adding multiple consumers
             for (var i = 0; i < 3; i++) {
                 fiber.joinAsync(awaitConsumers::countDown);
             }
             fiberGo.countDown();
-            assertTrue(awaitConsumers.await(5, TimeUnit.SECONDS), "awaitConsumers");
+            TimedAwait.latchAndExpectCompletion(awaitConsumers, "awaitConsumers");
             final var outcome = Objects.requireNonNull(fiber.outcome());
             assertEquals("Hello, world!", outcome.getOrThrow());
         } finally {
@@ -104,7 +105,7 @@ public class TaskFiberTest {
         final var started = new CountDownLatch(1);
         try {
             final var fiber = Task
-                .fromBlockingIO(es, () -> latch.await(10, TimeUnit.SECONDS))
+                .fromBlockingIO(es, () -> TimedAwait.latchNoExpectations(latch))
                 .executeConcurrently();
 
             final Fiber<Boolean> fiber2 = Task
@@ -115,7 +116,7 @@ public class TaskFiberTest {
                 })
                 .executeConcurrently();
 
-            assertTrue(started.await(5, TimeUnit.SECONDS), "started");
+            TimedAwait.latchAndExpectCompletion(started, "started");
             fiber2.cancel();
             fiber2.joinBlocking();
             try {

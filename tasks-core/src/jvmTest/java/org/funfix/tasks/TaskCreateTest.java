@@ -3,15 +3,13 @@ package org.funfix.tasks;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class TaskCreateTest {
@@ -21,46 +19,58 @@ public class TaskCreateTest {
 
     @Test
     void successful() throws ExecutionException, InterruptedException, TimeoutException {
-        final var noErrors = new AtomicBoolean(false);
+        final var noErrors = new CountDownLatch(1);
+        final var reportedException = new AtomicReference<Throwable>(null);
+
         final Task<String> task = createTask(cb -> {
             cb.onSuccess("Hello, world!");
             // callback is idempotent
             cb.onSuccess("Hello, world! (2)");
-            noErrors.set(true);
+            noErrors.countDown();
             return Cancellable.EMPTY;
         });
-        final String result = task.executeBlockingTimed(Duration.ofSeconds(10));
+
+        final String result = task.executeBlockingTimed(TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", result);
-        assertTrue(noErrors.get(), "noErrors.get");
+        TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
+        assertNull(reportedException.get(), "reportedException.get()");
     }
 
     @Test
     void failed() throws InterruptedException {
-        final var noErrors = new AtomicBoolean(false);
+        final var noErrors = new CountDownLatch(1);
+        final var reportedException = new AtomicReference<Throwable>(null);
         final Task<String> task = createTask(cb -> {
+            Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
             cb.onFailure(new RuntimeException("Sample exception"));
             // callback is idempotent
             cb.onFailure(new RuntimeException("Sample exception (2)"));
-            noErrors.set(true);
+            noErrors.countDown();
             return Cancellable.EMPTY;
         });
         try {
-            task.executeBlockingTimed(Duration.ofSeconds(10));
+            task.executeBlockingTimed(TimedAwait.TIMEOUT);
         } catch (final ExecutionException | TimeoutException ex) {
             assertEquals("Sample exception", ex.getCause().getMessage());
         }
-        assertTrue(noErrors.get(), "noErrors.get");
+        TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
+        assertNotNull(reportedException.get(), "reportedException.get()");
+        assertEquals("Sample exception (2)", reportedException.get().getMessage());
     }
 
     @Test
     void cancelled() throws InterruptedException, ExecutionException {
-        final var noErrors = new AtomicInteger(0);
+        final var noErrors = new CountDownLatch(1);
+        final var reportedException = new AtomicReference<Throwable>(null);
+
         final Task<String> task = createTask(cb -> () -> {
+            Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
             cb.onCancel();
             // callback is idempotent
             cb.onCancel();
-            noErrors.incrementAndGet();
+            noErrors.countDown();
         });
+
         final var fiber = task.executeConcurrently();
         try {
             fiber.cancel();
@@ -71,7 +81,8 @@ public class TaskCreateTest {
         } catch (final CancellationException ex) {
             // Expected
         }
-        assertEquals(1, noErrors.get());
+        TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
+        assertNull(reportedException.get(), "reportedException.get()");
     }
 }
 
@@ -97,7 +108,8 @@ class TaskCreateAsync1Test extends TaskCreateTest {
 
     @Test
     void olderJava() throws ExecutionException, InterruptedException {
-        try (final var ignored = SysProp.withVirtualThreads(false)) {
+        final var ignored = SysProp.withVirtualThreads(false);
+        try {
             final Task<String> task = createTask(cb -> {
                 cb.onSuccess(Thread.currentThread().getName());
                 return Cancellable.EMPTY;
@@ -105,6 +117,8 @@ class TaskCreateAsync1Test extends TaskCreateTest {
 
             final var result = task.executeBlocking();
             assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
+        } finally {
+            ignored.close();
         }
     }
 }
@@ -135,7 +149,8 @@ class TaskCreateAsync2Test extends TaskCreateTest {
 
     @Test
     void olderJava() throws ExecutionException, InterruptedException {
-        try (final var ignored = SysProp.withVirtualThreads(false)) {
+        final var ignored = SysProp.withVirtualThreads(false);
+        try {
             final Task<String> task = createTask(cb -> {
                 cb.onSuccess(Thread.currentThread().getName());
                 return Cancellable.EMPTY;
@@ -143,6 +158,8 @@ class TaskCreateAsync2Test extends TaskCreateTest {
 
             final var result = task.executeBlocking();
             assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
+        } finally {
+            ignored.close();
         }
     }
 }

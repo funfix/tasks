@@ -6,7 +6,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -83,13 +82,12 @@ public class TaskFromBlockingFutureTest {
     @Test
     void throwExceptionInFuture() throws InterruptedException {
         Objects.requireNonNull(es);
-
         try {
             Task.fromBlockingFuture(() -> es.submit(() -> {
-                throw new RuntimeException("Error");
-            })).executeBlocking();
+                    throw new RuntimeException("Error");
+                }))
+                .executeBlocking();
         } catch (final ExecutionException ex) {
-            System.out.println(ex.getCause().getMessage());
             assertEquals("Error", ex.getCause().getMessage());
         }
     }
@@ -113,15 +111,15 @@ public class TaskFromBlockingFutureTest {
                 }
             }).executeConcurrently();
 
-        assertTrue(wasStarted.await(5, TimeUnit.SECONDS), "wasStarted.await");
+        TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");
         fiber.cancel();
-        assertTrue(fiber.tryJoinBlockingTimed(Duration.ofSeconds(5)));
+        assertTrue(fiber.tryJoinBlockingTimed(TimedAwait.TIMEOUT));
 
         try {
             Objects.requireNonNull(fiber.outcome()).getOrThrow();
         } catch (final CancellationException ignored) {
         }
-        assertTrue(latch.await(5, TimeUnit.SECONDS), "latch.await");
+        TimedAwait.latchAndExpectCompletion(latch, "latch");
     }
 
     @Test
@@ -143,12 +141,12 @@ public class TaskFromBlockingFutureTest {
 
         wasStarted.await();
         fiber.cancel();
-        assertTrue(fiber.tryJoinBlockingTimed(Duration.ofSeconds(5)));
+        assertTrue(fiber.tryJoinBlockingTimed(TimedAwait.TIMEOUT));
 
         try {
             Objects.requireNonNull(fiber.outcome()).getOrThrow();
         } catch (final CancellationException ignored) {
         }
-        assertTrue(latch.await(5, TimeUnit.SECONDS), "latch.await");
+        TimedAwait.latchAndExpectCompletion(latch, "latch");
     }
 }
