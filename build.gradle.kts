@@ -12,10 +12,14 @@ repositories {
     mavenCentral()
 }
 
-
 subprojects {
     group = "org.funfix"
-    version = "0.0.1-SNAPSHOT"
+    version = "0.0.1".let { version ->
+        if (!project.hasProperty("buildRelease"))
+            "$version-SNAPSHOT"
+        else
+            version
+    }
 
     apply(plugin = "maven-publish")
 

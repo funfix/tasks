@@ -30,7 +30,7 @@ val javadocJar =
 
 publishing {
     publications {
-        register<MavenPublication>("gpr") {
+        named<MavenPublication>("kotlinMultiplatform") {
             pom {
                 name = "Tasks (core, JVM)"
                 description = "Cross-language utilities for working with concurrent tasks"
