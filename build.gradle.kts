@@ -1,5 +1,7 @@
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 
+val projectVersion = property("project.version").toString()
+
 plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.multiplatform) apply false
@@ -14,7 +16,7 @@ repositories {
 
 subprojects {
     group = "org.funfix"
-    version = "0.0.1".let { version ->
+    version = projectVersion.let { version ->
         if (!project.hasProperty("buildRelease"))
             "$version-SNAPSHOT"
         else
@@ -35,6 +37,12 @@ subprojects {
                     password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
                 }
             }
+        }
+    }
+
+    tasks.register("printVersion") {
+        doLast {
+            println("Project version: $version")
         }
     }
 }
