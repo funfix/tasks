@@ -10,6 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         java-version: ['17', '21']
     steps:
@@ -25,8 +26,16 @@ jobs:
           #   ./gradle/wrapper/gradle-wrapper.properties
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-      - name: Build and Test
+      - name: Test
         run: ./gradlew check --no-daemon
+      - name: Upload Results
+        uses: actions/upload-artifact@v3
+        if: always() # This ensures that test results are uploaded even if the test step fails
+        with:
+          name: test-results
+          path: |
+            **/build/reports/
+            **/build/test-results/
 
   publish-snapshot:
     runs-on: ubuntu-latest
