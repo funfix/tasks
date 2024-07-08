@@ -15,7 +15,8 @@ public class LoomTest {
     public void commonPoolInJava21() throws InterruptedException {
         assumeTrue(areVirtualThreadsSupported(), "Requires Java 21+");
 
-        try (final var commonPool = ThreadPools.unlimitedThreadPoolForIO("common-io")) {
+        final var commonPool = ThreadPools.unlimitedThreadPoolForIO("common-io");
+        try {
             final var latch = new CountDownLatch(1);
             final var isVirtual = new AtomicBoolean(false);
             final var name = new AtomicReference<String>();
@@ -32,6 +33,8 @@ public class LoomTest {
                 name.get().matches("common-io-virtual-\\d+"),
                 "name.matches(\"common-io-virtual-\\\\d+\")"
             );
+        } finally {
+            commonPool.shutdown();
         }
     }
 
@@ -90,7 +93,7 @@ public class LoomTest {
         try (final var r = SysProp.withVirtualThreads(false)) {
             try {
                 final var factory = VirtualThreads.factory("common-io");
-                VirtualThreads.executorService("common-io").close();
+                VirtualThreads.executorService("common-io").shutdown();
             } catch (final VirtualThreads.NotSupportedException ignored) {
             }
         }
@@ -98,10 +101,9 @@ public class LoomTest {
 
     @Test
     public void commonPoolInOlderJava() throws InterruptedException {
-        try (
-            final var r = SysProp.withVirtualThreads(false);
-            final var commonPool = ThreadPools.unlimitedThreadPoolForIO("common-io")
-        ) {
+        final var r = SysProp.withVirtualThreads(false);
+        final var commonPool = ThreadPools.unlimitedThreadPoolForIO("common-io");
+        try {
             assertFalse(areVirtualThreadsSupported(), "areVirtualThreadsSupported");
             assertNotNull(commonPool, "commonPool");
 
@@ -121,6 +123,9 @@ public class LoomTest {
                 name.get().matches("^common-io-platform-\\d+$"),
                 "name.matches(\"^common-io-platform-\\\\d+$\")"
             );
+        } finally {
+            r.close();
+            commonPool.shutdown();
         }
     }
 }

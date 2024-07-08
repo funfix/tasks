@@ -85,7 +85,7 @@ final class TaskFromBlockingWithExecutorIOTest extends TaskFromBlockingIOTestBas
 
     @AfterEach
     void tearDown() {
-        Objects.requireNonNull(es).close();
+        Objects.requireNonNull(es).shutdown();
     }
 
     @Override

@@ -396,6 +396,7 @@ object ThreadPools {
      * On Java 21 and above, the created [Executor] will run tasks on virtual threads.
      * On older JVM versions, it returns a plain [Executors.newCachedThreadPool].
      */
+    @Suppress("DEPRECATION")
     @JvmStatic
     fun unlimitedThreadPoolForIO(prefix: String): ExecutorService =
         if (VirtualThreads.areVirtualThreadsSupported())
@@ -404,14 +405,14 @@ object ThreadPools {
             } catch (ignored: VirtualThreads.NotSupportedException) {
                 Executors.newCachedThreadPool { r ->
                     Thread(r).apply {
-                        name = "$prefix-platform-${threadId()}"
+                        name = "$prefix-platform-$id"
                     }
                 }
             }
         else
             Executors.newCachedThreadPool { r ->
                 Thread(r).apply {
-                    name = "$prefix-platform-${threadId()}"
+                    name = "$prefix-platform-$id"
                 }
             }
 }
