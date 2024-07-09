@@ -2,79 +2,88 @@ package org.funfix.tasks;
 
 import org.jspecify.annotations.NullMarked;
 
-import java.util.concurrent.ExecutionException;
-
 /**
  * Represents the outcome of a finished task.
  *
  * @param <T> is the type of the value that the task completed with
+ * @param <E> is the type of the checked exception that the task failed with
  */
 @NullMarked
-public sealed interface Outcome<T>
-    permits Outcome.Succeeded, Outcome.Failed, Outcome.Cancelled {
-
+public sealed interface Outcome<T, E extends Exception> {
     /**
      * Returns the value of the task if it was successful, or throws an exception.
      *
-     * @return the successful value (in case the outcome is a {@link Succeeded})
+     * @return the successful value (in case the outcome is a {@link Success})
      *
-     * @throws ExecutionException if the task failed with an exception
-     * @throws CancellationException if the task was cancelled
+     * @throws E if the task failed with a typed exception ({@link TypedFailure})
+     * @throws CancellationException if the task was cancelled ({@link Cancellation})
+     * @throws RuntimeException if the task failed with a runtime exception ({@link RuntimeFailure})
      */
-    T getOrThrow() throws ExecutionException, CancellationException;
+    T getOrThrow() throws E, CancellationException;
 
     /**
      * Signals a successful result of the task.
      *
      * @param value is the value that the task completed with
      */
-    record Succeeded<T>(T value) implements Outcome<T> {
+    record Success<T, E extends Exception>(T value) implements Outcome<T, E> {
         @Override
         public T getOrThrow() {
             return value;
         }
     }
 
+    static <T, E extends Exception> Outcome<T, E> success(T value) {
+        return new Success<>(value);
+    }
+
     /**
-     * Signals that the task failed.
+     * Signals that the task failed with a typed (checked) exception.
      *
-     * @param exception is the exception that the task failed with
+     * @param exception is the checked exception that the task failed with
+     * @param <E> is the type of the checked exception that the task failed with
      */
-    record Failed<T>(Throwable exception) implements Outcome<T> {
+    record TypedFailure<T, E extends Exception>(E exception) implements Outcome<T, E> {
         @Override
-        public T getOrThrow() throws ExecutionException {
-            throw new ExecutionException(exception);
+        public T getOrThrow() throws E {
+            throw exception;
         }
+    }
+
+    static <T, E extends Exception> Outcome<T, E> typedFailure(E exception) {
+        return new TypedFailure<>(exception);
+    }
+
+    /**
+     * Signals that the task failed with a {@link RuntimeException}.
+     *
+     * @param exception is the runtime exception that the task failed with
+     */
+    record RuntimeFailure<T, E extends Exception>(RuntimeException exception) implements Outcome<T, E> {
+        @Override
+        public T getOrThrow() {
+            throw exception;
+        }
+    }
+
+    static <T, E extends Exception> Outcome<T, E> runtimeFailure(RuntimeException exception) {
+        return new RuntimeFailure<>(exception);
     }
 
     /**
      * Signals that the task was cancelled.
      */
-    record Cancelled<T>() implements Outcome<T> {
+    record Cancellation<T, E extends Exception>() implements Outcome<T, E> {
         @Override
         public T getOrThrow() throws CancellationException {
             throw new CancellationException();
         }
+
+        static final Cancellation<?, ?> INSTANCE = new Cancellation<>();
     }
 
-    /**
-     * @return a {@link Succeeded} outcome.
-     */
-    static <T> Outcome<T> succeeded(final T value) {
-        return new Succeeded<>(value);
-    }
-
-    /**
-     * @return a {@link Failed} outcome.
-     */
-    static <T> Outcome<T> failed(final Throwable error) {
-        return new Failed<>(error);
-    }
-
-    /**
-     * @return a {@link Cancelled} outcome.
-     */
-    static <T> Outcome<T> cancelled() {
-        return new Cancelled<>();
+    @SuppressWarnings("unchecked")
+    static <T, E extends Exception> Outcome<T, E> cancellation() {
+        return (Outcome<T, E>) Cancellation.INSTANCE;
     }
 }

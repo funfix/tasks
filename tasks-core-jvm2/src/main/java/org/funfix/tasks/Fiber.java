@@ -11,12 +11,12 @@ import java.time.Duration;
  * @param <T> is the type of the value that the task will complete with
  */
 @NullMarked
-public interface Fiber<T, E extends Exception> extends Cancellable {
+public interface Fiber<T> extends Cancellable {
     /**
      * @return the {@link Outcome} of the task, if it has completed,
      * or `null` if the task is still running.
      */
-    @Nullable Outcome<T, E> outcome();
+    @Nullable Outcome<T> outcome();
 
     /**
      * Blocks the current thread until the result is available.
