@@ -19,13 +19,13 @@ import static org.junit.jupiter.api.Assertions.fail;
 @NullMarked
 public abstract class TaskExecutorExecuteTest {
     @Nullable
-    protected RuntimeExecuteFun runtimeExecuteFun;
+    protected RunnableExecuteFun runnableExecuteFun;
 
     protected int repeatCount = 100;
 
     @Test
     void testHappy() throws InterruptedException {
-        final var runtimeExecute = Objects.requireNonNull(this.runtimeExecuteFun);
+        final var runtimeExecute = Objects.requireNonNull(this.runnableExecuteFun);
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
             final var latch = new CountDownLatch(1);
@@ -40,7 +40,7 @@ public abstract class TaskExecutorExecuteTest {
 
     @Test
     void canBeInterruptedAfterStart() throws InterruptedException {
-        final var runtimeExecute = Objects.requireNonNull(this.runtimeExecuteFun);
+        final var runtimeExecute = Objects.requireNonNull(this.runnableExecuteFun);
         for (int i = 0; i < repeatCount; i++) {
             final var wasStarted = new CountDownLatch(1);
             final var awaitCancellation = new CountDownLatch(1);
@@ -69,7 +69,7 @@ public abstract class TaskExecutorExecuteTest {
 
     @Test
     void canBeInterruptedConcurrentlyWithStart() throws InterruptedException {
-        final var runtimeExecute = Objects.requireNonNull(this.runtimeExecuteFun);
+        final var runtimeExecute = Objects.requireNonNull(this.runnableExecuteFun);
         for (int i = 0; i < repeatCount; i++) {
             final var hits = new AtomicInteger(0);
             final var awaitCancellation = new CountDownLatch(1);
@@ -99,7 +99,7 @@ public abstract class TaskExecutorExecuteTest {
 @NullMarked
 class TaskExecutorExecuteViaThreadFactoryTest extends TaskExecutorExecuteTest {
     public TaskExecutorExecuteViaThreadFactoryTest() {
-        runtimeExecuteFun = new RuntimeExecuteFunViaThreadFactory(
+        runnableExecuteFun = new RunnableExecuteFunViaThreadFactory(
                 r -> {
                     final var t = new Thread(r);
                     t.setDaemon(true);
@@ -123,14 +123,14 @@ class TaskExecutorExecuteViaExecutorTest extends TaskExecutorExecuteTest {
             t.setName("test-thread-" + t.getId());
             return t;
         });
-        runtimeExecuteFun = new RuntimeExecuteFunViaExecutor(service);
+        runnableExecuteFun = new RunnableExecuteFunViaExecutor(service);
     }
 
     @AfterEach
     void tearDown() {
         final var s = service;
         service = null;
-        runtimeExecuteFun = null;
+        runnableExecuteFun = null;
         if (s != null) s.shutdown();
     }
 }

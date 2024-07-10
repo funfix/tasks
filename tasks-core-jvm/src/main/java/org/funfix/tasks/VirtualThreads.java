@@ -17,7 +17,6 @@ import java.util.concurrent.*;
 final class ThreadPools {
     private static volatile @Nullable Executor sharedVirtualIORef = null;
     private static volatile @Nullable Executor sharedPlatformIORef = null;
-    private static volatile @Nullable ScheduledExecutorService sharedScheduledExecutorRef = null;
 
     /**
      * Returns a shared {@link Executor} meant for blocking I/O tasks.
@@ -77,30 +76,6 @@ final class ThreadPools {
             t.setName(prefix + "-platform-" + t.getId());
             return t;
         });
-    }
-
-    public static ScheduledExecutorService sharedScheduledExecutor() {
-        var ref = sharedScheduledExecutorRef;
-        if (ref == null)
-            synchronized (ThreadPools.class) {
-                ref = sharedScheduledExecutorRef;
-                if (ref == null) {
-                    final var poolSize = Math.max(
-                            1,
-                            java.lang.Runtime.getRuntime().availableProcessors());
-                    sharedScheduledExecutorRef = ref =
-                            Executors.newScheduledThreadPool(
-                                    poolSize,
-                                    r -> {
-                                        final var t = new Thread(r);
-                                        t.setName("io-shared-scheduler-" + t.getId());
-                                        t.setDaemon(true);
-                                        return t;
-                                    }
-                            );
-                }
-            }
-        return Objects.requireNonNull(ref);
     }
 }
 

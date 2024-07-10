@@ -12,7 +12,7 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 import java.util.stream.Stream;
 
 @NullMarked
-public interface RuntimeFiber extends Cancellable {
+public interface RunnableFiber extends Cancellable {
     Cancellable joinAsync(Runnable onComplete);
 
     default void joinTimed(Duration timeout) throws InterruptedException, TimeoutException {
@@ -48,7 +48,7 @@ public interface RuntimeFiber extends Cancellable {
 }
 
 @NullMarked
-final class SimpleRuntimeFiber implements RuntimeFiber {
+final class SimpleRunnableFiber implements RunnableFiber {
     private final AtomicReference<State> stateRef = new AtomicReference<>(State.START);
 
     @Override
@@ -177,11 +177,11 @@ final class SimpleRuntimeFiber implements RuntimeFiber {
         State START = new Active(List.of(), null);
     }
 
-    public static RuntimeFiber create(
-            RuntimeExecuteFun execute,
+    public static RunnableFiber create(
+            RunnableExecuteFun execute,
             Runnable command
     ) {
-        final var fiber = new SimpleRuntimeFiber();
+        final var fiber = new SimpleRunnableFiber();
         final var token = execute.invoke(command, fiber::signalComplete);
         fiber.registerCancel(token);
         return fiber;

@@ -14,11 +14,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @NullMarked
-class RuntimeContextFromExecutorTest {
+class TaskExecutorFromExecutorTest {
     final int repeatCount = 1000;
     @Nullable AutoCloseable closeable = null;
     @Nullable
-    RuntimeContext runtimeContext = null;
+    TaskExecutor taskExecutor = null;
 
     @BeforeEach
     void setUp() {
@@ -29,20 +29,20 @@ class RuntimeContextFromExecutorTest {
             return t;
         });
         closeable = es::shutdown;
-        runtimeContext = RuntimeContext.fromExecutor(es);
+        taskExecutor = TaskExecutor.fromExecutor(es);
     }
 
     @AfterEach
     void tearDown() throws Exception {
         final var c = closeable;
         closeable = null;
-        runtimeContext = null;
+        taskExecutor = null;
         if (c != null) c.close();
     }
 
     @Test
     void happyPathExecuteThenJoinAsync() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtimeContext);
+        final var runtime = Objects.requireNonNull(this.taskExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final var latch = new CountDownLatch(1);
@@ -58,7 +58,7 @@ class RuntimeContextFromExecutorTest {
 
     @Test
     void happyPathExecuteThenJoinTimed() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtimeContext);
+        final var runtime = Objects.requireNonNull(this.taskExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
@@ -72,7 +72,7 @@ class RuntimeContextFromExecutorTest {
 
     @Test
     void happyPathExecuteThenJoin() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtimeContext);
+        final var runtime = Objects.requireNonNull(this.taskExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
@@ -86,7 +86,7 @@ class RuntimeContextFromExecutorTest {
 
     @Test
     void happyPathExecuteThenJoinFuture() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtimeContext);
+        final var runtime = Objects.requireNonNull(this.taskExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
@@ -100,7 +100,7 @@ class RuntimeContextFromExecutorTest {
 
     @Test
     void interruptedThenJoinAsync() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtimeContext);
+        final var runtime = Objects.requireNonNull(this.taskExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final var awaitCancellation = new CountDownLatch(1);
@@ -123,7 +123,7 @@ class RuntimeContextFromExecutorTest {
 
     @Test
     void joinAsyncIsInterruptible() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtimeContext);
+        final var runtime = Objects.requireNonNull(this.taskExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final var onComplete = new CountDownLatch(2);
@@ -148,7 +148,7 @@ class RuntimeContextFromExecutorTest {
 
     @Test
     void joinFutureIsInterruptible() throws InterruptedException, TimeoutException, ExecutionException {
-        final var runtime = Objects.requireNonNull(this.runtimeContext);
+        final var runtime = Objects.requireNonNull(this.taskExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final var onComplete = new CountDownLatch(2);
@@ -178,7 +178,7 @@ class RuntimeContextFromExecutorTest {
 
     @Test
     void cancelAfterExecution() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtimeContext);
+        final var runtime = Objects.requireNonNull(this.taskExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final var latch = new CountDownLatch(1);
@@ -191,12 +191,12 @@ class RuntimeContextFromExecutorTest {
 
 }
 
-class RuntimeContextFromThreadFactoryTest extends RuntimeContextFromExecutorTest {
+class TaskExecutorFromThreadFactoryTest extends TaskExecutorFromExecutorTest {
     @BeforeEach
     @Override
     void setUp() {
         this.closeable = null;
-        this.runtimeContext = RuntimeContext.fromThreadFactory(r -> {
+        this.taskExecutor = TaskExecutor.fromThreadFactory(r -> {
             final var t = new Thread(r);
             t.setDaemon(true);
             t.setName("test-thread-factory-" + t.getId());
@@ -209,22 +209,22 @@ class RuntimeContextFromThreadFactoryTest extends RuntimeContextFromExecutorTest
     void tearDown() {}
 }
 
-class RuntimeContextDefaultOlderJavaTest extends RuntimeContextFromExecutorTest {
+class TaskExecutorDefaultOlderJavaTest extends TaskExecutorFromExecutorTest {
     @BeforeEach
     @Override
     void setUp() {
         this.closeable = SysProp.withVirtualThreads(false);
-        this.runtimeContext = RuntimeContext.shared();
+        this.taskExecutor = TaskExecutor.shared();
         assertFalse(VirtualThreads.areVirtualThreadsSupported());
     }
 }
 
-class RuntimeContextDefaultJava21Test extends RuntimeContextFromExecutorTest {
+class TaskExecutorDefaultJava21Test extends TaskExecutorFromExecutorTest {
     @BeforeEach
     @Override
     void setUp() {
         this.closeable = SysProp.withVirtualThreads(true);
-        this.runtimeContext = RuntimeContext.shared();
+        this.taskExecutor = TaskExecutor.shared();
         assumeTrue(VirtualThreads.areVirtualThreadsSupported());
     }
 }
