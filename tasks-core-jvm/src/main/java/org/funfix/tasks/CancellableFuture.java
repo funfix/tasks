@@ -1,8 +1,10 @@
 package org.funfix.tasks;
 
-import java.util.concurrent.CompletionStage;
+import org.jspecify.annotations.NullMarked;
+import java.util.concurrent.CompletableFuture;
 
+@NullMarked
 public record CancellableFuture<T>(
         Cancellable cancellable,
-        CompletionStage<? extends T> future
+        CompletableFuture<? extends T> future
 ) {}

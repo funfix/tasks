@@ -13,7 +13,7 @@ public final class Runtime {
     private final RuntimeClock _clock;
     private final RuntimeExecute _executeFun;
 
-    public Runtime(
+    private Runtime(
             ScheduledExecutorService scheduler,
             RuntimeClock clock,
             RuntimeExecute execute
@@ -182,7 +182,7 @@ final class RuntimeExecuteViaExecutor implements RuntimeExecute {
             }
             try {
                 command.run();
-            } catch (final RuntimeException e) {
+            } catch (final Exception e) {
                 UncaughtExceptionHandler.logException(e);
             }
 
@@ -197,8 +197,9 @@ final class RuntimeExecuteViaExecutor implements RuntimeExecute {
                     try {
                         interrupting.wasInterrupted.await();
                     } catch (final InterruptedException ignored) {
+                    } finally {
+                        if (onComplete != null) onComplete.run();
                     }
-                    if (onComplete != null) onComplete.run();
                     return;
                 } else {
                     throw new IllegalStateException("Invalid state: " + current);

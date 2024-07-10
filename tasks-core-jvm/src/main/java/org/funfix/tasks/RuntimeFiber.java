@@ -9,7 +9,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 @NullMarked
@@ -21,8 +20,9 @@ public interface RuntimeFiber extends Cancellable {
         final var token = joinAsync(latch::signal);
         try {
             latch.await(timeout);
-        } finally {
+        } catch (final InterruptedException | TimeoutException e) {
             token.cancel();
+            throw e;
         }
     }
 
@@ -57,8 +57,9 @@ final class SimpleRuntimeFiber implements RuntimeFiber {
             final var current = stateRef.get();
             if (current instanceof State.Active || current instanceof State.Cancelled) {
                 final var update = current.addListener(onComplete);
-                if (stateRef.compareAndSet(current, update))
-                    return removeListener(onComplete);
+                if (stateRef.compareAndSet(current, update)) {
+                    return removeListenerCancellable(onComplete);
+                }
             } else {
                 Trampoline.execute(onComplete);
                 return Cancellable.EMPTY;
@@ -117,14 +118,17 @@ final class SimpleRuntimeFiber implements RuntimeFiber {
         }
     }
 
-    private Cancellable removeListener(Runnable listener) {
+    private Cancellable removeListenerCancellable(Runnable listener) {
         return () -> {
             while (true) {
                 final var current = stateRef.get();
                 if (current instanceof State.Active || current instanceof State.Cancelled) {
                     final var update = current.removeListener(listener);
-                    if (stateRef.compareAndSet(current, update))
+                    if (stateRef.compareAndSet(current, update)) {
                         return;
+                    }
+                } else {
+                    return;
                 }
             }
         };
@@ -170,7 +174,7 @@ final class SimpleRuntimeFiber implements RuntimeFiber {
             }
         }
 
-        State START = new Active(List.of(), Cancellable.EMPTY);
+        State START = new Active(List.of(), null);
     }
 
     public static RuntimeFiber create(
