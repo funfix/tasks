@@ -6,7 +6,8 @@ import org.jspecify.annotations.Nullable;
 import java.time.Duration;
 
 /**
- * Represents a {@link Task} that has started execution and is running concurrently.
+ * Represents a {@link Task} that has started execution and is running
+ * concurrently.
  *
  * @param <T> is the type of the value that the task will complete with
  */
@@ -21,9 +22,9 @@ public interface Fiber<T, E extends Exception> extends Cancellable {
     /**
      * Blocks the current thread until the result is available.
      *
-     * @throws InterruptedException if the current thread was interrupted; however,
-     * the concurrent task will still be running. Interrupting a `join` does not
-     * cancel the task. For that, use [cancel].
+     * @throws InterruptedException if the current thread was interrupted;
+     * however, the concurrent task will still be running. Interrupting a `join`
+     * does not cancel the task. For that, use [cancel].
      */
     void joinBlocking() throws InterruptedException;
 
@@ -33,22 +34,17 @@ public interface Fiber<T, E extends Exception> extends Cancellable {
      *
      * @param timeout the maximum time to wait
      *
-     * @throws InterruptedException if the current thread was interrupted; however, the
-     *         interruption of the current thread does not interrupt the fiber.
+     * @throws InterruptedException if the current thread was interrupted;
+     * however, the interruption of the current thread does not interrupt the
+     * fiber.
      *
-     * @return {@code true} if the task has completed, {@code false} if the timeout was reached
+     * @return {@code true} if the task has completed, {@code false} if the
+     * timeout was reached
      */
-    boolean tryJoinBlockingTimed(@Nullable Duration timeout) throws InterruptedException;
+    boolean joinBlockingTimed(@Nullable Duration timeout) throws InterruptedException;
 
     /**
      * Invokes the given `Runnable` when the task completes.
      */
     Cancellable joinAsync(Runnable onComplete);
-
-    /**
-     * @return `true` if the job has completed, `false` otherwise
-     */
-    default boolean isDone() {
-        return outcome() != null;
-    }
 }

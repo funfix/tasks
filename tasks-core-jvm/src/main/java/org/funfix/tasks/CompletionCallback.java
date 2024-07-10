@@ -94,7 +94,9 @@ public interface CompletionCallback<T, E extends Exception> extends Serializable
      * @param listener is the listener to protect
      * @return a protected version of the given listener
      */
-    static <T, E extends Exception> CompletionCallback<T, E> protect(final CompletionCallback<T, E> listener) {
+    static <T, E extends Exception> CompletionCallback<T, E> protect(
+            final CompletionCallback<? super T, ? super E> listener
+    ) {
         return new ProtectedCompletionHandler<>(listener);
     }
 }
@@ -103,9 +105,9 @@ public interface CompletionCallback<T, E extends Exception> extends Serializable
 final class ProtectedCompletionHandler<T, E extends Exception> implements CompletionCallback<T, E>, Runnable {
     private @Nullable AtomicBoolean isWaiting = new AtomicBoolean(true);
     private @Nullable Outcome<? extends T, ? extends E> outcome;
-    private @Nullable CompletionCallback<T, E> listener;
+    private @Nullable CompletionCallback<? super T, ? super E> listener;
 
-    ProtectedCompletionHandler(final CompletionCallback<T, E> listener) {
+    ProtectedCompletionHandler(final CompletionCallback<? super T, ? super E> listener) {
         this.listener = listener;
     }
 
