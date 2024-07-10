@@ -11,6 +11,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @NullMarked
 class RuntimeFromExecutorTest {
@@ -205,4 +207,24 @@ class RuntimeFromThreadFactoryTest extends RuntimeFromExecutorTest {
     @AfterEach
     @Override
     void tearDown() {}
+}
+
+class RuntimeDefaultOlderJavaTest extends RuntimeFromExecutorTest {
+    @BeforeEach
+    @Override
+    void setUp() {
+        this.closeable = SysProp.withVirtualThreads(false);
+        this.runtime = Runtime.defaultRuntime();
+        assertFalse(VirtualThreads.areVirtualThreadsSupported());
+    }
+}
+
+class RuntimeDefaultJava21Test extends RuntimeFromExecutorTest {
+    @BeforeEach
+    @Override
+    void setUp() {
+        this.closeable = SysProp.withVirtualThreads(true);
+        this.runtime = Runtime.defaultRuntime();
+        assumeTrue(VirtualThreads.areVirtualThreadsSupported());
+    }
 }

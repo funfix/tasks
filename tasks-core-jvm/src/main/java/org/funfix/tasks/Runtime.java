@@ -4,8 +4,14 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
-import java.util.concurrent.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.funfix.tasks.ThreadPools.sharedIO;
+import static org.funfix.tasks.ThreadPools.sharedScheduledExecutor;
 
 @NullMarked
 public final class Runtime {
@@ -113,30 +119,40 @@ public final class Runtime {
         );
     }
 
-
     @Nullable
-    private static volatile ScheduledExecutorService _sharedScheduledExecutorRef;
-    private static ScheduledExecutorService sharedScheduledExecutor() {
-        var ref = _sharedScheduledExecutorRef;
-        if (ref == null) {
-            synchronized (Runtime.class) {
-                ref = _sharedScheduledExecutorRef;
-                if (ref == null) {
-                    final var poolSize = Math.max(1, java.lang.Runtime.getRuntime().availableProcessors());
-                    ref = _sharedScheduledExecutorRef =
-                            Executors.newScheduledThreadPool(
-                                    poolSize,
-                                    r -> {
-                                        final var t = new Thread(r);
-                                        t.setName("io-shared-scheduler-" + t.getId());
-                                        t.setDaemon(true);
-                                        return t;
-                                    }
-                            );
+    private static volatile Runtime defaultRuntimeOlderJavaRef;
+    @Nullable
+    private static volatile Runtime defaultRuntimeLoomRef;
+
+    public static Runtime defaultRuntime() {
+        if (VirtualThreads.areVirtualThreadsSupported()) {
+            var ref = defaultRuntimeLoomRef;
+            if (ref == null)
+                synchronized (Runtime.class) {
+                    ref = defaultRuntimeLoomRef;
+                    if (ref == null)
+                        try {
+                            ref = fromThreadFactory(VirtualThreads.factory());
+                        } catch (VirtualThreads.NotSupportedException ignored) {
+                        }
+                    if (ref == null) {
+                        ref = fromExecutor(sharedIO());
+                    }
+                    defaultRuntimeLoomRef = ref;
                 }
-            }
+            return ref;
+        } else {
+            var ref = defaultRuntimeOlderJavaRef;
+            if (ref == null)
+                synchronized (Runtime.class) {
+                    ref = defaultRuntimeOlderJavaRef;
+                    if (ref == null) {
+                        ref = fromExecutor(sharedIO());
+                    }
+                    defaultRuntimeOlderJavaRef = ref;
+                }
+            return ref;
         }
-        return ref;
     }
 }
 
