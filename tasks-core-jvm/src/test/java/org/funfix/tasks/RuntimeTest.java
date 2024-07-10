@@ -11,14 +11,14 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @NullMarked
-class RuntimeFromExecutorTest {
+class RuntimeContextFromExecutorTest {
     final int repeatCount = 1000;
     @Nullable AutoCloseable closeable = null;
-    @Nullable Runtime runtime = null;
+    @Nullable
+    RuntimeContext runtimeContext = null;
 
     @BeforeEach
     void setUp() {
@@ -29,20 +29,20 @@ class RuntimeFromExecutorTest {
             return t;
         });
         closeable = es::shutdown;
-        runtime = Runtime.fromExecutor(es);
+        runtimeContext = RuntimeContext.fromExecutor(es);
     }
 
     @AfterEach
     void tearDown() throws Exception {
         final var c = closeable;
         closeable = null;
-        runtime = null;
+        runtimeContext = null;
         if (c != null) c.close();
     }
 
     @Test
     void happyPathExecuteThenJoinAsync() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtime);
+        final var runtime = Objects.requireNonNull(this.runtimeContext);
 
         for (int i = 0; i < repeatCount; i++) {
             final var latch = new CountDownLatch(1);
@@ -58,7 +58,7 @@ class RuntimeFromExecutorTest {
 
     @Test
     void happyPathExecuteThenJoinTimed() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtime);
+        final var runtime = Objects.requireNonNull(this.runtimeContext);
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
@@ -72,7 +72,7 @@ class RuntimeFromExecutorTest {
 
     @Test
     void happyPathExecuteThenJoin() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtime);
+        final var runtime = Objects.requireNonNull(this.runtimeContext);
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
@@ -86,7 +86,7 @@ class RuntimeFromExecutorTest {
 
     @Test
     void happyPathExecuteThenJoinFuture() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtime);
+        final var runtime = Objects.requireNonNull(this.runtimeContext);
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
@@ -100,7 +100,7 @@ class RuntimeFromExecutorTest {
 
     @Test
     void interruptedThenJoinAsync() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtime);
+        final var runtime = Objects.requireNonNull(this.runtimeContext);
 
         for (int i = 0; i < repeatCount; i++) {
             final var awaitCancellation = new CountDownLatch(1);
@@ -123,7 +123,7 @@ class RuntimeFromExecutorTest {
 
     @Test
     void joinAsyncIsInterruptible() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtime);
+        final var runtime = Objects.requireNonNull(this.runtimeContext);
 
         for (int i = 0; i < repeatCount; i++) {
             final var onComplete = new CountDownLatch(2);
@@ -148,7 +148,7 @@ class RuntimeFromExecutorTest {
 
     @Test
     void joinFutureIsInterruptible() throws InterruptedException, TimeoutException, ExecutionException {
-        final var runtime = Objects.requireNonNull(this.runtime);
+        final var runtime = Objects.requireNonNull(this.runtimeContext);
 
         for (int i = 0; i < repeatCount; i++) {
             final var onComplete = new CountDownLatch(2);
@@ -178,7 +178,7 @@ class RuntimeFromExecutorTest {
 
     @Test
     void cancelAfterExecution() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.runtime);
+        final var runtime = Objects.requireNonNull(this.runtimeContext);
 
         for (int i = 0; i < repeatCount; i++) {
             final var latch = new CountDownLatch(1);
@@ -191,12 +191,12 @@ class RuntimeFromExecutorTest {
 
 }
 
-class RuntimeFromThreadFactoryTest extends RuntimeFromExecutorTest {
+class RuntimeContextFromThreadFactoryTest extends RuntimeContextFromExecutorTest {
     @BeforeEach
     @Override
     void setUp() {
         this.closeable = null;
-        this.runtime = Runtime.fromThreadFactory(r -> {
+        this.runtimeContext = RuntimeContext.fromThreadFactory(r -> {
             final var t = new Thread(r);
             t.setDaemon(true);
             t.setName("test-thread-factory-" + t.getId());
@@ -209,22 +209,22 @@ class RuntimeFromThreadFactoryTest extends RuntimeFromExecutorTest {
     void tearDown() {}
 }
 
-class RuntimeDefaultOlderJavaTest extends RuntimeFromExecutorTest {
+class RuntimeContextDefaultOlderJavaTest extends RuntimeContextFromExecutorTest {
     @BeforeEach
     @Override
     void setUp() {
         this.closeable = SysProp.withVirtualThreads(false);
-        this.runtime = Runtime.defaultRuntime();
+        this.runtimeContext = RuntimeContext.shared();
         assertFalse(VirtualThreads.areVirtualThreadsSupported());
     }
 }
 
-class RuntimeDefaultJava21Test extends RuntimeFromExecutorTest {
+class RuntimeContextDefaultJava21Test extends RuntimeContextFromExecutorTest {
     @BeforeEach
     @Override
     void setUp() {
         this.closeable = SysProp.withVirtualThreads(true);
-        this.runtime = Runtime.defaultRuntime();
+        this.runtimeContext = RuntimeContext.shared();
         assumeTrue(VirtualThreads.areVirtualThreadsSupported());
     }
 }

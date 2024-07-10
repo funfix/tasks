@@ -5,6 +5,6 @@ import org.jspecify.annotations.Nullable;
 
 @NullMarked
 @FunctionalInterface
-public interface RuntimeExecute {
+public interface RuntimeExecuteFun {
     Cancellable invoke(Runnable command, @Nullable Runnable onComplete);
 }

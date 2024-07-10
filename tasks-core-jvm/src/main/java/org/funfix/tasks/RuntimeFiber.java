@@ -178,7 +178,7 @@ final class SimpleRuntimeFiber implements RuntimeFiber {
     }
 
     public static RuntimeFiber create(
-            RuntimeExecute execute,
+            RuntimeExecuteFun execute,
             Runnable command
     ) {
         final var fiber = new SimpleRuntimeFiber();

@@ -14,15 +14,52 @@ import static org.funfix.tasks.ThreadPools.sharedIO;
 import static org.funfix.tasks.ThreadPools.sharedScheduledExecutor;
 
 @NullMarked
-public final class Runtime {
+public interface RuntimeContext {
+    RuntimeFiber execute(Runnable command);
+    Cancellable scheduleOnce(Duration delay, Runnable command);
+    Cancellable scheduleAtFixedRate(Duration initialDelay, Duration period, Runnable command);
+    Cancellable scheduleWithFixedDelay(Duration initialDelay, Duration delay, Runnable command);
+    RuntimeClock clock();
+
+    static RuntimeContext fromThreadFactory(ThreadFactory factory) {
+        return RuntimeContextDefault.fromThreadFactory(factory);
+    }
+
+    static RuntimeContext fromThreadFactory(
+            ThreadFactory factory,
+            @Nullable ScheduledExecutorService scheduler,
+            @Nullable RuntimeClock clock
+    ) {
+        return RuntimeContextDefault.fromThreadFactory(factory, scheduler, clock);
+    }
+
+    static RuntimeContext fromExecutor(Executor executor) {
+        return RuntimeContextDefault.fromExecutor(executor);
+    }
+
+    static RuntimeContext fromExecutor(
+            Executor executor,
+            @Nullable ScheduledExecutorService scheduler,
+            @Nullable RuntimeClock clock
+    ) {
+        return RuntimeContextDefault.fromExecutor(executor, scheduler, clock);
+    }
+
+    static RuntimeContext shared() {
+        return RuntimeContextDefault.shared();
+    }
+}
+
+@NullMarked
+final class RuntimeContextDefault implements RuntimeContext {
     private final ScheduledExecutorService _scheduler;
     private final RuntimeClock _clock;
-    private final RuntimeExecute _executeFun;
+    private final RuntimeExecuteFun _executeFun;
 
-    private Runtime(
+    public RuntimeContextDefault(
             ScheduledExecutorService scheduler,
             RuntimeClock clock,
-            RuntimeExecute execute
+            RuntimeExecuteFun execute
     ) {
         _scheduler = scheduler;
         _clock = clock;
@@ -87,49 +124,49 @@ public final class Runtime {
         };
     }
 
-    public static Runtime fromThreadFactory(ThreadFactory factory) {
+    public static RuntimeContext fromThreadFactory(ThreadFactory factory) {
         return fromThreadFactory(factory, null, null);
     }
 
-    public static Runtime fromThreadFactory(
+    public static RuntimeContext fromThreadFactory(
             ThreadFactory factory,
             @Nullable ScheduledExecutorService scheduler,
             @Nullable RuntimeClock clock
     ) {
-        return new Runtime(
+        return new RuntimeContextDefault(
                 scheduler != null ? scheduler : sharedScheduledExecutor(),
                 clock != null ? clock : RuntimeClock.System,
-                new RuntimeExecuteViaThreadFactory(factory)
+                new RuntimeExecuteFunViaThreadFactory(factory)
         );
     }
 
-    public static Runtime fromExecutor(Executor executor) {
+    public static RuntimeContext fromExecutor(Executor executor) {
         return fromExecutor(executor, null, null);
     }
 
-    public static Runtime fromExecutor(
+    public static RuntimeContext fromExecutor(
             Executor executor,
             @Nullable ScheduledExecutorService scheduler,
             @Nullable RuntimeClock clock
     ) {
-        return new Runtime(
+        return new RuntimeContextDefault(
                 scheduler != null ? scheduler : sharedScheduledExecutor(),
                 clock != null ? clock : RuntimeClock.System,
-                new RuntimeExecuteViaExecutor(executor)
+                new RuntimeExecuteFunViaExecutor(executor)
         );
     }
 
     @Nullable
-    private static volatile Runtime defaultRuntimeOlderJavaRef;
+    private static volatile RuntimeContext defaultRuntimeContextOlderJavaRef;
     @Nullable
-    private static volatile Runtime defaultRuntimeLoomRef;
+    private static volatile RuntimeContext defaultRuntimeContextLoomRef;
 
-    public static Runtime defaultRuntime() {
+    public static RuntimeContext shared() {
         if (VirtualThreads.areVirtualThreadsSupported()) {
-            var ref = defaultRuntimeLoomRef;
+            var ref = defaultRuntimeContextLoomRef;
             if (ref == null)
-                synchronized (Runtime.class) {
-                    ref = defaultRuntimeLoomRef;
+                synchronized (RuntimeContext.class) {
+                    ref = defaultRuntimeContextLoomRef;
                     if (ref == null)
                         try {
                             ref = fromThreadFactory(VirtualThreads.factory());
@@ -138,18 +175,18 @@ public final class Runtime {
                     if (ref == null) {
                         ref = fromExecutor(sharedIO());
                     }
-                    defaultRuntimeLoomRef = ref;
+                    defaultRuntimeContextLoomRef = ref;
                 }
             return ref;
         } else {
-            var ref = defaultRuntimeOlderJavaRef;
+            var ref = defaultRuntimeContextOlderJavaRef;
             if (ref == null)
-                synchronized (Runtime.class) {
-                    ref = defaultRuntimeOlderJavaRef;
+                synchronized (RuntimeContext.class) {
+                    ref = defaultRuntimeContextOlderJavaRef;
                     if (ref == null) {
                         ref = fromExecutor(sharedIO());
                     }
-                    defaultRuntimeOlderJavaRef = ref;
+                    defaultRuntimeContextOlderJavaRef = ref;
                 }
             return ref;
         }
@@ -157,10 +194,10 @@ public final class Runtime {
 }
 
 @NullMarked
-final class RuntimeExecuteViaThreadFactory implements RuntimeExecute {
+final class RuntimeExecuteFunViaThreadFactory implements RuntimeExecuteFun {
     private final ThreadFactory _factory;
 
-    public RuntimeExecuteViaThreadFactory(final ThreadFactory factory) {
+    public RuntimeExecuteFunViaThreadFactory(final ThreadFactory factory) {
         _factory = factory;
     }
 
@@ -180,10 +217,10 @@ final class RuntimeExecuteViaThreadFactory implements RuntimeExecute {
 }
 
 @NullMarked
-final class RuntimeExecuteViaExecutor implements RuntimeExecute {
+final class RuntimeExecuteFunViaExecutor implements RuntimeExecuteFun {
     private final Executor _executor;
 
-    public RuntimeExecuteViaExecutor(Executor executor) {
+    public RuntimeExecuteFunViaExecutor(Executor executor) {
         _executor = executor;
     }
 
