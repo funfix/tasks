@@ -33,7 +33,7 @@ public class CompletionCallbackTest {
     void protectedCallbackForSuccess() {
         final var called = new AtomicInteger(0);
         final var outcome = new AtomicReference<@Nullable Outcome<String>>(null);
-        final var cb = CompletionCallback.protect(
+        final var cb = ProtectedCompletionCallback.protect(
                 new CompletionCallback<String>() {
                     @Override
                     public void onSuccess(String value) {
@@ -65,7 +65,7 @@ public class CompletionCallbackTest {
     void protectedCallbackForRuntimeFailure() throws InterruptedException {
         final var called = new AtomicInteger(0);
         final var outcome = new AtomicReference<@Nullable Outcome<String>>(null);
-        final var cb = CompletionCallback.protect(
+        final var cb = ProtectedCompletionCallback.protect(
                 new CompletionCallback<String>() {
                     @Override
                     public void onSuccess(String value) {
@@ -106,7 +106,7 @@ public class CompletionCallbackTest {
     void protectedCallbackForCancellation() {
         final var called = new AtomicInteger(0);
         final var outcome = new AtomicReference<@Nullable Outcome<String>>(null);
-        final var cb = CompletionCallback.protect(
+        final var cb = ProtectedCompletionCallback.protect(
                 new CompletionCallback<String>() {
                     @Override
                     public void onSuccess(String value) {

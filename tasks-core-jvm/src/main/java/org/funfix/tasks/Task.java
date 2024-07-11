@@ -33,7 +33,7 @@ public final class Task<T> {
             final CompletionCallback<? super T> callback,
             final FiberExecutor executor
     ) {
-        final var cb = CompletionCallback.protect(callback);
+        final var cb = ProtectedCompletionCallback.protect(callback);
         try {
             return asyncFun.invoke(cb, executor);
         } catch (final Throwable e) {
@@ -71,7 +71,7 @@ public final class Task<T> {
                     executor == null ? FiberExecutor.shared() : executor
             );
             fiber.registerCancel(token);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             fiber.onComplete.onFailure(e);
         }
         return fiber;
@@ -103,13 +103,13 @@ public final class Task<T> {
      *
      * @return the successful result of the task
      */
-    public T executeBlocking(@Nullable FiberExecutor executor)
+    public T executeBlocking(@Nullable final FiberExecutor executor)
             throws ExecutionException, InterruptedException {
 
         final var blockingCallback = new BlockingCompletionCallback<T>();
         final var cancelToken = asyncFun.invoke(
-                blockingCallback,
-                executor == null ? FiberExecutor.shared() : executor
+            blockingCallback,
+            executor == null ? FiberExecutor.shared() : executor
         );
         return blockingCallback.await(cancelToken);
     }
@@ -205,7 +205,7 @@ public final class Task<T> {
      *
      * @see #createAsync(AsyncFun)
      */
-    public static <T> Task<T> create(final AsyncFun<T> fun) {
+    public static <T> Task<T> create(final AsyncFun<? extends T> fun) {
         return new Task<>((callback, executor) -> {
             final var cancel = new MutableCancellable();
             Trampoline.execute(() -> {
@@ -238,7 +238,7 @@ public final class Task<T> {
      * @see #create(AsyncFun)
      * @see FiberExecutor
      */
-    public static <T> Task<T> createAsync(final AsyncFun<T> fun) {
+    public static <T> Task<T> createAsync(final AsyncFun<? extends T> fun) {
         return new Task<>((callback, executor) -> {
             final var cancel = new MutableCancellable();
             // Starting the execution on another thread, to ensure concurrent
@@ -259,25 +259,26 @@ public final class Task<T> {
     /**
      * Creates a task from a {@link Callable} executing blocking IO.
      */
-    public static <T> Task<T> fromBlockingIO(final Callable<T> callable) {
+    public static <T> Task<T> fromBlockingIO(final Callable<? extends T> callable) {
         return new Task<>((callback, executor) -> executor.executeCancellable(
-                () -> {
-                    try {
-                        final var result = callable.call();
-                        callback.onSuccess(result);
-                    } catch (final InterruptedException | CancellationException e) {
-                        callback.onCancel();
-                    } catch (final Exception e) {
-                        callback.onFailure(e);
-                    }
-                },
-                () -> {
-                    // This is a concurrent call that wouldn't be very safe
-                    // with a naive implementation of the CompletionCallback
-                    // (thankfully we protect the injected callback)
-                    // noinspection Convert2MethodRef
+            () -> {
+                try {
+                    final var result = callable.call();
+                    callback.onSuccess(result);
+                } catch (final InterruptedException | CancellationException e) {
                     callback.onCancel();
-                }));
+                } catch (final Throwable e) {
+                    UncaughtExceptionHandler.rethrowIfFatal(e);
+                    callback.onFailure(e);
+                }
+            },
+            () -> {
+                // This is a concurrent call that wouldn't be very safe
+                // with a naive implementation of the CompletionCallback
+                // (thankfully we protect the injected callback)
+                // noinspection Convert2MethodRef
+                callback.onCancel();
+            }));
     }
 }
 
@@ -304,6 +305,8 @@ final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer imp
         if (!isDone.getAndSet(true)) {
             error = e;
             releaseShared(1);
+        } else {
+            UncaughtExceptionHandler.logOrRethrowException(e);
         }
     }
 
@@ -328,22 +331,22 @@ final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer imp
 
     @FunctionalInterface
     interface AwaitFunction {
-        void apply(boolean isNotCancelled) throws InterruptedException, TimeoutException;
+        void apply(boolean isCancelled) throws InterruptedException, TimeoutException;
     }
 
     private T awaitInline(final Cancellable cancelToken, final AwaitFunction await)
             throws InterruptedException, ExecutionException, TimeoutException {
 
-        var isNotCancelled = true;
+        var isCancelled = false;
         TimeoutException timedOut = null;
         while (true) {
             try {
-                await.apply(isNotCancelled);
+                await.apply(isCancelled);
                 break;
-            } catch (final TimeoutException e) {
-                if (isNotCancelled) {
-                    isNotCancelled = false;
-                    timedOut = e;
+            } catch (final TimeoutException | InterruptedException e) {
+                if (!isCancelled) {
+                    isCancelled = true;
+                    if (e instanceof final TimeoutException te) timedOut = te;
                     cancelToken.cancel();
                 }
             }
@@ -363,7 +366,7 @@ final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer imp
 
     public T await(final Cancellable cancelToken) throws InterruptedException, ExecutionException {
         try {
-            return awaitInline(cancelToken, firstAwait -> acquireSharedInterruptibly(1));
+            return awaitInline(cancelToken, isCancelled -> acquireSharedInterruptibly(1));
         } catch (final TimeoutException e) {
             throw new IllegalStateException("Unexpected timeout", e);
         }
@@ -372,8 +375,8 @@ final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer imp
     public T await(final Cancellable cancelToken, final Duration timeout)
             throws ExecutionException, InterruptedException, TimeoutException {
 
-        return awaitInline(cancelToken, isNotCancelled -> {
-            if (isNotCancelled) {
+        return awaitInline(cancelToken, isCancelled -> {
+            if (!isCancelled) {
                 if (!tryAcquireSharedNanos(1, timeout.toNanos())) {
                     throw new TimeoutException("Task timed-out after " + timeout);
                 }

@@ -4,7 +4,19 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public final class UncaughtExceptionHandler {
-    public static void logException(final Throwable e) {
+    public static void rethrowIfFatal(final Throwable e) {
+        if (e instanceof StackOverflowError) {
+            // Stack-overflows should be reported as-is, instead of crashing
+            // the process
+            return;
+        }
+        if (e instanceof final Error error) {
+            throw error;
+        }
+    }
+
+    public static void logOrRethrowException(final Throwable e) {
+        rethrowIfFatal(e);
         final var thread = Thread.currentThread();
         var logger = thread.getUncaughtExceptionHandler();
         if (logger == null) {

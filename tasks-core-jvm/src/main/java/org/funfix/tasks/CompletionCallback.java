@@ -54,40 +54,30 @@ public interface CompletionCallback<T> extends Serializable {
      * @return a {@code CompletionListener} that does nothing.
      */
     static <T> CompletionCallback<T> empty() {
-        return new CompletionCallback<T>() {
+        return new CompletionCallback<>() {
             @Override
-            public void onSuccess(final T value) { }
+            public void onSuccess(final T value) {
+            }
+
             @Override
-            public void onCancel() {}
+            public void onCancel() {
+            }
+
             @Override
             public void onFailure(final Throwable e) {
-                UncaughtExceptionHandler.logException(e);
+                UncaughtExceptionHandler.logOrRethrowException(e);
             }
         };
-    }
-
-    /**
-     * Protects a given {@code CompletionListener}, by:
-     * <ol>
-     *     <li>Ensuring that the underlying listener is called at most once.</li>
-     *     <li>Trampolining the call, such that stack overflows are avoided.</li>
-     * </ol>
-     *
-     * @param listener is the listener to protect
-     * @return a protected version of the given listener
-     */
-    static <T> CompletionCallback<T> protect(final CompletionCallback<T> listener) {
-        return new ProtectedCompletionHandler<>(listener);
     }
 }
 
 @NullMarked
-final class ProtectedCompletionHandler<T> implements CompletionCallback<T>, Runnable {
+final class ProtectedCompletionCallback<T> implements CompletionCallback<T>, Runnable {
     private @Nullable AtomicBoolean isWaiting = new AtomicBoolean(true);
     private @Nullable Outcome<T> outcome;
     private @Nullable CompletionCallback<T> listener;
 
-    ProtectedCompletionHandler(final CompletionCallback<T> listener) {
+    private ProtectedCompletionCallback(final CompletionCallback<T> listener) {
         this.listener = listener;
     }
 
@@ -128,8 +118,12 @@ final class ProtectedCompletionHandler<T> implements CompletionCallback<T>, Runn
             Trampoline.execute(this);
             // For GC purposes; but it doesn't really matter if we nullify this or not
             this.isWaiting = null;
-        } else if (outcome instanceof Outcome.Failed<T> failed) {
-            UncaughtExceptionHandler.logException(failed.exception());
+        } else if (outcome instanceof final Outcome.Failed<T> failed) {
+            UncaughtExceptionHandler.logOrRethrowException(failed.exception());
         }
+    }
+
+    public static <T> CompletionCallback<T> protect(final CompletionCallback<T> listener) {
+        return new ProtectedCompletionCallback<>(listener);
     }
 }

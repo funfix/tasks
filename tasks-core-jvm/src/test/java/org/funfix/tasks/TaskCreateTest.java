@@ -2,21 +2,34 @@ package org.funfix.tasks;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @NullMarked
 abstract class BaseTaskCreateTest {
+    @Nullable protected AutoCloseable closeable;
     @Nullable protected FiberExecutor executor;
     protected abstract  <T> Task<T> createTask(final AsyncFun<? extends T> builder);
+
+    @AfterEach
+    void tearDown() throws Exception {
+        if (closeable != null) {
+            closeable.close();
+            closeable = null;
+        }
+    }
 
     @Test
     void successful() throws ExecutionException, InterruptedException, TimeoutException {
@@ -91,15 +104,54 @@ abstract class BaseTaskCreateTest {
 }
 
 @NullMarked
-class TaskCreateSimpleTest extends BaseTaskCreateTest {
+class TaskCreateSimpleDefaultExecutorTest extends BaseTaskCreateTest {
+    @BeforeEach
+    void setUp() {
+        executor = null;
+    }
+
     @Override
-    protected <T> Task<T> createTask(AsyncFun<? extends T> builder) {
+    protected <T> Task<T> createTask(final AsyncFun<? extends T> builder) {
         return Task.create(builder);
     }
 }
 
 @NullMarked
-class TaskCreateAsync1Test extends TaskCreateTest {
+class TaskCreateSimpleCustomJavaExecutorTest extends BaseTaskCreateTest {
+    @BeforeEach
+    void setUp() {
+        final var javaExecutor = Executors.newCachedThreadPool();
+        executor = FiberExecutor.fromExecutor(javaExecutor);
+        closeable = javaExecutor::shutdown;
+    }
+
+    @Override
+    protected <T> Task<T> createTask(final AsyncFun<? extends T> builder) {
+        return Task.create(builder);
+    }
+}
+
+@NullMarked
+class TaskCreateSimpleCustomJavaThreadFactoryTest extends BaseTaskCreateTest {
+    @BeforeEach
+    void setUp() {
+        executor = FiberExecutor.fromThreadFactory(
+            r -> {
+                final var t = new Thread(r);
+                t.setName("my-thread-" + t.getId());
+                return t;
+            }
+        );
+    }
+
+    @Override
+    protected <T> Task<T> createTask(final AsyncFun<? extends T> builder) {
+        return Task.create(builder);
+    }
+}
+
+@NullMarked
+abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
     @Override
     protected <T> Task<T> createTask(final AsyncFun<? extends T> builder) {
         return Task.createAsync(builder);
@@ -109,96 +161,57 @@ class TaskCreateAsync1Test extends TaskCreateTest {
     void java21Plus() throws ExecutionException, InterruptedException {
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
 
-        final Task<String> task = createTask(cb -> {
+        final Task<String> task = createTask((cb, executor) -> {
             cb.onSuccess(Thread.currentThread().getName());
             return Cancellable.EMPTY;
         });
 
-        final var result = task.executeBlocking();
+        final var result = task.executeBlocking(executor);
         assertTrue(result.matches("common-io-virtual-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
     }
 
     @Test
     void olderJava() throws ExecutionException, InterruptedException {
-        final var ignored = SysProp.withVirtualThreads(false);
-        try {
-            final Task<String> task = createTask(cb -> {
-                cb.onSuccess(Thread.currentThread().getName());
-                return Cancellable.EMPTY;
-            });
+        assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires older Java versions");
 
-            final var result = task.executeBlocking();
-            assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
-        } finally {
-            ignored.close();
-        }
-    }
-}
-
-@NullMarked
-class TaskCreateAsync2Test extends TaskCreateTest {
-    @Override
-    protected <T> Task<T> createTask(final AsyncFun<? extends T> builder) {
-        return Task.createAsync(
-            ThreadPools.sharedIO(),
-            builder
-        );
-    }
-
-    @Test
-    void java21Plus() throws ExecutionException, InterruptedException {
-        assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
-
-        final Task<String> task = createTask(cb -> {
+        final Task<String> task = createTask((cb, executor) -> {
             cb.onSuccess(Thread.currentThread().getName());
             return Cancellable.EMPTY;
         });
 
-        final var result = task.executeBlocking();
-        assertTrue(result.matches("common-io-virtual-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
-    }
-
-
-    @Test
-    void olderJava() throws ExecutionException, InterruptedException {
-        final var ignored = SysProp.withVirtualThreads(false);
-        try {
-            final Task<String> task = createTask(cb -> {
-                cb.onSuccess(Thread.currentThread().getName());
-                return Cancellable.EMPTY;
-            });
-
-            final var result = task.executeBlocking();
-            assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
-        } finally {
-            ignored.close();
-        }
+        final var result = task.executeBlocking(executor);
+        assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
     }
 }
 
-@NullMarked
-class TaskCreateAsync3Test extends TaskCreateTest {
-    @Override
-    @SuppressWarnings("deprecation")
-    protected <T> Task<T> createTask(final AsyncFun<? extends T> builder) {
-        return Task.createAsync(
-            r -> {
-                final var t = new Thread(r);
-                t.setName("my-thread-" + t.getId());
-                return t;
-            },
-            builder
-        );
+class TaskCreateAsyncDefaultExecutorJava21Test extends BaseTaskCreateAsyncTest {
+    @BeforeEach
+    void setUp() {
+        closeable = SysProp.withVirtualThreads(true);
+        executor = null;
     }
+}
 
-    @Test
-    void threadName() throws ExecutionException, InterruptedException {
-        final Task<String> task = createTask(cb -> {
-            cb.onSuccess(Thread.currentThread().getName());
-            return Cancellable.EMPTY;
-        });
+class TaskCreateAsyncDefaultExecutorOlderJavaTest extends BaseTaskCreateAsyncTest {
+    @BeforeEach
+    void setUp() {
+        closeable = SysProp.withVirtualThreads(false);
+        executor = null;
+    }
+}
 
-        final var result = task.executeBlocking();
-        assertTrue(result.matches("my-thread-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
+class TaskCreateAsyncCustomExecutorOlderJavaTest extends BaseTaskCreateAsyncTest {
+    @BeforeEach
+    void setUp() {
+        closeable = SysProp.withVirtualThreads(false);
+        executor = FiberExecutor.fromExecutor(ThreadPools.sharedIO());
+    }
+}
+
+class TaskCreateAsyncCustomExecutorJava21Test extends BaseTaskCreateAsyncTest {
+    @BeforeEach
+    void setUp() {
+        closeable = SysProp.withVirtualThreads(true);
+        executor = FiberExecutor.fromExecutor(ThreadPools.sharedIO());
     }
 }

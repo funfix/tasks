@@ -13,15 +13,15 @@ public interface FiberExecutor extends Executor {
     Cancellable executeCancellable(Runnable command, @Nullable Runnable onComplete);
     Fiber executeFiber(Runnable command);
 
-    default Cancellable executeCancellable(Runnable command) {
+    default Cancellable executeCancellable(final Runnable command) {
         return executeCancellable(command, null);
     }
 
-    static FiberExecutor fromThreadFactory(ThreadFactory factory) {
+    static FiberExecutor fromThreadFactory(final ThreadFactory factory) {
         return FiberExecutorDefault.fromThreadFactory(factory);
     }
 
-    static FiberExecutor fromExecutor(Executor executor) {
+    static FiberExecutor fromExecutor(final Executor executor) {
         return FiberExecutorDefault.fromExecutor(executor);
     }
 
@@ -42,29 +42,29 @@ final class FiberExecutorDefault implements FiberExecutor {
     private final RunnableExecuteFun _executeFun;
 
     public FiberExecutorDefault(
-            Executor executor,
-            RunnableExecuteFun execute
+        final Executor executor,
+        final RunnableExecuteFun execute
     ) {
         _executor = executor;
         _executeFun = execute;
     }
 
     @Override
-    public void execute(Runnable command) {
+    public void execute(final Runnable command) {
         _executor.execute(command);
     }
 
     @Override
-    public Cancellable executeCancellable(Runnable command, @Nullable Runnable onComplete) {
+    public Cancellable executeCancellable(final Runnable command, @Nullable final Runnable onComplete) {
         return _executeFun.invoke(command, onComplete);
     }
 
     @Override
-    public Fiber executeFiber(Runnable command) {
+    public Fiber executeFiber(final Runnable command) {
         return SimpleFiber.create(_executeFun, command);
     }
 
-    public static FiberExecutor fromThreadFactory(ThreadFactory factory) {
+    public static FiberExecutor fromThreadFactory(final ThreadFactory factory) {
         final Executor executor = (command) -> {
             final var t = factory.newThread(command);
             t.start();
@@ -75,7 +75,7 @@ final class FiberExecutorDefault implements FiberExecutor {
         );
     }
 
-    public static FiberExecutor fromExecutor(Executor executor) {
+    public static FiberExecutor fromExecutor(final Executor executor) {
         return new FiberExecutorDefault(
                 executor,
                 new RunnableExecuteFunViaExecutor(executor)
@@ -96,7 +96,7 @@ final class FiberExecutorDefault implements FiberExecutor {
                     if (ref == null)
                         try {
                             ref = fromThreadFactory(VirtualThreads.factory());
-                        } catch (VirtualThreads.NotSupportedException ignored) {
+                        } catch (final VirtualThreads.NotSupportedException ignored) {
                         }
                     if (ref == null) {
                         ref = fromExecutor(sharedIO());
@@ -128,7 +128,7 @@ final class RunnableExecuteFunViaThreadFactory implements RunnableExecuteFun {
     }
 
     @Override
-    public Cancellable invoke(Runnable command, @Nullable Runnable onComplete) {
+    public Cancellable invoke(final Runnable command, @Nullable final Runnable onComplete) {
         final var t = _factory.newThread(() -> {
             try {
                 command.run();
@@ -146,7 +146,7 @@ final class RunnableExecuteFunViaThreadFactory implements RunnableExecuteFun {
 final class RunnableExecuteFunViaExecutor implements RunnableExecuteFun {
     private final Executor _executor;
 
-    public RunnableExecuteFunViaExecutor(Executor executor) {
+    public RunnableExecuteFunViaExecutor(final Executor executor) {
         _executor = executor;
     }
 
@@ -161,8 +161,8 @@ final class RunnableExecuteFunViaExecutor implements RunnableExecuteFun {
             }
             try {
                 command.run();
-            } catch (final Exception e) {
-                UncaughtExceptionHandler.logException(e);
+            } catch (final Throwable e) {
+                UncaughtExceptionHandler.logOrRethrowException(e);
             }
 
             while (true) {
@@ -172,7 +172,7 @@ final class RunnableExecuteFunViaExecutor implements RunnableExecuteFun {
                         if (onComplete != null) onComplete.run();
                         return;
                     }
-                } else if (current instanceof State.Interrupting interrupting) {
+                } else if (current instanceof final State.Interrupting interrupting) {
                     try {
                         interrupting.wasInterrupted.await();
                     } catch (final InterruptedException ignored) {
@@ -188,13 +188,13 @@ final class RunnableExecuteFunViaExecutor implements RunnableExecuteFun {
         return () -> triggerCancel(state);
     }
 
-    private void triggerCancel(AtomicReference<State> state) {
+    private void triggerCancel(final AtomicReference<State> state) {
         while (true) {
             final var current = state.get();
             if (current instanceof State.NotStarted) {
                 if (state.compareAndSet(current, State.Completed.INSTANCE))
                     return;
-            } else if (current instanceof State.Running running) {
+            } else if (current instanceof final State.Running running) {
                 // Starts the interruption process
                 final var wasInterrupted = new AwaitSignal();
                 if (state.compareAndSet(current, new State.Interrupting(wasInterrupted))) {
@@ -210,10 +210,10 @@ final class RunnableExecuteFunViaExecutor implements RunnableExecuteFun {
 
     sealed interface State {
         record NotStarted() implements State {
-            public static NotStarted INSTANCE = new NotStarted();
+            public static final NotStarted INSTANCE = new NotStarted();
         }
         record Completed() implements State {
-            public static NotStarted INSTANCE = new NotStarted();
+            public static final NotStarted INSTANCE = new NotStarted();
         }
         record Running(Thread thread) implements State {}
         record Interrupting(AwaitSignal wasInterrupted) implements State {}
