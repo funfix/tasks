@@ -33,6 +33,20 @@ subprojects {
                     password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
                 }
             }
+
+            maven {
+                name = "OSSRH"
+                url = uri(
+                    if (project.hasProperty("buildRelease"))
+                        "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+                    else
+                        "https://oss.sonatype.org/content/repositories/snapshots/"
+                )
+                credentials {
+                    username = System.getenv("MAVEN_USERNAME")
+                    password = System.getenv("MAVEN_PASSWORD")
+                }
+            }
         }
     }
 
