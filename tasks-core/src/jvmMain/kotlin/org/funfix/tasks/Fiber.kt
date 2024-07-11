@@ -26,7 +26,8 @@ fun interface FiberExecutor {
 interface Fiber : Cancellable {
     fun joinAsync(onComplete: Runnable): Cancellable
 
-    fun joinTimed(timeout: Duration) {
+    @Throws(InterruptedException::class, TimeoutException::class)
+    fun joinBlockingTimed(timeout: Duration) {
         val latch = AwaitSignalForFiber()
         val token = joinAsync { latch.signal() }
         try {
@@ -40,7 +41,8 @@ interface Fiber : Cancellable {
         }
     }
 
-    fun join() {
+    @Throws(InterruptedException::class)
+    fun joinBlocking() {
         val latch = AwaitSignalForFiber()
         val token = joinAsync { latch.signal() }
         try {

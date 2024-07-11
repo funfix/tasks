@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.AbstractQueuedSynchronizer
 import java.io.Serializable
+import java.lang.Deprecated
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
@@ -833,25 +834,6 @@ private class TaskFiberDefault<T> : TaskFiber<T> {
             is State.Completed -> current.outcome
             is State.Active, is State.Cancelled -> null
         }
-
-    override fun joinBlocking() {
-        tryJoinBlockingTimed(null)
-    }
-
-    override fun tryJoinBlockingTimed(timeout: Duration?): Boolean {
-        val latch = AwaitSignal()
-        val runnable = Runnable { latch.signal() }
-        val token = joinAsync(runnable)
-        return try {
-            if (timeout == null) latch.await() else latch.await(timeout)
-            true
-        } catch (e: InterruptedException) {
-            token.cancel()
-            throw e
-        } catch (e: TimeoutException) {
-            false
-        }
-    }
 
     override fun joinAsync(onComplete: Runnable): Cancellable {
         while (true) {

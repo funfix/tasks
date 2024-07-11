@@ -50,6 +50,7 @@ public class TaskFromBlockingFutureTest {
         assertTrue(name.get().startsWith("es-sample-"));
     }
 
+    @SuppressWarnings("KotlinInternalInJava")
     @Test
     void loomHappyPath() throws ExecutionException, InterruptedException {
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
@@ -93,7 +94,7 @@ public class TaskFromBlockingFutureTest {
     }
 
     @Test
-    void builderCanBeCancelled() throws InterruptedException, ExecutionException {
+    void builderCanBeCancelled() throws InterruptedException, ExecutionException, TimeoutException {
         Objects.requireNonNull(es);
 
         final var wasStarted = new CountDownLatch(1);
@@ -113,7 +114,7 @@ public class TaskFromBlockingFutureTest {
 
         TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");
         fiber.cancel();
-        assertTrue(fiber.tryJoinBlockingTimed(TimedAwait.TIMEOUT));
+        fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
 
         try {
             Objects.requireNonNull(fiber.outcome()).getOrThrow();
@@ -123,7 +124,7 @@ public class TaskFromBlockingFutureTest {
     }
 
     @Test
-    void futureCanBeCancelled() throws InterruptedException, ExecutionException {
+    void futureCanBeCancelled() throws InterruptedException, ExecutionException, TimeoutException {
         Objects.requireNonNull(es);
 
         final var latch = new CountDownLatch(1);
@@ -141,7 +142,7 @@ public class TaskFromBlockingFutureTest {
 
         wasStarted.await();
         fiber.cancel();
-        assertTrue(fiber.tryJoinBlockingTimed(TimedAwait.TIMEOUT));
+        fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
 
         try {
             Objects.requireNonNull(fiber.outcome()).getOrThrow();
