@@ -15,7 +15,7 @@ import java.util.stream.Stream;
 public interface Fiber extends Cancellable {
     Cancellable joinAsync(Runnable onComplete);
 
-    default void joinTimed(Duration timeout) throws InterruptedException, TimeoutException {
+    default void joinBlockingTimed(Duration timeout) throws InterruptedException, TimeoutException {
         final var latch = new AwaitSignal();
         final var token = joinAsync(latch::signal);
         try {
@@ -26,7 +26,7 @@ public interface Fiber extends Cancellable {
         }
     }
 
-    default void join() throws InterruptedException {
+    default void joinBlocking() throws InterruptedException {
         final var latch = new AwaitSignal();
         final var token = joinAsync(latch::signal);
         try {

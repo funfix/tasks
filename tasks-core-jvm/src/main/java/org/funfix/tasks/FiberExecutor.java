@@ -9,9 +9,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.funfix.tasks.ThreadPools.sharedIO;
 
 @NullMarked
-public interface FiberExecutor {
-    Cancellable invoke(Runnable command, @Nullable Runnable onComplete);
-    Fiber execute(Runnable command);
+public interface FiberExecutor extends Executor {
+    Cancellable executeCancellable(Runnable command, @Nullable Runnable onComplete);
+    Fiber executeFiber(Runnable command);
+
+    default Cancellable executeCancellable(Runnable command) {
+        return executeCancellable(command, null);
+    }
 
     static FiberExecutor fromThreadFactory(ThreadFactory factory) {
         return FiberExecutorDefault.fromThreadFactory(factory);
@@ -34,28 +38,48 @@ interface RunnableExecuteFun {
 
 @NullMarked
 final class FiberExecutorDefault implements FiberExecutor {
+    private final Executor _executor;
     private final RunnableExecuteFun _executeFun;
 
-    public FiberExecutorDefault(RunnableExecuteFun execute) {
+    public FiberExecutorDefault(
+            Executor executor,
+            RunnableExecuteFun execute
+    ) {
+        _executor = executor;
         _executeFun = execute;
     }
 
     @Override
-    public Cancellable invoke(Runnable command, @Nullable Runnable onComplete) {
+    public void execute(Runnable command) {
+        _executor.execute(command);
+    }
+
+    @Override
+    public Cancellable executeCancellable(Runnable command, @Nullable Runnable onComplete) {
         return _executeFun.invoke(command, onComplete);
     }
 
     @Override
-    public Fiber execute(Runnable command) {
+    public Fiber executeFiber(Runnable command) {
         return SimpleFiber.create(_executeFun, command);
     }
 
     public static FiberExecutor fromThreadFactory(ThreadFactory factory) {
-        return new FiberExecutorDefault(new RunnableExecuteFunViaThreadFactory(factory));
+        final Executor executor = (command) -> {
+            final var t = factory.newThread(command);
+            t.start();
+        };
+        return new FiberExecutorDefault(
+                executor,
+                new RunnableExecuteFunViaThreadFactory(factory)
+        );
     }
 
     public static FiberExecutor fromExecutor(Executor executor) {
-        return new FiberExecutorDefault(new RunnableExecuteFunViaExecutor(executor));
+        return new FiberExecutorDefault(
+                executor,
+                new RunnableExecuteFunViaExecutor(executor)
+        );
     }
 
     @Nullable
