@@ -16,3 +16,5 @@ jobs:
         run: ./gradlew -PbuildRelease=true build publish --no-daemon -i
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
