@@ -73,53 +73,63 @@ public interface CompletionCallback<T> extends Serializable {
 
 @NullMarked
 final class ProtectedCompletionCallback<T> implements CompletionCallback<T>, Runnable {
-    private @Nullable AtomicBoolean isWaiting = new AtomicBoolean(true);
-    private @Nullable Outcome<T> outcome;
-    private @Nullable CompletionCallback<T> listener;
+    private final AtomicBoolean isWaiting = new AtomicBoolean(true);
+    private final CompletionCallback<T> listener;
+
+    private @Nullable T successValue;
+    private @Nullable Throwable failureCause;
+    private boolean isCancelled = false;
 
     private ProtectedCompletionCallback(final CompletionCallback<T> listener) {
         this.listener = listener;
     }
 
+    @SuppressWarnings("DataFlowIssue")
     @Override
     public void run() {
-        final var outcome = this.outcome;
-        final var listener = this.listener;
-        if (outcome != null && listener != null) {
-            listener.onCompletion(outcome);
-            // For GC purposes; but it doesn't really matter if we nullify these or not
-            this.outcome = null;
-            this.listener = null;
+        if (this.failureCause != null) {
+            listener.onFailure(this.failureCause);
+        } else if (this.isCancelled) {
+            listener.onCancel();
+        } else {
+            listener.onSuccess(this.successValue);
         }
+        // For GC purposes; but it doesn't really matter if we nullify these or not
+        this.successValue = null;
+        this.failureCause = null;
+        this.isCancelled = false;
     }
 
     @Override
     public void onSuccess(final T value) {
-        this.onCompletion(new Outcome.Succeeded<>(value));
+        if (isWaiting.getAndSet(false)) {
+            this.successValue = value;
+            // Trampolined execution is needed because, with chained tasks,
+            // we might end up with a stack overflow
+            Trampoline.execute(this);
+        }
     }
 
     @Override
     public void onFailure(final Throwable e) {
-        this.onCompletion(new Outcome.Failed<>(e));
+        UncaughtExceptionHandler.logOrRethrowException(e);
+        if (isWaiting.getAndSet(false)) {
+            this.failureCause = e;
+            // Trampolined execution is needed because, with chained tasks,
+            // we might end up with a stack overflow
+            Trampoline.execute(this);
+        } else {
+            UncaughtExceptionHandler.logOrRethrowException(e);
+        }
     }
 
     @Override
     public void onCancel() {
-        this.onCompletion(Outcome.cancelled());
-    }
-
-    @Override
-    public void onCompletion(final Outcome<T> outcome) {
-        final var ref = this.isWaiting;
-        if (ref != null && ref.getAndSet(false)) {
-            this.outcome = outcome;
+        if (isWaiting.getAndSet(false)) {
+            this.isCancelled = true;
             // Trampolined execution is needed because, with chained tasks,
             // we might end up with a stack overflow
             Trampoline.execute(this);
-            // For GC purposes; but it doesn't really matter if we nullify this or not
-            this.isWaiting = null;
-        } else if (outcome instanceof final Outcome.Failed<T> failed) {
-            UncaughtExceptionHandler.logOrRethrowException(failed.exception());
         }
     }
 

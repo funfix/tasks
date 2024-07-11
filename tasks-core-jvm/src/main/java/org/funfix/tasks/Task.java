@@ -35,6 +35,7 @@ public final class Task<T> {
         try {
             return asyncFun.invoke(cb, executor);
         } catch (final Throwable e) {
+            UncaughtExceptionHandler.rethrowIfFatal(e);
             cb.onFailure(e);
             return Cancellable.EMPTY;
         }
@@ -210,6 +211,7 @@ public final class Task<T> {
                 try {
                     cancel.set(fun.invoke(callback, executor));
                 } catch (final Throwable e) {
+                    UncaughtExceptionHandler.rethrowIfFatal(e);
                     callback.onFailure(e);
                 }
             });
@@ -246,6 +248,7 @@ public final class Task<T> {
                     final var token = fun.invoke(callback, executor);
                     cancel.set(token);
                 } catch (final Throwable e) {
+                    UncaughtExceptionHandler.rethrowIfFatal(e);
                     callback.onFailure(e);
                 }
             });
@@ -390,6 +393,7 @@ final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer imp
 
     @Override
     public void onFailure(final Throwable e) {
+        UncaughtExceptionHandler.rethrowIfFatal(e);
         if (!isDone.getAndSet(true)) {
             error = e;
             releaseShared(1);

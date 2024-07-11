@@ -59,6 +59,7 @@ final class TaskFiberDefault<T> implements TaskFiber<T> {
 
         @Override
         public void onFailure(final Throwable e) {
+            UncaughtExceptionHandler.rethrowIfFatal(e);
             signalComplete(Outcome.failed(e));
         }
 
@@ -69,6 +70,9 @@ final class TaskFiberDefault<T> implements TaskFiber<T> {
 
         @Override
         public void onCompletion(final Outcome<T> outcome) {
+            if (outcome instanceof final Outcome.Failed<?> failed) {
+                UncaughtExceptionHandler.rethrowIfFatal(failed.exception());
+            }
             signalComplete(outcome);
         }
     };
