@@ -39,7 +39,8 @@ public class AwaitSignalTest {
             t.start();
             wasStarted.await();
             latch.signal();
-            assertTrue(t.join(Duration.ofSeconds(5)));
+            t.join(TimedAwait.TIMEOUT.toMillis());
+            assertFalse(t.isAlive(), "isAlive");
             assertFalse(hasError.get());
         }
     }
@@ -57,7 +58,8 @@ public class AwaitSignalTest {
         });
         t.start();
         t.interrupt();
-        assertTrue(t.join(Duration.ofSeconds(5)));
+        t.join(TimedAwait.TIMEOUT.toMillis());
+        assertFalse(t.isAlive(), "isAlive");
         assertTrue(wasInterrupted.get());
     }
 }
