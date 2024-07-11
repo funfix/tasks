@@ -4,47 +4,214 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.AbstractQueuedSynchronizer;
+import java.util.stream.Stream;
 
-/**
- * Represents a {@link Task} that has started execution and is running
- * concurrently.
- *
- * @param <T> is the type of the value that the task will complete with
- */
 @NullMarked
-public interface Fiber<T, E extends Exception> extends Cancellable {
-    /**
-     * @return the {@link Outcome} of the task, if it has completed,
-     * or `null` if the task is still running.
-     */
-    @Nullable Outcome<T, E> outcome();
-
-    /**
-     * Blocks the current thread until the result is available.
-     *
-     * @throws InterruptedException if the current thread was interrupted;
-     * however, the concurrent task will still be running. Interrupting a `join`
-     * does not cancel the task. For that, use [cancel].
-     */
-    void joinBlocking() throws InterruptedException;
-
-    /**
-     * Blocks the current thread until the result is available or
-     * the given {@code timeout} is reached.
-     *
-     * @param timeout the maximum time to wait
-     *
-     * @throws InterruptedException if the current thread was interrupted;
-     * however, the interruption of the current thread does not interrupt the
-     * fiber.
-     *
-     * @return {@code true} if the task has completed, {@code false} if the
-     * timeout was reached
-     */
-    boolean joinBlockingTimed(@Nullable Duration timeout) throws InterruptedException;
-
-    /**
-     * Invokes the given `Runnable` when the task completes.
-     */
+public interface Fiber extends Cancellable {
     Cancellable joinAsync(Runnable onComplete);
+
+    default void joinTimed(Duration timeout) throws InterruptedException, TimeoutException {
+        final var latch = new AwaitSignal();
+        final var token = joinAsync(latch::signal);
+        try {
+            latch.await(timeout);
+        } catch (final InterruptedException | TimeoutException e) {
+            token.cancel();
+            throw e;
+        }
+    }
+
+    default void join() throws InterruptedException {
+        final var latch = new AwaitSignal();
+        final var token = joinAsync(latch::signal);
+        try {
+            latch.await();
+        } finally {
+            token.cancel();
+        }
+    }
+
+    default CancellableFuture<@Nullable Void> joinAsync() {
+        final var  p = new CompletableFuture<@Nullable Void>();
+        final var token = joinAsync(() -> p.complete(null));
+        final Cancellable cRef = () -> {
+            try { token.cancel(); }
+            finally { p.cancel(false); }
+        };
+        return new CancellableFuture<>(cRef, p);
+    }
+}
+
+@NullMarked
+final class SimpleFiber implements Fiber {
+    private final AtomicReference<State> stateRef = new AtomicReference<>(State.START);
+
+    @Override
+    public Cancellable joinAsync(Runnable onComplete) {
+        while (true) {
+            final var current = stateRef.get();
+            if (current instanceof State.Active || current instanceof State.Cancelled) {
+                final var update = current.addListener(onComplete);
+                if (stateRef.compareAndSet(current, update)) {
+                    return removeListenerCancellable(onComplete);
+                }
+            } else {
+                Trampoline.execute(onComplete);
+                return Cancellable.EMPTY;
+            }
+        }
+    }
+
+    @Override
+    public void cancel() {
+        while (true) {
+            final var current = stateRef.get();
+            if (current instanceof State.Active active) {
+                if (stateRef.compareAndSet(current, new State.Cancelled(active.listeners))) {
+                    if (active.token != null) {
+                        active.token.cancel();
+                    }
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
+    }
+
+    public void signalComplete() {
+        while (true) {
+            final var current = stateRef.get();
+            if (current instanceof State.Active || current instanceof State.Cancelled) {
+                if (stateRef.compareAndSet(current, new State.Completed())) {
+                    current.triggerListeners();
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
+    }
+
+    public void registerCancel(Cancellable token) {
+        while (true) {
+            final var current = stateRef.get();
+            if (current instanceof State.Active active) {
+                if (active.token != null) {
+                    throw new IllegalStateException("Already registered a cancel token");
+                }
+                final var update = new State.Active(active.listeners, token);
+                if (stateRef.compareAndSet(current, update)) {
+                    return;
+                }
+            } else if (current instanceof State.Cancelled) {
+                token.cancel();
+                return;
+            } else {
+                return;
+            }
+        }
+    }
+
+    private Cancellable removeListenerCancellable(Runnable listener) {
+        return () -> {
+            while (true) {
+                final var current = stateRef.get();
+                if (current instanceof State.Active || current instanceof State.Cancelled) {
+                    final var update = current.removeListener(listener);
+                    if (stateRef.compareAndSet(current, update)) {
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            }
+        };
+    }
+
+    sealed interface State {
+        record Active(List<Runnable> listeners, @Nullable Cancellable token) implements State {}
+        record Cancelled(List<Runnable> listeners) implements State {}
+        record Completed() implements State {}
+
+        default void triggerListeners() {
+            if (this instanceof Active ref)
+                for (var listener : ref.listeners) {
+                    Trampoline.execute(listener);
+                }
+            else if (this instanceof Cancelled ref)
+                for (var listener : ref.listeners) {
+                    Trampoline.execute(listener);
+                }
+        }
+
+        default State addListener(Runnable listener) {
+            if (this instanceof Active ref) {
+                final var newList = Stream.concat(ref.listeners.stream(), Stream.of(listener)).toList();
+                return new Active(newList, ref.token);
+            } else if (this instanceof Cancelled ref) {
+                final var newList = Stream.concat(ref.listeners.stream(), Stream.of(listener)).toList();
+                return new Cancelled(newList);
+            } else {
+                return this;
+            }
+        }
+
+        default State removeListener(Runnable listener) {
+            if (this instanceof Active ref) {
+                final var newList = ref.listeners.stream().filter(l -> l != listener).toList();
+                return new Active(newList, ref.token);
+            } else if (this instanceof Cancelled ref) {
+                final var newList = ref.listeners.stream().filter(l -> l != listener).toList();
+                return new Cancelled(newList);
+            } else {
+                return this;
+            }
+        }
+
+        State START = new Active(List.of(), null);
+    }
+
+    public static Fiber create(
+            RunnableExecuteFun execute,
+            Runnable command
+    ) {
+        final var fiber = new SimpleFiber();
+        final var token = execute.invoke(command, fiber::signalComplete);
+        fiber.registerCancel(token);
+        return fiber;
+    }
+}
+
+@NullMarked
+final class AwaitSignal extends AbstractQueuedSynchronizer {
+    @Override
+    protected int tryAcquireShared(int arg) {
+        return getState() != 0 ? 1 : -1;
+    }
+
+    @Override
+    protected boolean tryReleaseShared(int arg) {
+        setState(1);
+        return true;
+    }
+
+    public void signal() {
+        releaseShared(1);
+    }
+
+    public void await() throws InterruptedException {
+        acquireSharedInterruptibly(1);
+    }
+
+    public void await(Duration timeout) throws InterruptedException, TimeoutException {
+        if (!tryAcquireSharedNanos(1, timeout.toNanos())) {
+            throw new TimeoutException("Timed out after " + timeout);
+        }
+    }
 }

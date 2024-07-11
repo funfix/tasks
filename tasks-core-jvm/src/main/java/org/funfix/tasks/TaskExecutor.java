@@ -10,7 +10,7 @@ import static org.funfix.tasks.ThreadPools.sharedIO;
 
 @NullMarked
 public interface TaskExecutor {
-    RunnableFiber execute(Runnable command);
+    Fiber execute(Runnable command);
 
     static TaskExecutor fromThreadFactory(ThreadFactory factory) {
         return TaskExecutorDefault.fromThreadFactory(factory);
@@ -39,8 +39,8 @@ final class TaskExecutorDefault implements TaskExecutor {
         _executeFun = execute;
     }
 
-    public RunnableFiber execute(Runnable command) {
-        return SimpleRunnableFiber.create(_executeFun, command);
+    public Fiber execute(Runnable command) {
+        return SimpleFiber.create(_executeFun, command);
     }
 
     public static TaskExecutor fromThreadFactory(ThreadFactory factory) {
@@ -188,3 +188,4 @@ final class RunnableExecuteFunViaExecutor implements RunnableExecuteFun {
         record Interrupting(AwaitSignal wasInterrupted) implements State {}
     }
 }
+
