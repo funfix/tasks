@@ -295,18 +295,21 @@ class Task<out T> private constructor(
         @JvmStatic
         fun <T> fromCompletionStage(builder: Callable<CompletionStage<out T>>): Task<T> =
             fromCancellableCompletionStage {
-                CancellableCompletionStage(builder.call(), Cancellable.EMPTY)
+                CancellableFuture(
+                    builder.call().toCompletableFuture(),
+                    Cancellable.EMPTY
+                )
             }
 
         /**
-         * Creates tasks from a builder of [CancellableCompletionStage].
+         * Creates tasks from a builder of [CancellableFuture].
          *
          * This is the recommended way to work with [CompletionStage] builders,
          * because cancelling such values (e.g., [CompletableFuture]) doesn't work
          * for cancelling the connecting computation. As such, the user should provide
          * an explicit [Cancellable] token that can be used.
          *
-         * @param builder is the [Callable] that will create the [CancellableCompletionStage]
+         * @param builder is the [Callable] that will create the [CancellableFuture]
          * value. It's a builder because [Task] values are cold values
          * (lazy, not executed yet).
          *
@@ -314,7 +317,7 @@ class Task<out T> private constructor(
          * the created `CancellableCompletionStage`
          */
         @JvmStatic
-        fun <T> fromCancellableCompletionStage(builder: Callable<CancellableCompletionStage<T>>): Task<T> =
+        fun <T> fromCancellableCompletionStage(builder: Callable<CancellableFuture<T>>): Task<T> =
             Task(TaskFromCompletionStage(builder))
 
         /**
@@ -703,7 +706,7 @@ private class TaskFromThreadFactory<out T>(
 }
 
 private class TaskFromCompletionStage<out T>(
-    private val builder: Callable<CancellableCompletionStage<T>>
+    private val builder: Callable<CancellableFuture<T>>
 ) : AsyncFun<T> {
 
     override fun invoke(callback: CompletionCallback<T>): Cancellable {
@@ -712,7 +715,7 @@ private class TaskFromCompletionStage<out T>(
             val future = builder.call()
             userError = false
 
-            future.completionStage.whenComplete { value, error ->
+            future.future.whenComplete { value, error ->
                 when (error) {
                     null ->
                         callback.onSuccess(value)
