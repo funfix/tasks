@@ -2,9 +2,26 @@ package org.funfix.tasks
 
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executor
+import java.util.concurrent.ThreadFactory
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.AbstractQueuedSynchronizer
+
+fun interface FiberExecutor {
+    fun execute(command: Runnable): Fiber
+
+    companion object {
+        fun fromThreadFactory(factory: ThreadFactory): FiberExecutor =
+            FiberExecutorDefault.fromThreadFactory(factory)
+
+        fun fromExecutor(executor: Executor): FiberExecutor =
+            FiberExecutorDefault.fromExecutor(executor)
+
+        fun shared(): FiberExecutor =
+            FiberExecutorDefault.shared()
+    }
+}
 
 interface Fiber : Cancellable {
     fun joinAsync(onComplete: Runnable): Cancellable
@@ -48,7 +65,7 @@ interface Fiber : Cancellable {
 }
 
 private fun interface RunnableExecuteFun {
-    operator fun invoke(command: Runnable, onComplete: Runnable): Cancellable
+    operator fun invoke(command: Runnable, onComplete: Runnable?): Cancellable
 }
 
 private class SimpleFiber : Fiber {
@@ -140,7 +157,7 @@ private class SimpleFiber : Fiber {
     sealed interface State {
         data class Active(val listeners: List<Runnable>, val token: Cancellable?) : State
         data class Cancelled(val listeners: List<Runnable>) : State
-        object Completed : State
+        data object Completed : State
 
         fun triggerListeners() =
             when (this) {
@@ -203,5 +220,134 @@ private class AwaitSignalForFiber : AbstractQueuedSynchronizer() {
         if (!tryAcquireSharedNanos(1, timeout.toNanos())) {
             throw TimeoutException("Timed out after $timeout")
         }
+    }
+}
+
+private class FiberExecutorDefault private constructor(
+    private val _executeFun: RunnableExecuteFun
+) : FiberExecutor {
+    override fun execute(command: Runnable): Fiber =
+        SimpleFiber.create(_executeFun, command)
+
+    companion object {
+        fun fromThreadFactory(factory: ThreadFactory): FiberExecutor =
+            FiberExecutorDefault(RunnableExecuteFunViaThreadFactory(factory))
+
+        fun fromExecutor(executor: Executor): FiberExecutor =
+            FiberExecutorDefault(RunnableExecuteFunViaExecutor(executor))
+
+        @Volatile
+        private var defaultFiberExecutorOlderJavaRef: FiberExecutor? = null
+        @Volatile
+        private var defaultFiberExecutorLoomRef: FiberExecutor? = null
+
+        fun shared(): FiberExecutor {
+            if (VirtualThreads.areVirtualThreadsSupported()) {
+                // Double-checked locking
+                if (defaultFiberExecutorLoomRef != null) return defaultFiberExecutorLoomRef!!
+                synchronized(this) {
+                    if (defaultFiberExecutorLoomRef != null) return defaultFiberExecutorLoomRef!!
+                    try {
+                        defaultFiberExecutorLoomRef = fromThreadFactory(VirtualThreads.factory())
+                        return defaultFiberExecutorLoomRef!!
+                    } catch (ignored: VirtualThreads.NotSupportedException) {}
+                }
+            }
+            // Double-checked locking
+            if (defaultFiberExecutorOlderJavaRef != null) return defaultFiberExecutorOlderJavaRef!!
+            synchronized(this) {
+                if (defaultFiberExecutorOlderJavaRef != null) return defaultFiberExecutorOlderJavaRef!!
+                defaultFiberExecutorOlderJavaRef = fromExecutor(ThreadPools.sharedIO())
+                return defaultFiberExecutorOlderJavaRef!!
+            }
+        }
+    }
+}
+
+private class RunnableExecuteFunViaThreadFactory(
+    private val _factory: ThreadFactory
+) : RunnableExecuteFun {
+    override fun invoke(command: Runnable, onComplete: Runnable?): Cancellable {
+        val t = _factory.newThread {
+            try {
+                command.run()
+            } finally {
+                onComplete?.run()
+            }
+        }
+        t.start()
+        return Cancellable { t.interrupt() }
+    }
+}
+
+private class RunnableExecuteFunViaExecutor(
+    private val _executor: Executor
+) : RunnableExecuteFun {
+    override fun invoke(command: Runnable, onComplete: Runnable?): Cancellable {
+        val state = AtomicReference<State>(State.NotStarted)
+        _executor.execute {
+            val running = State.Running(Thread.currentThread())
+            if (!state.compareAndSet(State.NotStarted, running)) {
+                onComplete?.run()
+                return@execute
+            }
+            try {
+                command.run()
+            } catch (e: Exception) {
+                UncaughtExceptionHandler.logException(e)
+            }
+
+            while (true) {
+                when (val current = state.get()) {
+                    is State.Running ->
+                        if (state.compareAndSet(current, State.Completed)) {
+                            onComplete?.run()
+                            return@execute
+                        }
+                    is State.Interrupting -> {
+                        if (state.compareAndSet(current, State.Completed)) {
+                            try {
+                                current.wasInterrupted.await()
+                            } catch (ignored: InterruptedException) {
+                            } finally {
+                                onComplete?.run()
+                            }
+                            return@execute
+                        }
+                    }
+                    State.Completed, State.NotStarted ->
+                        throw IllegalStateException("Invalid state: $current")
+                }
+            }
+        }
+        return Cancellable { triggerCancel(state) }
+    }
+
+    private fun triggerCancel(state: AtomicReference<State>) {
+        while (true) {
+            when (val current = state.get()) {
+                is State.NotStarted ->
+                    if (state.compareAndSet(current, State.Completed)) return
+                is State.Running -> {
+                    val wasInterrupted = AwaitSignalForFiber()
+                    if (state.compareAndSet(current, State.Interrupting(wasInterrupted))) {
+                        current.thread.interrupt()
+                        wasInterrupted.signal()
+                        return
+                    }
+                }
+                is State.Completed ->
+                    return
+                is State.Interrupting ->
+                    throw IllegalStateException("Invalid state: $current")
+            }
+        }
+    }
+
+    sealed interface State {
+        data object NotStarted : State
+        data class Running(val thread: Thread) : State
+        data class Interrupting(val wasInterrupted: AwaitSignalForFiber) : State
+        data object Completed : State
     }
 }

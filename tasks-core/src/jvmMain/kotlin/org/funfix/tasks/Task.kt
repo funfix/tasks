@@ -386,6 +386,16 @@ object ThreadPools {
         else
             sharedPlatformIO()
 
+    @JvmStatic
+    fun sharedThreadFactory(): ThreadFactory {
+        if (VirtualThreads.areVirtualThreadsSupported())
+            try {
+                return VirtualThreads.factory()
+            } catch (ignored: VirtualThreads.NotSupportedException) {
+            }
+        return platformThreadFactory("common-io")
+    }
+
     private fun sharedPlatformIO(): Executor {
         // Using double-checked locking to avoid synchronization
         if (sharedPlatformIORef == null) {
@@ -417,25 +427,24 @@ object ThreadPools {
      * On Java 21 and above, the created [Executor] will run tasks on virtual threads.
      * On older JVM versions, it returns a plain [Executors.newCachedThreadPool].
      */
-    @Suppress("DEPRECATION")
     @JvmStatic
-    fun unlimitedThreadPoolForIO(prefix: String): ExecutorService =
+    fun unlimitedThreadPoolForIO(prefix: String): ExecutorService {
         if (VirtualThreads.areVirtualThreadsSupported())
             try {
-                VirtualThreads.executorService("$prefix-virtual-")
+                return VirtualThreads.executorService("$prefix-virtual-")
             } catch (ignored: VirtualThreads.NotSupportedException) {
-                Executors.newCachedThreadPool { r ->
-                    Thread(r).apply {
-                        name = "$prefix-platform-$id"
-                    }
-                }
             }
-        else
-            Executors.newCachedThreadPool { r ->
-                Thread(r).apply {
-                    name = "$prefix-platform-$id"
-                }
+        return Executors.newCachedThreadPool(platformThreadFactory(prefix))
+    }
+
+    @Suppress("DEPRECATION")
+    private fun platformThreadFactory(prefix: String): ThreadFactory =
+        ThreadFactory { r ->
+            Thread(r).apply {
+                name = "$prefix-platform-$id"
+                isDaemon = true
             }
+        }
 }
 
 private class TaskCreate<out T>(
@@ -897,7 +906,7 @@ private class TaskFiberDefault<T> : TaskFiber<T> {
  * Internal utilities — not exposed yet, because lacking Loom support is only
  * temporary.
  */
-private object VirtualThreads {
+internal object VirtualThreads {
     private val newThreadPerTaskExecutorMethodHandle: MethodHandle?
 
     class NotSupportedException(feature: String) : Exception("$feature is not supported on this JVM")
