@@ -78,15 +78,15 @@ kotlin {
         withJava()
     }
 
-//    js(IR) {
-//        browser {
-//            testTask {
-//                useKarma {
-//                    useChromeHeadless()
-//                }
-//            }
-//        }
-//    }
+    js(IR) {
+        browser {
+            testTask {
+                useKarma {
+                    useChromeHeadless()
+                }
+            }
+        }
+    }
 
     sourceSets {
         val commonMain by getting {
@@ -110,8 +110,8 @@ kotlin {
             }
         }
 
-//        val jsMain by getting
-//        val jsTest by getting
+        val jsMain by getting
+        val jsTest by getting
     }
 
     tasks.withType<JavaCompile> {

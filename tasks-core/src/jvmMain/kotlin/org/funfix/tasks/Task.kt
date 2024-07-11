@@ -40,11 +40,11 @@ class Task<out T> private constructor(
     }
 
     /**
-     * Executes the task concurrently and returns a [Fiber] that can be
+     * Executes the task concurrently and returns a [TaskFiber] that can be
      * used to wait for the result or cancel the task.
      */
-    fun executeConcurrently(): Fiber<T> {
-        val fiber = TaskFiber<T>()
+    fun executeConcurrently(): TaskFiber<T> {
+        val fiber = TaskFiberDefault<T>()
         val token =
             try {
                 asyncFun(fiber.completionCallback)
@@ -737,7 +737,7 @@ private class TaskFromCompletionStage<out T>(
     }
 }
 
-private class TaskFiber<T> : Fiber<T> {
+private class TaskFiberDefault<T> : TaskFiber<T> {
     private sealed interface State<out T> {
         data class Active<out T>(val listeners: List<Runnable>, val token: Cancellable?) : State<T>
         data class Cancelled(val listeners: List<Runnable>) : State<Nothing>

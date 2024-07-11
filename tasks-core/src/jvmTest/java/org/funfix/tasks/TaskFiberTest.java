@@ -61,7 +61,7 @@ public class TaskFiberTest {
     public void canFail() throws InterruptedException, CancellationException {
         final var es = Executors.newCachedThreadPool();
         try {
-            final Fiber<?> fiber = Task
+            final TaskFiber<?> fiber = Task
                 .fromBlockingIO(es, () -> {
                     throw new RuntimeException("My Error");
                 }).executeConcurrently();
@@ -108,7 +108,7 @@ public class TaskFiberTest {
                 .fromBlockingIO(es, () -> TimedAwait.latchNoExpectations(latch))
                 .executeConcurrently();
 
-            final Fiber<Boolean> fiber2 = Task
+            final TaskFiber<Boolean> fiber2 = Task
                 .fromBlockingIO(es, () -> {
                     started.countDown();
                     fiber.joinBlocking();

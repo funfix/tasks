@@ -7,7 +7,7 @@ import java.time.Duration
  *
  * @param T is the type of the value that the task will complete with
  */
-interface Fiber<out T> : Cancellable {
+interface TaskFiber<out T> : Cancellable {
     /**
      * @return the [Outcome] of the task, if it has completed, or `null` if the
      * task is still running.
