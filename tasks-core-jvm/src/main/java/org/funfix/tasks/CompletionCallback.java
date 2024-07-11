@@ -11,9 +11,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>
  * A task can complete either successfully with a value, or with an exception,
  * or it can be cancelled.
- * </p><p>
+ * <p>
  * MUST BE idempotent AND thread-safe.
- * </p>
+ *
  * @param <T> is the type of the value that the task will complete with
  */
 @NullMarked

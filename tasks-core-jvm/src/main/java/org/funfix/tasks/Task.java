@@ -4,9 +4,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
@@ -71,7 +69,8 @@ public final class Task<T> {
                     executor == null ? FiberExecutor.shared() : executor
             );
             fiber.registerCancel(token);
-        } catch (final Exception e) {
+        } catch (final Throwable e) {
+            UncaughtExceptionHandler.rethrowIfFatal(e);
             fiber.onComplete.onFailure(e);
         }
         return fiber;
@@ -188,14 +187,13 @@ public final class Task<T> {
      *     <li>Idempotent cancellation</li>
      *     <li>Trampolined execution to avoid stack-overflows</li>
      * </ol>
-     * </p><p>
+     * <p>
      * The created task will execute the given function on the current thread, by
      * using a "trampoline" to avoid stack overflows. This may be useful if the
      * computation for initiating the async process is expected to be fast. However,
      * if the computation can block the current thread, it is recommended to use
      * {@link #createAsync(AsyncFun)} instead, which will initiate the computation
      * on a separate thread.
-     * </p>
      *
      * @param fun is the function that will trigger the async computation,
      *            injecting a callback that will be used to signal the result,
@@ -225,12 +223,11 @@ public final class Task<T> {
      * <p>
      * This is a variant of {@link #create(AsyncFun)}, which executes the given
      * builder function on the same thread.
-     * </p><p>
+     * <p>
      * NOTE: the thread is created via the injected {@link FiberExecutor} in the
      * "execute" methods (e.g., {@link #executeAsync(CompletionCallback, FiberExecutor)}).
      * Even when using on of the overloads, then {@link FiberExecutor#shared()}
      * is assumed.
-     * </p>
      *
      * @param fun is the function that will trigger the async computation
      * @return a new task that will execute the given builder function
@@ -279,6 +276,97 @@ public final class Task<T> {
                 // noinspection Convert2MethodRef
                 callback.onCancel();
             }));
+    }
+
+    /**
+     * Creates a task from a {@link Future} builder.
+     * <p>
+     * This is compatible with Java's interruption protocol and
+     * {@link Future#cancel(boolean)}, with the resulting task being cancellable.
+     * <p>
+     * <strong>NOTE:</strong> Use {@link #fromCompletionStage(Callable)} for directly
+     * converting {@link CompletableFuture} builders, because it is not possible to cancel
+     * such values, and the logic needs to reflect it. Better yet, use
+     * {@link #fromCancellableFuture(Callable)} for working with {@link CompletionStage}
+     * values that can be cancelled.
+     *
+     * @param builder is the {@link Callable} that will create the {@link Future} upon
+     *                this task's execution.
+     * @return a new task that will complete with the result of the created {@code Future}
+     *        upon execution
+     *
+     * @see #fromCompletionStage(Callable)
+     * @see #fromCancellableFuture(Callable)
+     */
+    public static <T> Task<T> fromBlockingFuture(final Callable<Future<? extends T>> builder) {
+        return fromBlockingIO(() -> {
+            final var f = builder.call();
+            try {
+                return f.get();
+            } catch (final ExecutionException e) {
+                if (e.getCause() instanceof final RuntimeException re) throw re;
+                throw e;
+            } catch (final InterruptedException e) {
+                f.cancel(true);
+                // We need to wait for this future to complete, as we need to
+                // try to back-pressure on its interruption (doesn't really work).
+                while (!f.isDone()) {
+                    // Ignore further interruption signals
+                    //noinspection ResultOfMethodCallIgnored
+                    Thread.interrupted();
+                    try { f.get(); }
+                    catch (final Exception ignored) {}
+                }
+                throw e;
+            }
+        });
+    }
+
+    /**
+     * Creates tasks from a builder of {@link CompletionStage}.
+     * <p>
+     * <strong>NOTE:</strong> {@code CompletionStage} isn't cancellable, and the
+     * resulting task should reflect this (i.e., on cancellation, the listener should not
+     * receive an `onCancel` signal until the `CompletionStage` actually completes).
+     * <p>
+     * Prefer using {@link #fromCancellableFuture(Callable)} for working with
+     * {@link CompletionStage} values that can be cancelled.
+     *
+     * @see #fromCancellableFuture(Callable)
+     *
+     * @param builder is the {@link Callable} that will create the {@link CompletionStage}
+     *                value. It's a builder because {@link Task} values are cold values
+     *                (lazy, not executed yet).
+     *
+     * @return a new task that upon execution will complete with the result of
+     * the created {@code CancellableCompletionStage}
+     */
+    public static <T> Task<T> fromCompletionStage(final Callable<CompletionStage<? extends T>> builder) {
+        return fromCancellableFuture(
+            () -> new CancellableFuture<T>(
+                builder.call().toCompletableFuture(), 
+                Cancellable.EMPTY
+            )
+        );
+    }
+
+    /**
+     * Creates tasks from a builder of {@link CancellableFuture}.
+     * <p>
+     * This is the recommended way to work with {@link CompletionStage} builders,
+     * because cancelling such values (e.g., {@link CompletableFuture}) doesn't work
+     * for cancelling the connecting computation. As such, the user should provide
+     * an explicit {@link Cancellable} token that can be used.
+     *
+     * @param builder is the {@link Callable} that will create the {@link CancellableFuture}
+     *                value. It's a builder because {@link Task} values are cold values
+     *                (lazy, not executed yet).
+     *
+     * @return a new task that upon execution will complete with the result of
+     * the created {@code CancellableCompletionStage}
+     */
+    public static <T> Task<T> fromCancellableFuture(final Callable<CancellableFuture<? extends T>> builder) {
+        return new Task<>(new TaskFromCancellableFuture<>(builder));
     }
 }
 
@@ -389,3 +477,58 @@ final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer imp
     }
 }
 
+@NullMarked
+final class TaskFromCancellableFuture<T> implements AsyncFun<T> {
+    private final Callable<? extends CancellableFuture<? extends T>> builder;
+
+    public TaskFromCancellableFuture(final Callable<? extends CancellableFuture<? extends T>> builder) {
+        this.builder = builder;
+    }
+
+    @Override
+    public Cancellable invoke(
+        final CompletionCallback<? super T> callback,
+        final FiberExecutor executor
+    ) {
+        final var cancel = new MutableCancellable();
+        executor.execute(() -> {
+            var isUserError = true;
+            try {
+                final var cancellableFuture = builder.call();
+                isUserError = false;
+                final var future = getCompletableFuture(cancellableFuture, callback);
+                final var cancellable = cancellableFuture.cancellable();
+                cancel.set(() -> {
+                    try { cancellable.cancel(); }
+                    finally { future.cancel(true); }
+                });
+            } catch (final Throwable e) {
+                UncaughtExceptionHandler.rethrowIfFatal(e);
+                if (isUserError) callback.onFailure(e);
+                else UncaughtExceptionHandler.logOrRethrowException(e);
+            }
+        });
+        return cancel;
+    }
+
+    private static <T> CompletableFuture<? extends T> getCompletableFuture(
+        final CancellableFuture<? extends T> cancellableFuture,
+        final CompletionCallback<? super T> callback
+    ) {
+        final var future = cancellableFuture.future();
+        future.whenComplete((value, error) -> {
+            if (error instanceof InterruptedException || error instanceof CancellationException) {
+                callback.onCancel();
+            } else if (error instanceof final ExecutionException e && e.getCause() != null) {
+                callback.onFailure(e.getCause());
+            } else if (error instanceof final CompletionException e && e.getCause() != null) {
+                callback.onFailure(error.getCause());
+            } else if (error != null) {
+                callback.onFailure(error);
+            } else {
+                callback.onSuccess(value);
+            }
+        });
+        return future;
+    }
+}

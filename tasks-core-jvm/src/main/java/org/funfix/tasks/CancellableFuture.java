@@ -5,6 +5,6 @@ import java.util.concurrent.CompletableFuture;
 
 @NullMarked
 public record CancellableFuture<T>(
-        Cancellable cancellable,
-        CompletableFuture<? extends T> future
+        CompletableFuture<? extends T> future,
+        Cancellable cancellable
 ) {}

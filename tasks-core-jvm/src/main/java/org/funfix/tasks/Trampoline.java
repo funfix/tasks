@@ -25,7 +25,7 @@ final class Trampoline {
             }
             try {
                 next.run();
-            } catch (final Exception e) {
+            } catch (final Throwable e) {
                 UncaughtExceptionHandler.logOrRethrowException(e);
             }
         }

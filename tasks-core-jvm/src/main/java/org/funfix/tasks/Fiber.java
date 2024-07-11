@@ -15,7 +15,7 @@ import java.util.stream.Stream;
 public interface Fiber extends Cancellable {
     Cancellable joinAsync(Runnable onComplete);
 
-    default void joinBlockingTimed(Duration timeout) throws InterruptedException, TimeoutException {
+    default void joinBlockingTimed(final Duration timeout) throws InterruptedException, TimeoutException {
         final var latch = new AwaitSignal();
         final var token = joinAsync(latch::signal);
         try {
@@ -37,13 +37,13 @@ public interface Fiber extends Cancellable {
     }
 
     default CancellableFuture<@Nullable Void> joinAsync() {
-        final var  p = new CompletableFuture<@Nullable Void>();
-        final var token = joinAsync(() -> p.complete(null));
+        final var  future = new CompletableFuture<@Nullable Void>();
+        final var token = joinAsync(() -> future.complete(null));
         final Cancellable cRef = () -> {
             try { token.cancel(); }
-            finally { p.cancel(false); }
+            finally { future.cancel(false); }
         };
-        return new CancellableFuture<>(cRef, p);
+        return new CancellableFuture<>(future, cRef);
     }
 }
 
@@ -52,7 +52,7 @@ final class SimpleFiber implements Fiber {
     private final AtomicReference<State> stateRef = new AtomicReference<>(State.START);
 
     @Override
-    public Cancellable joinAsync(Runnable onComplete) {
+    public Cancellable joinAsync(final Runnable onComplete) {
         while (true) {
             final var current = stateRef.get();
             if (current instanceof State.Active || current instanceof State.Cancelled) {
@@ -71,7 +71,7 @@ final class SimpleFiber implements Fiber {
     public void cancel() {
         while (true) {
             final var current = stateRef.get();
-            if (current instanceof State.Active active) {
+            if (current instanceof final State.Active active) {
                 if (stateRef.compareAndSet(current, new State.Cancelled(active.listeners))) {
                     if (active.token != null) {
                         active.token.cancel();
@@ -98,10 +98,10 @@ final class SimpleFiber implements Fiber {
         }
     }
 
-    public void registerCancel(Cancellable token) {
+    public void registerCancel(final Cancellable token) {
         while (true) {
             final var current = stateRef.get();
-            if (current instanceof State.Active active) {
+            if (current instanceof final State.Active active) {
                 if (active.token != null) {
                     throw new IllegalStateException("Already registered a cancel token");
                 }
@@ -118,7 +118,7 @@ final class SimpleFiber implements Fiber {
         }
     }
 
-    private Cancellable removeListenerCancellable(Runnable listener) {
+    private Cancellable removeListenerCancellable(final Runnable listener) {
         return () -> {
             while (true) {
                 final var current = stateRef.get();
@@ -140,21 +140,21 @@ final class SimpleFiber implements Fiber {
         record Completed() implements State {}
 
         default void triggerListeners() {
-            if (this instanceof Active ref)
-                for (var listener : ref.listeners) {
+            if (this instanceof final Active ref)
+                for (final var listener : ref.listeners) {
                     Trampoline.execute(listener);
                 }
-            else if (this instanceof Cancelled ref)
-                for (var listener : ref.listeners) {
+            else if (this instanceof final Cancelled ref)
+                for (final var listener : ref.listeners) {
                     Trampoline.execute(listener);
                 }
         }
 
-        default State addListener(Runnable listener) {
-            if (this instanceof Active ref) {
+        default State addListener(final Runnable listener) {
+            if (this instanceof final Active ref) {
                 final var newList = Stream.concat(ref.listeners.stream(), Stream.of(listener)).toList();
                 return new Active(newList, ref.token);
-            } else if (this instanceof Cancelled ref) {
+            } else if (this instanceof final Cancelled ref) {
                 final var newList = Stream.concat(ref.listeners.stream(), Stream.of(listener)).toList();
                 return new Cancelled(newList);
             } else {
@@ -162,11 +162,11 @@ final class SimpleFiber implements Fiber {
             }
         }
 
-        default State removeListener(Runnable listener) {
-            if (this instanceof Active ref) {
+        default State removeListener(final Runnable listener) {
+            if (this instanceof final Active ref) {
                 final var newList = ref.listeners.stream().filter(l -> l != listener).toList();
                 return new Active(newList, ref.token);
-            } else if (this instanceof Cancelled ref) {
+            } else if (this instanceof final Cancelled ref) {
                 final var newList = ref.listeners.stream().filter(l -> l != listener).toList();
                 return new Cancelled(newList);
             } else {
@@ -178,8 +178,8 @@ final class SimpleFiber implements Fiber {
     }
 
     public static Fiber create(
-            RunnableExecuteFun execute,
-            Runnable command
+        final RunnableExecuteFun execute,
+        final Runnable command
     ) {
         final var fiber = new SimpleFiber();
         final var token = execute.invoke(command, fiber::signalComplete);
@@ -191,12 +191,12 @@ final class SimpleFiber implements Fiber {
 @NullMarked
 final class AwaitSignal extends AbstractQueuedSynchronizer {
     @Override
-    protected int tryAcquireShared(int arg) {
+    protected int tryAcquireShared(final int arg) {
         return getState() != 0 ? 1 : -1;
     }
 
     @Override
-    protected boolean tryReleaseShared(int arg) {
+    protected boolean tryReleaseShared(final int arg) {
         setState(1);
         return true;
     }
@@ -209,7 +209,7 @@ final class AwaitSignal extends AbstractQueuedSynchronizer {
         acquireSharedInterruptibly(1);
     }
 
-    public void await(Duration timeout) throws InterruptedException, TimeoutException {
+    public void await(final Duration timeout) throws InterruptedException, TimeoutException {
         if (!tryAcquireSharedNanos(1, timeout.toNanos())) {
             throw new TimeoutException("Timed out after " + timeout);
         }
