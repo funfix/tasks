@@ -1,9 +1,14 @@
 package org.funfix.tasks
 
-@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-actual object UncaughtExceptionHandler {
+/**
+ * Logs an uncaught exception.
+ *
+ * On top of the JVM, this function will use the default uncaught exception
+ * handler of the current thread. On top of JS, it will use `console.log`.
+ */
+object UncaughtExceptionHandler {
     @JvmStatic
-    actual fun logException(t: Throwable) {
+    fun logException(t: Throwable) {
         val thread = Thread.currentThread()
         val logger: Thread.UncaughtExceptionHandler =
             thread.uncaughtExceptionHandler
