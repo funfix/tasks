@@ -9,19 +9,20 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.funfix.tasks.ThreadPools.sharedIO;
 
 @NullMarked
-public interface TaskExecutor {
+public interface FiberExecutor {
+    Cancellable invoke(Runnable command, @Nullable Runnable onComplete);
     Fiber execute(Runnable command);
 
-    static TaskExecutor fromThreadFactory(ThreadFactory factory) {
-        return TaskExecutorDefault.fromThreadFactory(factory);
+    static FiberExecutor fromThreadFactory(ThreadFactory factory) {
+        return FiberExecutorDefault.fromThreadFactory(factory);
     }
 
-    static TaskExecutor fromExecutor(Executor executor) {
-        return TaskExecutorDefault.fromExecutor(executor);
+    static FiberExecutor fromExecutor(Executor executor) {
+        return FiberExecutorDefault.fromExecutor(executor);
     }
 
-    static TaskExecutor shared() {
-        return TaskExecutorDefault.shared();
+    static FiberExecutor shared() {
+        return FiberExecutorDefault.shared();
     }
 }
 
@@ -32,36 +33,42 @@ interface RunnableExecuteFun {
 }
 
 @NullMarked
-final class TaskExecutorDefault implements TaskExecutor {
+final class FiberExecutorDefault implements FiberExecutor {
     private final RunnableExecuteFun _executeFun;
 
-    public TaskExecutorDefault(RunnableExecuteFun execute) {
+    public FiberExecutorDefault(RunnableExecuteFun execute) {
         _executeFun = execute;
     }
 
+    @Override
+    public Cancellable invoke(Runnable command, @Nullable Runnable onComplete) {
+        return _executeFun.invoke(command, onComplete);
+    }
+
+    @Override
     public Fiber execute(Runnable command) {
         return SimpleFiber.create(_executeFun, command);
     }
 
-    public static TaskExecutor fromThreadFactory(ThreadFactory factory) {
-        return new TaskExecutorDefault(new RunnableExecuteFunViaThreadFactory(factory));
+    public static FiberExecutor fromThreadFactory(ThreadFactory factory) {
+        return new FiberExecutorDefault(new RunnableExecuteFunViaThreadFactory(factory));
     }
 
-    public static TaskExecutor fromExecutor(Executor executor) {
-        return new TaskExecutorDefault(new RunnableExecuteFunViaExecutor(executor));
+    public static FiberExecutor fromExecutor(Executor executor) {
+        return new FiberExecutorDefault(new RunnableExecuteFunViaExecutor(executor));
     }
 
     @Nullable
-    private static volatile TaskExecutor defaultTaskExecutorOlderJavaRef;
+    private static volatile FiberExecutor defaultFiberExecutorOlderJavaRef;
     @Nullable
-    private static volatile TaskExecutor defaultTaskExecutorLoomRef;
+    private static volatile FiberExecutor defaultFiberExecutorLoomRef;
 
-    public static TaskExecutor shared() {
+    public static FiberExecutor shared() {
         if (VirtualThreads.areVirtualThreadsSupported()) {
-            var ref = defaultTaskExecutorLoomRef;
+            var ref = defaultFiberExecutorLoomRef;
             if (ref == null)
-                synchronized (TaskExecutor.class) {
-                    ref = defaultTaskExecutorLoomRef;
+                synchronized (FiberExecutor.class) {
+                    ref = defaultFiberExecutorLoomRef;
                     if (ref == null)
                         try {
                             ref = fromThreadFactory(VirtualThreads.factory());
@@ -70,18 +77,18 @@ final class TaskExecutorDefault implements TaskExecutor {
                     if (ref == null) {
                         ref = fromExecutor(sharedIO());
                     }
-                    defaultTaskExecutorLoomRef = ref;
+                    defaultFiberExecutorLoomRef = ref;
                 }
             return ref;
         } else {
-            var ref = defaultTaskExecutorOlderJavaRef;
+            var ref = defaultFiberExecutorOlderJavaRef;
             if (ref == null)
-                synchronized (TaskExecutor.class) {
-                    ref = defaultTaskExecutorOlderJavaRef;
+                synchronized (FiberExecutor.class) {
+                    ref = defaultFiberExecutorOlderJavaRef;
                     if (ref == null) {
                         ref = fromExecutor(sharedIO());
                     }
-                    defaultTaskExecutorOlderJavaRef = ref;
+                    defaultFiberExecutorOlderJavaRef = ref;
                 }
             return ref;
         }

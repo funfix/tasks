@@ -14,11 +14,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @NullMarked
-class TaskExecutorFromExecutorTest {
+class FiberExecutorFromExecutorTest {
     final int repeatCount = 1000;
     @Nullable AutoCloseable closeable = null;
     @Nullable
-    TaskExecutor taskExecutor = null;
+    FiberExecutor fiberExecutor = null;
 
     @BeforeEach
     void setUp() {
@@ -29,20 +29,20 @@ class TaskExecutorFromExecutorTest {
             return t;
         });
         closeable = es::shutdown;
-        taskExecutor = TaskExecutor.fromExecutor(es);
+        fiberExecutor = FiberExecutor.fromExecutor(es);
     }
 
     @AfterEach
     void tearDown() throws Exception {
         final var c = closeable;
         closeable = null;
-        taskExecutor = null;
+        fiberExecutor = null;
         if (c != null) c.close();
     }
 
     @Test
     void happyPathExecuteThenJoinAsync() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.taskExecutor);
+        final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final var latch = new CountDownLatch(1);
@@ -58,7 +58,7 @@ class TaskExecutorFromExecutorTest {
 
     @Test
     void happyPathExecuteThenJoinTimed() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.taskExecutor);
+        final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
@@ -72,7 +72,7 @@ class TaskExecutorFromExecutorTest {
 
     @Test
     void happyPathExecuteThenJoin() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.taskExecutor);
+        final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
@@ -86,7 +86,7 @@ class TaskExecutorFromExecutorTest {
 
     @Test
     void happyPathExecuteThenJoinFuture() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.taskExecutor);
+        final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
@@ -100,7 +100,7 @@ class TaskExecutorFromExecutorTest {
 
     @Test
     void interruptedThenJoinAsync() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.taskExecutor);
+        final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final var awaitCancellation = new CountDownLatch(1);
@@ -123,7 +123,7 @@ class TaskExecutorFromExecutorTest {
 
     @Test
     void joinAsyncIsInterruptible() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.taskExecutor);
+        final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final var onComplete = new CountDownLatch(2);
@@ -148,7 +148,7 @@ class TaskExecutorFromExecutorTest {
 
     @Test
     void joinFutureIsInterruptible() throws InterruptedException, TimeoutException, ExecutionException {
-        final var runtime = Objects.requireNonNull(this.taskExecutor);
+        final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final var onComplete = new CountDownLatch(2);
@@ -178,7 +178,7 @@ class TaskExecutorFromExecutorTest {
 
     @Test
     void cancelAfterExecution() throws InterruptedException, TimeoutException {
-        final var runtime = Objects.requireNonNull(this.taskExecutor);
+        final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final var latch = new CountDownLatch(1);
@@ -191,12 +191,12 @@ class TaskExecutorFromExecutorTest {
 
 }
 
-class TaskExecutorFromThreadFactoryTest extends TaskExecutorFromExecutorTest {
+class FiberExecutorFromThreadFactoryTest extends FiberExecutorFromExecutorTest {
     @BeforeEach
     @Override
     void setUp() {
         this.closeable = null;
-        this.taskExecutor = TaskExecutor.fromThreadFactory(r -> {
+        this.fiberExecutor = FiberExecutor.fromThreadFactory(r -> {
             final var t = new Thread(r);
             t.setDaemon(true);
             t.setName("test-thread-factory-" + t.getId());
@@ -209,22 +209,22 @@ class TaskExecutorFromThreadFactoryTest extends TaskExecutorFromExecutorTest {
     void tearDown() {}
 }
 
-class TaskExecutorDefaultOlderJavaTest extends TaskExecutorFromExecutorTest {
+class FiberExecutorDefaultOlderJavaTest extends FiberExecutorFromExecutorTest {
     @BeforeEach
     @Override
     void setUp() {
         this.closeable = SysProp.withVirtualThreads(false);
-        this.taskExecutor = TaskExecutor.shared();
+        this.fiberExecutor = FiberExecutor.shared();
         assertFalse(VirtualThreads.areVirtualThreadsSupported());
     }
 }
 
-class TaskExecutorDefaultJava21Test extends TaskExecutorFromExecutorTest {
+class FiberExecutorDefaultJava21Test extends FiberExecutorFromExecutorTest {
     @BeforeEach
     @Override
     void setUp() {
         this.closeable = SysProp.withVirtualThreads(true);
-        this.taskExecutor = TaskExecutor.shared();
+        this.fiberExecutor = FiberExecutor.shared();
         assumeTrue(VirtualThreads.areVirtualThreadsSupported());
     }
 }

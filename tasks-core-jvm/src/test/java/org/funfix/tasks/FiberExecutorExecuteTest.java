@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @NullMarked
-public abstract class TaskExecutorExecuteTest {
+public abstract class FiberExecutorExecuteTest {
     @Nullable
     protected RunnableExecuteFun runnableExecuteFun;
 
@@ -97,8 +97,8 @@ public abstract class TaskExecutorExecuteTest {
 }
 
 @NullMarked
-class TaskExecutorExecuteViaThreadFactoryTest extends TaskExecutorExecuteTest {
-    public TaskExecutorExecuteViaThreadFactoryTest() {
+class FiberExecutorExecuteViaThreadFactoryTest extends FiberExecutorExecuteTest {
+    public FiberExecutorExecuteViaThreadFactoryTest() {
         runnableExecuteFun = new RunnableExecuteFunViaThreadFactory(
                 r -> {
                     final var t = new Thread(r);
@@ -111,7 +111,7 @@ class TaskExecutorExecuteViaThreadFactoryTest extends TaskExecutorExecuteTest {
 }
 
 @NullMarked
-class TaskExecutorExecuteViaExecutorTest extends TaskExecutorExecuteTest {
+class FiberExecutorExecuteViaExecutorTest extends FiberExecutorExecuteTest {
     @Nullable
     private ExecutorService service;
 
