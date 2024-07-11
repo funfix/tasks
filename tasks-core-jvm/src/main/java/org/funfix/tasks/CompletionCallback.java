@@ -15,10 +15,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * MUST BE idempotent AND thread-safe.
  * </p>
  * @param <T> is the type of the value that the task will complete with
- * @param <E> is the type of the checked exception that the task may fail with
  */
 @NullMarked
-public interface CompletionCallback<T, E extends Exception> extends Serializable {
+public interface CompletionCallback<T> extends Serializable {
     /**
      * Must be called when the task completes successfully.
      *
@@ -27,60 +26,43 @@ public interface CompletionCallback<T, E extends Exception> extends Serializable
     void onSuccess(T value);
 
     /**
-     * Must be called when the task completes with the parameterized checked
-     * exception.
+     * Must be called when the task completes with an exception.
      *
-     * @param e is the checked exception that the task failed with
+     * @param e is the exception that the task failed with
      */
-    void onTypedFailure(E e);
-
-    /**
-     * Must be called when the task completes with a runtime exception.
-     *
-     * @param e is the runtime exception that the task failed with
-     */
-    void onRuntimeFailure(RuntimeException e);
+    void onFailure(Throwable e);
 
     /**
      * Must be called when the task is cancelled.
      */
-    void onCancellation();
+    void onCancel();
 
     /**
      * Signals a final {@link Outcome} to this listener.
      */
-    default void onCompletion(final Outcome<? extends T, ? extends E> outcome) {
-        if (outcome instanceof final Outcome.Success<? extends T, ? extends E> succeeded) {
+    default void onCompletion(final Outcome<T> outcome) {
+        if (outcome instanceof final Outcome.Succeeded<T> succeeded) {
             onSuccess(succeeded.value());
-        } else if (outcome instanceof final Outcome.TypedFailure<? extends T, ? extends E> failed) {
-            onTypedFailure(failed.exception());
-        } else if (outcome instanceof final Outcome.RuntimeFailure<? extends T, ? extends E> failed) {
-            onRuntimeFailure(failed.exception());
+        } else if (outcome instanceof final Outcome.Failed<T> failed) {
+            onFailure(failed.exception());
         } else {
-            onCancellation();
+            onCancel();
         }
     }
 
     /**
      * @return a {@code CompletionListener} that does nothing.
      */
-    static <T, E extends Exception> CompletionCallback<T, E> empty() {
-        return new CompletionCallback<>() {
+    static <T> CompletionCallback<T> empty() {
+        return new CompletionCallback<T>() {
             @Override
-            public void onSuccess(T value) {}
-
+            public void onSuccess(final T value) { }
             @Override
-            public void onTypedFailure(E e) {
+            public void onCancel() {}
+            @Override
+            public void onFailure(final Throwable e) {
                 UncaughtExceptionHandler.logException(e);
             }
-
-            @Override
-            public void onRuntimeFailure(RuntimeException e) {
-                UncaughtExceptionHandler.logException(e);
-            }
-
-            @Override
-            public void onCancellation() {}
         };
     }
 
@@ -94,20 +76,18 @@ public interface CompletionCallback<T, E extends Exception> extends Serializable
      * @param listener is the listener to protect
      * @return a protected version of the given listener
      */
-    static <T, E extends Exception> CompletionCallback<T, E> protect(
-            final CompletionCallback<? super T, ? super E> listener
-    ) {
+    static <T> CompletionCallback<T> protect(final CompletionCallback<T> listener) {
         return new ProtectedCompletionHandler<>(listener);
     }
 }
 
 @NullMarked
-final class ProtectedCompletionHandler<T, E extends Exception> implements CompletionCallback<T, E>, Runnable {
+final class ProtectedCompletionHandler<T> implements CompletionCallback<T>, Runnable {
     private @Nullable AtomicBoolean isWaiting = new AtomicBoolean(true);
-    private @Nullable Outcome<? extends T, ? extends E> outcome;
-    private @Nullable CompletionCallback<? super T, ? super E> listener;
+    private @Nullable Outcome<T> outcome;
+    private @Nullable CompletionCallback<T> listener;
 
-    ProtectedCompletionHandler(final CompletionCallback<? super T, ? super E> listener) {
+    ProtectedCompletionHandler(final CompletionCallback<T> listener) {
         this.listener = listener;
     }
 
@@ -125,26 +105,21 @@ final class ProtectedCompletionHandler<T, E extends Exception> implements Comple
 
     @Override
     public void onSuccess(final T value) {
-        this.onCompletion(Outcome.success(value));
+        this.onCompletion(new Outcome.Succeeded<>(value));
     }
 
     @Override
-    public void onTypedFailure(E e) {
-        this.onCompletion(Outcome.typedFailure(e));
+    public void onFailure(final Throwable e) {
+        this.onCompletion(new Outcome.Failed<>(e));
     }
 
     @Override
-    public void onRuntimeFailure(RuntimeException e) {
-        this.onCompletion(Outcome.runtimeFailure(e));
+    public void onCancel() {
+        this.onCompletion(Outcome.cancelled());
     }
 
     @Override
-    public void onCancellation() {
-        this.onCompletion(Outcome.cancellation());
-    }
-
-    @Override
-    public void onCompletion(Outcome<? extends T, ? extends E> outcome) {
+    public void onCompletion(final Outcome<T> outcome) {
         final var ref = this.isWaiting;
         if (ref != null && ref.getAndSet(false)) {
             this.outcome = outcome;
@@ -153,9 +128,7 @@ final class ProtectedCompletionHandler<T, E extends Exception> implements Comple
             Trampoline.execute(this);
             // For GC purposes; but it doesn't really matter if we nullify this or not
             this.isWaiting = null;
-        } else if (outcome instanceof final Outcome.RuntimeFailure<? extends T, ? extends E> failed) {
-            UncaughtExceptionHandler.logException(failed.exception());
-        } else if (outcome instanceof final Outcome.TypedFailure<? extends T, ? extends E> failed) {
+        } else if (outcome instanceof Outcome.Failed<T> failed) {
             UncaughtExceptionHandler.logException(failed.exception());
         }
     }

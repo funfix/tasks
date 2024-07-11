@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @NullMarked
-public abstract class FiberExecutorExecuteTest {
+abstract class FiberExecutorExecuteTest {
     @Nullable
     protected RunnableExecuteFun runnableExecuteFun;
 

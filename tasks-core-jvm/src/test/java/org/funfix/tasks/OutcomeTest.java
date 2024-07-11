@@ -3,6 +3,8 @@ package org.funfix.tasks;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.ExecutionException;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -10,11 +12,11 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class OutcomeTest {
     @Test
     void outcomeBuildSuccess() {
-        final var outcome1 = new Outcome.Success<>("value");
-        final Outcome<String, ?> outcome2 = Outcome.success("value");
+        final var outcome1 = new Outcome.Succeeded<>("value");
+        final Outcome<String> outcome2 = Outcome.succeeded("value");
         assertEquals(outcome1, outcome2);
 
-        if (outcome2 instanceof Outcome.Success<String, ?> succeeded) {
+        if (outcome2 instanceof Outcome.Succeeded<String> succeeded) {
             assertEquals("value", succeeded.value());
         } else {
             fail("Expected Success");
@@ -29,41 +31,12 @@ public class OutcomeTest {
     }
 
     @Test
-    void outcomeBuildTypedFailure() {
-        final var e = new SampleException("error");
-        final var outcome1 = new Outcome.TypedFailure<>(e);
-        final Outcome<?, SampleException> outcome2 = Outcome.typedFailure(e);
+    void outcomeBuildCancelled() throws ExecutionException {
+        final var outcome1 = new Outcome.Cancelled<>();
+        final Outcome<String> outcome2 = Outcome.cancelled();
         assertEquals(outcome1, outcome2);
 
-        if (outcome2 instanceof Outcome.TypedFailure<?, SampleException> failed) {
-            assertEquals("error", failed.exception().getMessage());
-        } else {
-            fail("Expected Failure");
-        }
-
-        try {
-            outcome1.getOrThrow();
-            fail("Expected ExecutionException");
-        } catch (SampleException received) {
-            assertEquals(received, e);
-        }
-        try {
-            outcome2.getOrThrow();
-            fail("Expected ExecutionException");
-        } catch (SampleException received) {
-            assertEquals(received, e);
-        } catch (CancellationException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
-    @Test
-    void outcomeBuildCancelled() throws SampleException {
-        final var outcome1 = new Outcome.Cancellation<>();
-        final Outcome<String, SampleException> outcome2 = Outcome.cancellation();
-        assertEquals(outcome1, outcome2);
-
-        if (!(outcome2 instanceof Outcome.Cancellation<?,?>)) {
+        if (!(outcome2 instanceof Outcome.Cancelled<String>)) {
             fail("Expected Canceled");
         }
 
@@ -80,13 +53,13 @@ public class OutcomeTest {
     }
 
     @Test
-    void outcomeBuildRuntimeFailure() throws SampleException {
+    void outcomeBuildRuntimeFailure() {
         final var e = new RuntimeException("error");
-        final var outcome1 = new Outcome.RuntimeFailure<>(e);
-        final Outcome<String, SampleException> outcome2 = Outcome.runtimeFailure(e);
+        final var outcome1 = new Outcome.Failed<>(e);
+        final Outcome<String> outcome2 = Outcome.failed(e);
         assertEquals(outcome1, outcome2);
 
-        if (outcome2 instanceof Outcome.RuntimeFailure<?, ?> failed) {
+        if (outcome2 instanceof Outcome.Failed<?> failed) {
             assertEquals("error", failed.exception().getMessage());
         } else {
             fail("Expected Failure");
@@ -95,14 +68,14 @@ public class OutcomeTest {
         try {
             outcome1.getOrThrow();
             fail("Expected RuntimeException");
-        } catch (RuntimeException received) {
-            assertEquals(received, e);
+        } catch (ExecutionException received) {
+            assertEquals(received.getCause(), e);
         }
         try {
             outcome2.getOrThrow();
             fail("Expected RuntimeException");
-        } catch (RuntimeException received) {
-            assertEquals(received, e);
+        } catch (ExecutionException received) {
+            assertEquals(received.getCause(), e);
         } catch (CancellationException ex) {
             throw new RuntimeException(ex);
         }

@@ -9,6 +9,6 @@ import java.io.Serializable;
  */
 @NullMarked
 @FunctionalInterface
-public interface AsyncFun<T, E extends Exception> extends Serializable {
-    Cancellable invoke(CompletionCallback<? super T, ? super E> callback);
+public interface AsyncFun<T> extends Serializable {
+    Cancellable invoke(CompletionCallback<? super T> callback);
 }
