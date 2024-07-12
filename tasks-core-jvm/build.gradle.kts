@@ -1,11 +1,11 @@
+// Use the build script defined in buildSrc
+apply(from = rootProject.file("buildSrc/shared.gradle.kts"))
+
 plugins {
     java
     `maven-publish`
+    signing
     jacoco
-}
-
-repositories {
-    mavenCentral()
 }
 
 dependencies {

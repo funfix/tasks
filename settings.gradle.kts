@@ -18,7 +18,12 @@ dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
             // https://github.com/ben-manes/gradle-versions-plugin
-            plugin("versions", "com.github.ben-manes.versions").version("0.51.0")
+            plugin("versions", "com.github.ben-manes.versions")
+                .version("0.51.0")
+
+            // https://vanniktech.github.io/gradle-maven-publish-plugin/
+            plugin("publish", "com.vanniktech.maven.publish")
+                .version("0.29.0")
 
             // https://jspecify.dev/docs/start-here
             library("jspecify", "org.jspecify", "jspecify")
