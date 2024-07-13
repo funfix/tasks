@@ -116,7 +116,7 @@ private class ExecuteCancellableFunViaExecutor(
             }
             try {
                 command.run()
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 UncaughtExceptionHandler.logOrRethrow(e)
             }
 

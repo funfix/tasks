@@ -37,7 +37,7 @@ class Task<out T> private constructor(
     ): Cancellable {
         val protected = ProtectedCompletionCallback(callback)
         return try {
-            asyncFun(callback, executor ?: FiberExecutor.shared())
+            asyncFun(protected, executor ?: FiberExecutor.shared())
         } catch (e: Throwable) {
             UncaughtExceptionHandler.rethrowIfFatal(e)
             protected.onFailure(e)
