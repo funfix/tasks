@@ -17,8 +17,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 class FiberExecutorFromExecutorTest {
     final int repeatCount = 1000;
     @Nullable AutoCloseable closeable = null;
-    @Nullable
-    FiberExecutor fiberExecutor = null;
+    @Nullable FiberExecutor fiberExecutor = null;
 
     @BeforeEach
     void setUp() {
@@ -41,15 +40,13 @@ class FiberExecutorFromExecutorTest {
     }
 
     @Test
-    void happyPathExecuteThenJoinAsync() throws InterruptedException, TimeoutException {
+    void happyPathExecuteThenJoinAsync() throws InterruptedException {
         final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final var latch = new CountDownLatch(1);
             final boolean[] wasExecuted = { false };
-            final var fiber = runtime.executeFiber(() -> {
-                wasExecuted[0] = true;
-            });
+            final var fiber = runtime.executeFiber(() -> wasExecuted[0] = true);
             fiber.joinAsync(latch::countDown);
             TimedAwait.latchAndExpectCompletion(latch);
             assertTrue(wasExecuted[0], "wasExecuted");
@@ -62,23 +59,19 @@ class FiberExecutorFromExecutorTest {
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
-            final var fiber = runtime.executeFiber(() -> {
-                wasExecuted[0] = true;
-            });
+            final var fiber = runtime.executeFiber(() -> wasExecuted[0] = true);
             fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
             assertTrue(wasExecuted[0], "wasExecuted");
         }
     }
 
     @Test
-    void happyPathExecuteThenJoin() throws InterruptedException, TimeoutException {
+    void happyPathExecuteThenJoin() throws InterruptedException {
         final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
-            final var fiber = runtime.executeFiber(() -> {
-                wasExecuted[0] = true;
-            });
+            final var fiber = runtime.executeFiber(() -> wasExecuted[0] = true);
             fiber.joinBlocking();
             assertTrue(wasExecuted[0], "wasExecuted");
         }
@@ -90,16 +83,14 @@ class FiberExecutorFromExecutorTest {
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
-            final var fiber = runtime.executeFiber(() -> {
-                wasExecuted[0] = true;
-            });
+            final var fiber = runtime.executeFiber(() -> wasExecuted[0] = true);
             TimedAwait.future(fiber.joinAsync().future());
             assertTrue(wasExecuted[0], "wasExecuted");
         }
     }
 
     @Test
-    void interruptedThenJoinAsync() throws InterruptedException, TimeoutException {
+    void interruptedThenJoinAsync() throws InterruptedException {
         final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
@@ -122,7 +113,7 @@ class FiberExecutorFromExecutorTest {
     }
 
     @Test
-    void joinAsyncIsInterruptible() throws InterruptedException, TimeoutException {
+    void joinAsyncIsInterruptible() throws InterruptedException {
         final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
@@ -177,7 +168,7 @@ class FiberExecutorFromExecutorTest {
     }
 
     @Test
-    void cancelAfterExecution() throws InterruptedException, TimeoutException {
+    void cancelAfterExecution() throws InterruptedException {
         final var runtime = Objects.requireNonNull(this.fiberExecutor);
 
         for (int i = 0; i < repeatCount; i++) {
