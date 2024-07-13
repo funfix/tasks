@@ -34,8 +34,6 @@ abstract class BaseTaskCreateTest {
 
     @Test
     void successful() throws ExecutionException, InterruptedException, TimeoutException {
-        Objects.requireNonNull(executor);
-
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
@@ -47,7 +45,7 @@ abstract class BaseTaskCreateTest {
             return Cancellable.EMPTY;
         });
 
-        final String result = task.executeBlockingTimed(TimedAwait.TIMEOUT, executor);
+        final String result = task.executeBlockingTimed(TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", result);
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
         assertNull(reportedException.get(), "reportedException.get()");
@@ -55,8 +53,6 @@ abstract class BaseTaskCreateTest {
 
     @Test
     void failed() throws InterruptedException {
-        Objects.requireNonNull(executor);
-
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
         final Task<String> task = createTask((cb, executor) -> {
@@ -82,8 +78,6 @@ abstract class BaseTaskCreateTest {
 
     @Test
     void cancelled() throws InterruptedException, ExecutionException {
-        Objects.requireNonNull(executor);
-
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
@@ -169,7 +163,6 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
     @Test
     void java21Plus() throws ExecutionException, InterruptedException {
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
-        Objects.requireNonNull(executor);
 
         final Task<String> task = createTask((cb, executor) -> {
             cb.onSuccess(Thread.currentThread().getName());
@@ -184,7 +177,6 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
     @Test
     void olderJava() throws ExecutionException, InterruptedException {
         assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires older Java versions");
-        Objects.requireNonNull(executor);
 
         final Task<String> task = createTask((cb, executor) -> {
             cb.onSuccess(Thread.currentThread().getName());

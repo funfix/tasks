@@ -33,11 +33,11 @@ class Task<out T> private constructor(
      */
     fun executeAsync(
         callback: CompletionCallback<T>,
-        executor: FiberExecutor
+        executor: FiberExecutor?
     ): Cancellable {
         val protected = ProtectedCompletionCallback(callback)
         return try {
-            asyncFun(callback, executor)
+            asyncFun(callback, executor ?: FiberExecutor.shared())
         } catch (e: Throwable) {
             UncaughtExceptionHandler.rethrowIfFatal(e)
             protected.onFailure(e)
@@ -53,7 +53,7 @@ class Task<out T> private constructor(
      * @return a [Cancellable] that can be used to cancel a running task
      */
     fun executeAsync(callback: CompletionCallback<T>): Cancellable =
-        executeAsync(callback, FiberExecutor.shared())
+        executeAsync(callback, null)
 
     /**
      * Executes the task concurrently and returns a [TaskFiber] that can be
@@ -61,10 +61,10 @@ class Task<out T> private constructor(
      *
      * @param executor is the [FiberExecutor] that may be used to run the task
      */
-    fun executeConcurrently(executor: FiberExecutor): TaskFiber<T> {
+    fun executeConcurrently(executor: FiberExecutor?): TaskFiber<T> {
         val fiber = ExecutedTaskFiber<T>()
         try {
-            val token = asyncFun(fiber.onComplete, executor)
+            val token = asyncFun(fiber.onComplete, executor ?: FiberExecutor.shared())
             fiber.registerCancel(token)
         } catch (e: Throwable) {
             UncaughtExceptionHandler.rethrowIfFatal(e)
@@ -78,7 +78,7 @@ class Task<out T> private constructor(
      * as the executor.
      */
     fun executeConcurrently(): TaskFiber<T> =
-        executeConcurrently(FiberExecutor.shared())
+        executeConcurrently(null)
 
     /**
      * Executes the task and blocks until it completes, or the current
@@ -92,11 +92,11 @@ class Task<out T> private constructor(
      * always blocks for its interruption or completion.
      */
     @Throws(ExecutionException::class, InterruptedException::class)
-    fun executeBlocking(executor: FiberExecutor): T {
+    fun executeBlocking(executor: FiberExecutor?): T {
         val h = BlockingCompletionCallback<T>()
         val cancelToken =
             try {
-                asyncFun(h, executor)
+                asyncFun(h, executor ?: FiberExecutor.shared())
             } catch (e: Exception) {
                 h.onFailure(e)
                 Cancellable.EMPTY
@@ -109,7 +109,7 @@ class Task<out T> private constructor(
      * as the executor.
      */
     @Throws(ExecutionException::class, InterruptedException::class)
-    fun executeBlocking(): T = executeBlocking(FiberExecutor.shared())
+    fun executeBlocking(): T = executeBlocking(null)
 
     /**
      * Executes the task and blocks until it completes, or the timeout is reached,
@@ -126,11 +126,11 @@ class Task<out T> private constructor(
      * and this method does not returning until `onCancel` is signaled.
      */
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
-    fun executeBlockingTimed(timeout: Duration, executor: FiberExecutor): T {
+    fun executeBlockingTimed(timeout: Duration, executor: FiberExecutor?): T {
         val h = BlockingCompletionCallback<T>()
         val cancelToken =
             try {
-                asyncFun(h, executor)
+                asyncFun(h, executor ?: FiberExecutor.shared())
             } catch (e: Exception) {
                 h.onFailure(e)
                 Cancellable.EMPTY
@@ -144,7 +144,7 @@ class Task<out T> private constructor(
      */
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
     fun executeBlockingTimed(timeout: Duration): T =
-        executeBlockingTimed(timeout, FiberExecutor.shared())
+        executeBlockingTimed(timeout, null)
 
     companion object {
         /**
