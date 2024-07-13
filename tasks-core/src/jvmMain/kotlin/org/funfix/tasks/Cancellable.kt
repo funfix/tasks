@@ -21,7 +21,6 @@ fun interface Cancellable {
     fun cancel()
 
     companion object {
-        @JvmField val EMPTY: Cancellable =
-            Cancellable { }
+        @JvmField val EMPTY: Cancellable = Cancellable {}
     }
 }

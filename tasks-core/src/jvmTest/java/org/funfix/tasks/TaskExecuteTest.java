@@ -1,6 +1,5 @@
 package org.funfix.tasks;
 
-import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -8,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,9 +17,9 @@ public class TaskExecuteTest {
     @Test
     void executeAsyncWorksForSuccess() throws InterruptedException, CancellationException, ExecutionException {
         final var latch =
-            new CountDownLatch(1);
+                new CountDownLatch(1);
         final var outcome =
-            new AtomicReference<@Nullable Outcome<String>>(null);
+                new AtomicReference<@Nullable Outcome<String>>(null);
 
         final var task = Task.fromBlockingIO(() -> "Hello!");
         task.executeAsync(new CompletionCallback<>() {
@@ -31,7 +30,7 @@ public class TaskExecuteTest {
             }
 
             @Override
-            public void onFailure(@NotNull final Throwable e) {
+            public void onFailure(final Throwable e) {
                 outcome.set(Outcome.failed(e));
                 latch.countDown();
             }
@@ -51,11 +50,11 @@ public class TaskExecuteTest {
     @Test
     void executeAsyncWorksForFailure() throws InterruptedException, CancellationException {
         final var latch =
-            new CountDownLatch(1);
+                new CountDownLatch(1);
         final var outcome =
-            new AtomicReference<@Nullable Outcome<String>>(null);
+                new AtomicReference<@Nullable Outcome<String>>(null);
         final var expectedError =
-            new RuntimeException("Error");
+                new RuntimeException("Error");
 
         final var task = Task.<String>fromBlockingIO(() -> { throw expectedError; });
         task.executeAsync(new CompletionCallback<>() {
@@ -66,7 +65,7 @@ public class TaskExecuteTest {
             }
 
             @Override
-            public void onFailure(@NotNull final Throwable e) {
+            public void onFailure(final Throwable e) {
                 outcome.set(Outcome.failed(e));
                 latch.countDown();
             }
@@ -79,7 +78,7 @@ public class TaskExecuteTest {
         });
 
         TimedAwait.latchAndExpectCompletion(latch, "latch");
-        assertInstanceOf(Outcome.Failed.class, outcome.get());
+        assertInstanceOf(Outcome.Failed.class, outcome.get(), "outcome.get");
         try {
             Objects.requireNonNull(outcome.get()).getOrThrow();
             fail("Should have thrown an exception");
@@ -89,13 +88,13 @@ public class TaskExecuteTest {
     }
 
     @Test
-    void executeAsyncWorksForCancellation() throws InterruptedException, CancellationException {
+    void executeAsyncWorksForCancellation() throws InterruptedException {
         final var nonTermination =
-            new CountDownLatch(1);
+                new CountDownLatch(1);
         final var latch =
-            new CountDownLatch(1);
+                new CountDownLatch(1);
         final var outcome =
-            new AtomicReference<@Nullable Outcome<Object>>(null);
+                new AtomicReference<@Nullable Outcome<Object>>(null);
 
         final var task = Task.fromBlockingIO(() -> {
             nonTermination.await();
@@ -109,7 +108,7 @@ public class TaskExecuteTest {
             }
 
             @Override
-            public void onFailure(@NotNull final Throwable e) {
+            public void onFailure(final Throwable e) {
                 outcome.set(Outcome.failed(e));
                 latch.countDown();
             }
@@ -127,10 +126,10 @@ public class TaskExecuteTest {
     }
 
     @Test
-    void executeBlockingIsCancellable() throws InterruptedException {
+    void executeBlockingStackedIsCancellable() throws InterruptedException {
         final var started = new CountDownLatch(1);
         final var latch = new CountDownLatch(1);
-        final var wasInterrupted = new AtomicBoolean(false);
+        final var interruptedHits = new AtomicInteger(0);
 
         final var task = Task.fromBlockingIO(() -> {
             final var innerTask = Task.fromBlockingIO(() -> {
@@ -139,11 +138,16 @@ public class TaskExecuteTest {
                     latch.await();
                     return "Nooo";
                 } catch (final InterruptedException e) {
-                    wasInterrupted.set(true);
+                    interruptedHits.incrementAndGet();
                     throw e;
                 }
             });
-            return innerTask.executeBlocking();
+            try {
+                return innerTask.executeBlocking();
+            } catch (final InterruptedException e) {
+                interruptedHits.incrementAndGet();
+                throw e;
+            }
         });
 
         final var fiber = task.executeConcurrently();
@@ -153,6 +157,6 @@ public class TaskExecuteTest {
         fiber.joinBlocking();
 
         assertInstanceOf(Outcome.Cancelled.class, fiber.outcome());
-        assertTrue(wasInterrupted.get(), "wasInterrupted.get");
+        assertEquals(2, interruptedHits.get(), "interruptedHits.get");
     }
 }

@@ -8,12 +8,21 @@ package org.funfix.tasks
  */
 object UncaughtExceptionHandler {
     @JvmStatic
-    fun logException(t: Throwable) {
+    fun rethrowIfFatal(e: Throwable) {
+        when (e) {
+            is StackOverflowError -> return
+            is Error -> throw e
+        }
+    }
+
+    @JvmStatic
+    fun logOrRethrow(e: Throwable) {
+        rethrowIfFatal(e)
         val thread = Thread.currentThread()
         val logger: Thread.UncaughtExceptionHandler =
             thread.uncaughtExceptionHandler
                 ?: Thread.getDefaultUncaughtExceptionHandler()
                 ?: Thread.UncaughtExceptionHandler { _, e -> e.printStackTrace(System.err) }
-        logger.uncaughtException(thread, t)
+        logger.uncaughtException(thread, e)
     }
 }

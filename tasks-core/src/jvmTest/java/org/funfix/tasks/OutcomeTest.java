@@ -12,8 +12,8 @@ public class OutcomeTest {
         final var outcome2 = Outcome.succeeded("value");
         assertEquals(outcome1, outcome2);
 
-        if (outcome2 instanceof Outcome.Succeeded<String> succeeded) {
-            assertEquals("value", succeeded.value());
+        if (outcome2 instanceof Outcome.Succeeded<?>) {
+            assertEquals("value", ((Outcome.Succeeded<String>)outcome2).getValue());
         } else {
             fail("Expected Success");
         }
@@ -33,8 +33,11 @@ public class OutcomeTest {
         final var outcome2 = Outcome.failed(e);
         assertEquals(outcome1, outcome2);
 
-        if (outcome2 instanceof Outcome.Failed failed) {
-            assertEquals("error", failed.exception().getMessage());
+        if (outcome2 instanceof Outcome.Failed) {
+            assertEquals(
+                    "error",
+                    ((Outcome.Failed) outcome2).getException().getMessage()
+            );
         } else {
             fail("Expected Failure");
         }

@@ -1,6 +1,7 @@
 package org.funfix.tasks
 
-import java.time.Duration
+import org.funfix.tasks.internals.ExecutedFiber
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Represents a [Task] that has started execution and is running concurrently.

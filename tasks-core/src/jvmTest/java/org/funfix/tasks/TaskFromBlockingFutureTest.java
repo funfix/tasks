@@ -1,5 +1,6 @@
 package org.funfix.tasks;
 
+import org.funfix.tasks.internals.*;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -19,7 +20,6 @@ public class TaskFromBlockingFutureTest {
     @Nullable
     ExecutorService es;
 
-    @SuppressWarnings("deprecation")
     @BeforeEach
     void setup() {
         es = Executors.newCachedThreadPool(r -> {
@@ -40,14 +40,14 @@ public class TaskFromBlockingFutureTest {
         Objects.requireNonNull(es);
 
         final var name = new AtomicReference<>("");
-        final var task = Task.fromBlockingFuture(es, () -> {
+        final var task = Task.fromBlockingFuture(() -> {
             name.set(Thread.currentThread().getName());
             return es.submit(() -> "Hello, world!");
         });
 
         final var r = task.executeBlocking();
         assertEquals("Hello, world!", r);
-        assertTrue(name.get().startsWith("es-sample-"));
+        assertTrue(name.get().startsWith("common-io-"));
     }
 
     @SuppressWarnings("KotlinInternalInJava")
@@ -85,14 +85,15 @@ public class TaskFromBlockingFutureTest {
         Objects.requireNonNull(es);
         try {
             Task.fromBlockingFuture(() -> es.submit(() -> {
-                    throw new RuntimeException("Error");
-                }))
-                .executeBlocking();
+                        throw new RuntimeException("Error");
+                    }))
+                    .executeBlocking();
         } catch (final ExecutionException ex) {
             assertEquals("Error", ex.getCause().getMessage());
         }
     }
 
+    @SuppressWarnings("ReturnOfNull")
     @Test
     void builderCanBeCancelled() throws InterruptedException, ExecutionException, TimeoutException {
         Objects.requireNonNull(es);
@@ -101,16 +102,16 @@ public class TaskFromBlockingFutureTest {
         final var latch = new CountDownLatch(1);
 
         final var fiber = Task
-            .<Void>fromBlockingFuture(() -> {
-                wasStarted.countDown();
-                try {
-                    Thread.sleep(10000);
-                    return null;
-                } catch (final InterruptedException e) {
-                    latch.countDown();
-                    throw e;
-                }
-            }).executeConcurrently();
+                .fromBlockingFuture(() -> {
+                    wasStarted.countDown();
+                    try {
+                        Thread.sleep(10000);
+                        return null;
+                    } catch (final InterruptedException e) {
+                        latch.countDown();
+                        throw e;
+                    }
+                }).executeConcurrently();
 
         TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");
         fiber.cancel();
@@ -131,14 +132,14 @@ public class TaskFromBlockingFutureTest {
         final var wasStarted = new CountDownLatch(1);
 
         final var fiber = Task
-            .fromBlockingFuture(() -> es.submit(() -> {
-                wasStarted.countDown();
-                try {
-                    Thread.sleep(10000);
-                } catch (final InterruptedException e) {
-                    latch.countDown();
-                }
-            })).executeConcurrently();
+                .fromBlockingFuture(() -> es.submit(() -> {
+                    wasStarted.countDown();
+                    try {
+                        Thread.sleep(10000);
+                    } catch (final InterruptedException e) {
+                        latch.countDown();
+                    }
+                })).executeConcurrently();
 
         wasStarted.await();
         fiber.cancel();

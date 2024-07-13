@@ -20,7 +20,6 @@ sealed interface Outcome<out T> {
     /**
      * The concurrent job completed successfully with a `value`.
      */
-    @JvmRecord
     data class Succeeded<out T>(val value: T) : Outcome<T> {
         override fun getOrThrow(): T {
             return value
@@ -30,7 +29,6 @@ sealed interface Outcome<out T> {
     /**
      * The concurrent job failed with an `exception`.
      */
-    @JvmRecord
     data class Failed(val exception: Throwable) : Outcome<Nothing> {
         @Throws(ExecutionException::class)
         override fun getOrThrow(): Nothing {

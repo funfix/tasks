@@ -1,15 +1,14 @@
 package org.funfix.tasks
 
+import org.funfix.tasks.internals.ExecutedTaskFiber
+import org.funfix.tasks.internals.MutableCancellable
+import org.funfix.tasks.internals.ProtectedCompletionCallback
+import org.funfix.tasks.internals.Trampoline
 import java.time.Duration
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.AbstractQueuedSynchronizer
 import java.io.Serializable
-import java.lang.Deprecated
-import java.lang.invoke.MethodHandle
-import java.lang.invoke.MethodHandles
-import java.lang.invoke.MethodType
 
 /**
  * Represents a suspended computation that can be executed asynchronously.
@@ -19,7 +18,7 @@ import java.lang.invoke.MethodType
  * - [createAsync]
  * - [fromBlockingIO]
  * - [fromBlockingFuture]
- * - [fromCancellableCompletionStage]
+ * - [fromCancellableFuture]
  */
 class Task<out T> private constructor(
     private val asyncFun: AsyncFun<T>
@@ -28,34 +27,58 @@ class Task<out T> private constructor(
      * Executes the task asynchronously.
      *
      * @param callback will be invoked with the result when the task completes
+     * @param executor is the [FiberExecutor] that may be used to run the task
+     *
      * @return a [Cancellable] that can be used to cancel a running task
      */
-    fun executeAsync(callback: CompletionCallback<T>): Cancellable {
-        val protected = CompletionCallback.protect(callback)
+    fun executeAsync(
+        callback: CompletionCallback<T>,
+        executor: FiberExecutor
+    ): Cancellable {
+        val protected = ProtectedCompletionCallback(callback)
         return try {
-            asyncFun(callback)
-        } catch (e: Exception) {
+            asyncFun(callback, executor)
+        } catch (e: Throwable) {
+            UncaughtExceptionHandler.rethrowIfFatal(e)
             protected.onFailure(e)
             Cancellable.EMPTY
         }
     }
 
     /**
+     * Overload of [executeAsync] that uses [FiberExecutor.shared] as the executor.
+     *
+     * @param callback will be invoked with the result when the task completes
+     *
+     * @return a [Cancellable] that can be used to cancel a running task
+     */
+    fun executeAsync(callback: CompletionCallback<T>): Cancellable =
+        executeAsync(callback, FiberExecutor.shared())
+
+    /**
      * Executes the task concurrently and returns a [TaskFiber] that can be
      * used to wait for the result or cancel the task.
+     *
+     * @param executor is the [FiberExecutor] that may be used to run the task
      */
-    fun executeConcurrently(): TaskFiber<T> {
-        val fiber = TaskFiberDefault<T>()
-        val token =
-            try {
-                asyncFun(fiber.completionCallback)
-            } catch (e: Exception) {
-                fiber.completionCallback.onFailure(e)
-                Cancellable.EMPTY
-            }
-        fiber.registerCancel(token)
+    fun executeConcurrently(executor: FiberExecutor): TaskFiber<T> {
+        val fiber = ExecutedTaskFiber<T>()
+        try {
+            val token = asyncFun(fiber.onComplete, executor)
+            fiber.registerCancel(token)
+        } catch (e: Throwable) {
+            UncaughtExceptionHandler.rethrowIfFatal(e)
+            fiber.onComplete.onFailure(e)
+        }
         return fiber
     }
+
+    /**
+     * Overload of [executeConcurrently] that uses [FiberExecutor.shared]
+     * as the executor.
+     */
+    fun executeConcurrently(): TaskFiber<T> =
+        executeConcurrently(FiberExecutor.shared())
 
     /**
      * Executes the task and blocks until it completes, or the current
@@ -69,17 +92,24 @@ class Task<out T> private constructor(
      * always blocks for its interruption or completion.
      */
     @Throws(ExecutionException::class, InterruptedException::class)
-    fun executeBlocking(): T {
+    fun executeBlocking(executor: FiberExecutor): T {
         val h = BlockingCompletionCallback<T>()
         val cancelToken =
             try {
-                asyncFun(h)
+                asyncFun(h, executor)
             } catch (e: Exception) {
                 h.onFailure(e)
                 Cancellable.EMPTY
             }
         return h.await(cancelToken)
     }
+
+    /**
+     * Overload of [executeBlocking] that uses [FiberExecutor.shared]
+     * as the executor.
+     */
+    @Throws(ExecutionException::class, InterruptedException::class)
+    fun executeBlocking(): T = executeBlocking(FiberExecutor.shared())
 
     /**
      * Executes the task and blocks until it completes, or the timeout is reached,
@@ -96,11 +126,11 @@ class Task<out T> private constructor(
      * and this method does not returning until `onCancel` is signaled.
      */
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
-    fun executeBlockingTimed(timeout: Duration): T {
+    fun executeBlockingTimed(timeout: Duration, executor: FiberExecutor): T {
         val h = BlockingCompletionCallback<T>()
         val cancelToken =
             try {
-                asyncFun(h)
+                asyncFun(h, executor)
             } catch (e: Exception) {
                 h.onFailure(e)
                 Cancellable.EMPTY
@@ -108,31 +138,52 @@ class Task<out T> private constructor(
         return h.await(cancelToken, timeout)
     }
 
+    /**
+     * Overload of [executeBlockingTimed] that uses [FiberExecutor.shared]
+     * as the executor.
+     */
+    @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
+    fun executeBlockingTimed(timeout: Duration): T =
+        executeBlockingTimed(timeout, FiberExecutor.shared())
+
     companion object {
         /**
          * Creates a task from a builder function that, on evaluation, will have
          * same-thread execution.
          *
-         * Compared with creating a new task instance directly, this method ensures:
-         * 1. Safe/idempotent use of the listener
-         * 2. Idempotent cancellation
-         * 3. Trampolined execution to avoid stack-overflows
+         * This method ensures:
+         * 1. Idempotent cancellation
+         * 2. Trampolined execution to avoid stack-overflows
          *
-         * The created task will execute the given function on the current thread, by
-         * using a "trampoline" to avoid stack overflows. This may be useful if the
-         * computation for initiating the async process is expected to be fast. However,
-         * if the computation can block the current thread, it is recommended to use
-         * [createAsync] instead, which will initiate the computation
-         * on a separate thread.
+         * The created task will execute the given function on the current
+         * thread, by using a "trampoline" to avoid stack overflows. This may be
+         * useful if the computation for initiating the async process is
+         * expected to be fast. However, if the computation can block the
+         * current thread, it is recommended to use [createAsync] instead, which
+         * will initiate the computation on a separate thread.
          *
-         * @param builder is the function that will trigger the async computation,
-         * receiving a callback that will be used to signal the result.
+         * @param run is the function that will trigger the async
+         * computation, injecting a callback that will be used to signal the
+         * result, and an executor that can be used for creating additional
+         * threads.
          *
          * @return a new task that will execute the given builder function upon execution
+         * @see createAsync
          */
         @JvmStatic
-        fun <T> create(builder: AsyncFun<T>): Task<T> =
-            Task(TaskCreate(builder, null, null))
+        fun <T> create(run: AsyncFun<T>): Task<T> =
+            Task { callback, executor ->
+                val cancel = MutableCancellable()
+                Trampoline.execute {
+                    try {
+                        cancel.set(run.invoke(callback, executor))
+                    } catch (e: Throwable) {
+                        UncaughtExceptionHandler.rethrowIfFatal(e)
+                        callback.onFailure(e)
+                    }
+                }
+                cancel
+            }
 
         /**
          * Creates a task that, when executed, will execute the given asynchronous
@@ -141,163 +192,123 @@ class Task<out T> private constructor(
          * This is a variant of [create], which executes the given
          * builder function on the same thread.
          *
-         * @param es is the [Executor] to use for starting the async computation
-         * @param builder is the function that will trigger the async computation
-         * @return a new task that will execute the given builder function
+         * NOTE: The thread is created via the injected [FiberExecutor] in the
+         * "execute" methods (e.g., [executeAsync]). Even when using one of the overloads,
+         * then [FiberExecutor.shared] is assumed.
+         *
+         * @param run is the function that will trigger the async computation.
+         * @return a new task that will execute the given builder function.
+         *
+         * @see create
+         * @see FiberExecutor
          */
         @JvmStatic
-        fun <T> createAsync(es: Executor, builder: AsyncFun<T>): Task<T> =
-            Task(TaskCreate(builder, es, null))
-
-        /**
-         * Creates a task that, when executed, will execute the given asynchronous
-         * computation starting from a separate thread.
-         *
-         * This is a simplified version of [createAsync] that uses [ThreadPools.sharedIO] as the common thread-pool. This
-         * will use virtual threads on Java 21+.
-         *
-         * @param builder is the function that will trigger the async computation
-         * @return a new task that will execute the given builder function
-         */
-        @JvmStatic
-        fun <T> createAsync(builder: AsyncFun<T>): Task<T> =
-            if (VirtualThreads.areVirtualThreadsSupported())
-                try {
-                    createAsync(VirtualThreads.factory(), builder)
-                } catch (ignored: VirtualThreads.NotSupportedException) {
-                    createAsync(ThreadPools.sharedIO(), builder)
+        fun <T> createAsync(run: AsyncFun<T>): Task<T> =
+            Task { callback, executor ->
+                val cancel = MutableCancellable()
+                executor.execute {
+                    try {
+                        val token = run.invoke(callback, executor)
+                        cancel.set(token)
+                    } catch (e: Throwable) {
+                        UncaughtExceptionHandler.rethrowIfFatal(e)
+                        callback.onFailure(e)
+                    }
                 }
-            else
-                createAsync(ThreadPools.sharedIO(), builder)
-
-        /**
-         * Creates a task that, when executed, will execute the given asynchronous
-         * computation starting from a separate thread.
-         *
-         * This is a variant of [createAsync] that will
-         * use the given [ThreadFactory] for creating the thread, instead of
-         * using an [Executor]. The advantage of this method may be performance,
-         * in case virtual threads are supported, since there may be less synchronization
-         * overhead.
-         *
-         * @param factory is the [ThreadFactory] to use for creating the thread
-         * @param builder is the function that will trigger the async computation
-         * @return a new task that will execute the given builder function on a separate thread
-         */
-        @JvmStatic
-        fun <T> createAsync(factory: ThreadFactory, builder: AsyncFun<T>): Task<T> =
-            Task(TaskCreate(builder, null, factory))
+                cancel
+            }
 
         /**
          * Creates a task from a [DelayedFun] executing blocking IO.
-         *
-         * Similar to [fromBlockingIO], but uses
-         * the common thread-pool defined by [ThreadPools.sharedIO],
-         * which is using virtual threads on Java 21+.
-         *
-         * @param delayed is the blocking IO operation to execute
-         * @return a new task that will perform the blocking IO operation upon execution
          */
         @JvmStatic
-        fun <T> fromBlockingIO(delayed: DelayedFun<T>): Task<T> =
-            if (VirtualThreads.areVirtualThreadsSupported())
-                try {
-                    fromBlockingIO(VirtualThreads.factory(), delayed)
-                } catch (ignored: VirtualThreads.NotSupportedException) {
-                    fromBlockingIO(ThreadPools.sharedIO(), delayed)
-                }
-            else
-                fromBlockingIO(ThreadPools.sharedIO(), delayed)
-
-        /**
-         * Creates a task from a [DelayedFun] executing blocking IO
-         * asynchronously (on another thread).
-         *
-         * @param es is the [Executor] to use for executing the blocking IO operation
-         * @param delayed is the blocking IO operation to execute
-         * @return a new task that will perform the blocking IO operation upon execution
-         */
-        @JvmStatic
-        fun <T> fromBlockingIO(es: Executor, delayed: DelayedFun<T>): Task<T> =
-            Task(TaskFromExecutor(es, delayed))
-
-        /**
-         * Creates a task from a [DelayedFun] executing blocking IO, using a
-         * different thread created by the given [ThreadFactory].
-         *
-         * @param factory is the [ThreadFactory] to use for creating the thread
-         * @param delayed is the blocking IO operation to execute
-         * @return a new task that will perform the blocking IO operation upon execution
-         */
-        @JvmStatic
-        fun <T> fromBlockingIO(factory: ThreadFactory, delayed: DelayedFun<T>): Task<T> =
-            Task(TaskFromThreadFactory(factory, delayed))
-
-        /**
-         * Creates a task from a [Future] builder.
-         *
-         * This is similar to [fromBlockingFuture], but uses
-         * the common thread-pool defined by [ThreadPools.sharedIO], which is
-         * using virtual threads on Java 21+.
-         *
-         * @param builder is the [Callable] that will create the [Future] upon
-         * this task's execution.
-         * @return a new task that will complete with the result of the created `Future`
-         * upon execution
-         */
-        @JvmStatic
-        fun <T> fromBlockingFuture(builder: Callable<Future<out T>>): Task<T> =
-            fromBlockingFuture(ThreadPools.sharedIO(), builder)
-
-        /**
-         * Creates a task from a [Future] builder.
-         *
-         * This is compatible with Java's interruption protocol and
-         * [Future.cancel], with the resulting task being cancellable.
-         *
-         * @param builder is the [Callable] that will create the [Future] upon
-         * this task's execution.
-         * @return a new task that will complete with the result of the created `Future`
-         * upon execution
-         */
-        @JvmStatic
-        fun <T> fromBlockingFuture(es: Executor, builder: Callable<Future<out T>>): Task<T> =
-            fromBlockingIO(es) {
-                val f = builder.call()
-                try {
-                    f.get()
-                } catch (e: ExecutionException) {
-                    throw e.cause ?: e
-                } catch (e: InterruptedException) {
-                    f.cancel(true)
-                    while (!f.isDone) {
-                        Thread.interrupted()
+        fun <T> fromBlockingIO(run: DelayedFun<T>): Task<T> =
+            Task { callback, executor ->
+                executor.executeCancellable(
+                    {
                         try {
-                            f.get()
-                        } catch (ignored: Exception) {
+                            val result = run.invoke()
+                            callback.onSuccess(result)
+                        } catch (e: InterruptedException) {
+                            callback.onCancel()
+                        } catch (e: CancellationException) {
+                            callback.onCancel()
+                        } catch (e: Throwable) {
+                            UncaughtExceptionHandler.rethrowIfFatal(e)
+                            callback.onFailure(e)
                         }
+                    },
+                    {
+                        // This is a concurrent call that wouldn't be very safe
+                        // with a naive implementation of the CompletionCallback
+                        // (thankfully we protect the injected callback)
+                        // noinspection Convert2MethodRef
+                        callback.onCancel()
                     }
-                    throw e
+                )
+            }
+
+        /**
+         * Creates a task from a [Future] builder.
+         *
+         * This is compatible with Java's interruption protocol and [Future.cancel], with the resulting task being cancellable.
+         *
+         * **NOTE:** Use [fromCompletionStage] for directly converting [CompletableFuture] builders, because it is not possible to cancel
+         * such values, and the logic needs to reflect it. Better yet, use [fromCancellableFuture] for working with [CompletionStage]
+         * values that can be cancelled.
+         *
+         * @param builder is the [Callable] that will create the [Future] upon this task's execution.
+         * @return a new task that will complete with the result of the created `Future` upon execution
+         *
+         * @see fromCompletionStage
+         * @see fromCancellableFuture
+         */
+        @JvmStatic
+        fun <T> fromBlockingFuture(builder: DelayedFun<Future<out T>>): Task<T> =
+            fromBlockingIO {
+                builder.invoke().let { future ->
+                    try {
+                        future.get()
+                    } catch (e: ExecutionException) {
+                        throw e.cause ?: e
+                    } catch (e: InterruptedException) {
+                        future.cancel(true)
+                        // We need to wait for this future to complete, as we need to
+                        // try to back-pressure on its interruption (doesn't really work).
+                        while (!future.isDone) {
+                            // Ignore further interruption signals
+                            Thread.interrupted()
+                            try {
+                                future.get()
+                            } catch (ignored: Exception) {
+                            }
+                        }
+                        throw e
+                    }
                 }
             }
 
         /**
          * Creates tasks from a builder of [CompletionStage].
          *
-         * Prefer using [fromCancellableCompletionStage] for working with
-         * [CompletionStage] values that can be cancelled.
+         * **NOTE:** `CompletionStage` isn't cancellable, and the resulting task should reflect this
+         * (i.e., on cancellation, the listener should not receive an `onCancel` signal until the
+         * `CompletionStage` actually completes).
+         *
+         * Prefer using [fromCancellableFuture] for working with [CompletionStage] values that can be cancelled.
          *
          * @param builder is the [Callable] that will create the [CompletionStage]
-         * value. It's a builder because [Task] values are cold values
-         * (lazy, not executed yet).
+         * value. It's a builder because [Task] values are cold values (lazy, not executed yet).
+         *
          * @return a new task that upon execution will complete with the result of
          * the created `CancellableCompletionStage`
+         * @see fromCancellableFuture
          */
         @JvmStatic
-        fun <T> fromCompletionStage(builder: Callable<CompletionStage<out T>>): Task<T> =
-            fromCancellableCompletionStage {
+        fun <T> fromCompletionStage(builder: DelayedFun<CompletionStage<out T>>): Task<T> =
+            fromCancellableFuture {
                 CancellableFuture(
-                    builder.call().toCompletableFuture(),
+                    builder.invoke().toCompletableFuture(),
                     Cancellable.EMPTY
                 )
             }
@@ -306,20 +317,20 @@ class Task<out T> private constructor(
          * Creates tasks from a builder of [CancellableFuture].
          *
          * This is the recommended way to work with [CompletionStage] builders,
-         * because cancelling such values (e.g., [CompletableFuture]) doesn't work
-         * for cancelling the connecting computation. As such, the user should provide
-         * an explicit [Cancellable] token that can be used.
+         * because cancelling such values (e.g., [CompletableFuture]) doesn't
+         * work for cancelling the connecting computation. As such, the user
+         * should provide an explicit [Cancellable] token that can be used.
          *
-         * @param builder is the [Callable] that will create the [CancellableFuture]
-         * value. It's a builder because [Task] values are cold values
-         * (lazy, not executed yet).
+         * @param run is the [Callable] that will create the [CancellableFuture]
+         * value. It's a builder because [Task] values are cold values (lazy,
+         * not executed yet).
          *
          * @return a new task that upon execution will complete with the result of
          * the created `CancellableCompletionStage`
          */
         @JvmStatic
-        fun <T> fromCancellableCompletionStage(builder: Callable<CancellableFuture<T>>): Task<T> =
-            Task(TaskFromCompletionStage(builder))
+        fun <T> fromCancellableFuture(run: DelayedFun<CancellableFuture<T>>): Task<T> =
+            Task(TaskFromCancellableFuture(run))
 
         /**
          * Creates a task that will complete, successfully, with the given value.
@@ -329,7 +340,7 @@ class Task<out T> private constructor(
          */
         @JvmStatic
         fun <T> successful(value: T): Task<T> =
-            Task { listener ->
+            Task { listener, _ ->
                 listener.onSuccess(value)
                 Cancellable.EMPTY
             }
@@ -342,7 +353,7 @@ class Task<out T> private constructor(
          */
         @JvmStatic
         fun <T> failed(e: Throwable): Task<T> =
-            Task { listener ->
+            Task { listener, _ ->
                 listener.onFailure(e)
                 Cancellable.EMPTY
             }
@@ -354,133 +365,10 @@ class Task<out T> private constructor(
          */
         @JvmStatic
         fun <T> cancelled(): Task<T> =
-            Task { listener ->
+            Task { listener, _ ->
                 listener.onCancel()
                 Cancellable.EMPTY
             }
-    }
-}
-
-/**
- * Provides utilities for working with [Executor] instances, optimized
- * for common use-cases.
- */
-object ThreadPools {
-    @Volatile
-    private var sharedVirtualIORef: Executor? = null
-
-    @Volatile
-    private var sharedPlatformIORef: Executor? = null
-
-    /**
-     * Returns a shared [Executor] meant for blocking I/O tasks.
-     * The reference gets lazily initialized on the first call.
-     *
-     * Uses [unlimitedThreadPoolForIO] to create the executor,
-     * which will use virtual threads on Java 21+, or a plain
-     * [Executors.newCachedThreadPool] on older JVM versions.
-     */
-    @JvmStatic
-    fun sharedIO(): Executor =
-        if (VirtualThreads.areVirtualThreadsSupported())
-            sharedVirtualIO()
-        else
-            sharedPlatformIO()
-
-    @JvmStatic
-    fun sharedThreadFactory(): ThreadFactory {
-        if (VirtualThreads.areVirtualThreadsSupported())
-            try {
-                return VirtualThreads.factory()
-            } catch (ignored: VirtualThreads.NotSupportedException) {
-            }
-        return platformThreadFactory("common-io")
-    }
-
-    private fun sharedPlatformIO(): Executor {
-        // Using double-checked locking to avoid synchronization
-        if (sharedPlatformIORef == null) {
-            synchronized(ThreadPools::class.java) {
-                if (sharedPlatformIORef == null) {
-                    sharedPlatformIORef = unlimitedThreadPoolForIO("common-io")
-                }
-            }
-        }
-        return sharedPlatformIORef!!
-    }
-
-    private fun sharedVirtualIO(): Executor {
-        // Using double-checked locking to avoid synchronization
-        if (sharedVirtualIORef == null) {
-            synchronized(ThreadPools::class.java) {
-                if (sharedVirtualIORef == null) {
-                    sharedVirtualIORef = unlimitedThreadPoolForIO("common-io")
-                }
-            }
-        }
-        return sharedVirtualIORef!!
-    }
-
-    /**
-     * Creates an [Executor] meant for blocking I/O tasks, with an
-     * unlimited number of threads.
-     *
-     * On Java 21 and above, the created [Executor] will run tasks on virtual threads.
-     * On older JVM versions, it returns a plain [Executors.newCachedThreadPool].
-     */
-    @JvmStatic
-    fun unlimitedThreadPoolForIO(prefix: String): ExecutorService {
-        if (VirtualThreads.areVirtualThreadsSupported())
-            try {
-                return VirtualThreads.executorService("$prefix-virtual-")
-            } catch (ignored: VirtualThreads.NotSupportedException) {
-            }
-        return Executors.newCachedThreadPool(platformThreadFactory(prefix))
-    }
-
-    @Suppress("DEPRECATION")
-    private fun platformThreadFactory(prefix: String): ThreadFactory =
-        ThreadFactory { r ->
-            Thread(r).apply {
-                name = "$prefix-platform-$id"
-                isDaemon = true
-            }
-        }
-}
-
-private class TaskCreate<out T>(
-    private val builder: AsyncFun<T>,
-    es: Executor?,
-    factory: ThreadFactory?
-) : AsyncFun<T> {
-    private val executor: Executor = when {
-        es != null -> es
-        factory != null -> Executor { command -> factory.newThread(command).start() }
-        else -> Trampoline.EXECUTOR
-    }
-
-    private class CreateCancellable : Cancellable {
-        private val ref = AtomicReference(Cancellable.EMPTY)
-
-        fun set(token: Cancellable) {
-            if (!ref.compareAndSet(Cancellable.EMPTY, token)) {
-                Trampoline.execute { token.cancel() }
-            }
-        }
-
-        override fun cancel() {
-            ref.getAndSet(null)?.cancel()
-        }
-    }
-
-    override fun invoke(callback: CompletionCallback<T>): Cancellable {
-        val cancel = CreateCancellable()
-        val run = Runnable {
-            val token = builder(callback)
-            cancel.set(token)
-        }
-        executor.execute(run)
-        return cancel
     }
 }
 
@@ -502,7 +390,7 @@ private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(), Compl
             error = e
             releaseShared(1)
         } else {
-            UncaughtExceptionHandler.logException(e)
+            UncaughtExceptionHandler.logOrRethrow(e)
         }
     }
 
@@ -565,443 +453,55 @@ private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(), Compl
         }
 }
 
-private class AwaitSignal : AbstractQueuedSynchronizer() {
-    override fun tryAcquireShared(arg: Int): Int {
-        return if (state != 0) 1 else -1
-    }
-
-    override fun tryReleaseShared(arg: Int): Boolean {
-        state = 1
-        return true
-    }
-
-    fun signal() {
-        releaseShared(1)
-    }
-
-    @Throws(InterruptedException::class)
-    fun await() {
-        acquireSharedInterruptibly(1)
-    }
-
-    @Throws(InterruptedException::class, TimeoutException::class)
-    fun await(timeout: Duration) {
-        if (!tryAcquireSharedNanos(1, timeout.toNanos())) {
-            throw TimeoutException("Timed out after $timeout")
-        }
-    }
-}
-
-private class TaskFromExecutor<T>(
-    private val es: Executor,
-    private val delayed: DelayedFun<T>
-): AsyncFun<T> {
-    private sealed interface State
-    private data object NotStarted: State
-    private data object Completed: State
-    private data class Running(val thread: Thread): State
-    private data class Interrupting(val wasInterrupted: AwaitSignal): State
-
-    private fun triggerCancel(
-        state: AtomicReference<State>,
-    ) {
-        while (true) {
-            when (val current = state.get()) {
-                is NotStarted -> {
-                    if (state.compareAndSet(current, Completed)) {
-                        return
-                    }
-                }
-                is Running -> {
-                    // Starts the interruption process
-                    val wasInterrupted = AwaitSignal()
-                    if (state.compareAndSet(current, Interrupting(wasInterrupted))) {
-                        current.thread.interrupt()
-                        wasInterrupted.signal()
-                        return
-                    }
-                }
-                is Completed -> {
-                    return
-                }
-                is Interrupting -> {
-                    return
-                }
-            }
-        }
-    }
-
-    override fun invoke(callback: CompletionCallback<T>): Cancellable {
-        val state = AtomicReference<State>(NotStarted)
-        es.execute {
-            if (!state.compareAndSet(NotStarted, Running(Thread.currentThread()))) {
-                callback.onCancel()
-                return@execute
-            }
-            var result: T? = null
-            var error: Throwable? = null
-            var interrupted = false
-            try {
-                result = delayed()
-            } catch (_: InterruptedException) {
-                interrupted = true
-            } catch (e: Exception) {
-                error = e
-            }
-
-            while (true) {
-                when (val current = state.get()) {
-                    is Running -> {
-                        if (state.compareAndSet(current, Completed)) {
-                            if (interrupted)
-                                callback.onCancel()
-                            else if (error != null)
-                                callback.onFailure(error)
-                            else
-                                @Suppress("UNCHECKED_CAST")
-                                callback.onSuccess(result as T)
-                            return@execute
-                        }
-                    }
-                    is Interrupting -> {
-                        try {
-                            current.wasInterrupted.await()
-                        } catch (_: InterruptedException) {}
-                        callback.onCancel()
-                        return@execute
-                    }
-                    is Completed -> {
-                        throw IllegalStateException("Task:Completed")
-                    }
-                    is NotStarted -> {
-                        throw IllegalStateException("Task:NotStarted")
-                    }
-                }
-            }
-        }
-        return Cancellable {
-            triggerCancel(state)
-        }
-    }
-}
-
-private class TaskFromThreadFactory<out T>(
-    private val factory: ThreadFactory,
-    private val delayed: DelayedFun<T>
+private class TaskFromCancellableFuture<T>(
+    private val builder: DelayedFun<CancellableFuture<T>>
 ) : AsyncFun<T> {
-
-    override fun invoke(callback: CompletionCallback<T>): Cancellable {
-        val thread = factory.newThread(TaskRunnable(callback))
-        thread.start()
-        return Cancellable { thread.interrupt() }
-    }
-
-    private inner class TaskRunnable(private val listener: CompletionCallback<T>) : Runnable {
-        override fun run() {
+    override fun invoke(callback: CompletionCallback<T>, executor: FiberExecutor): Cancellable {
+        val cancel = MutableCancellable()
+        executor.execute {
             var isUserError = true
             try {
-                val result = delayed()
+                val cancellableFuture = builder.invoke()
                 isUserError = false
-                listener.onSuccess(result)
-            } catch (e: InterruptedException) {
-                listener.onCancel()
-            } catch (e: CancellationException) {
-                listener.onCancel()
-            } catch (e: Exception) {
-                if (isUserError) listener.onFailure(e)
-                else UncaughtExceptionHandler.logException(e)
+                val future = getCompletableFuture(cancellableFuture, callback)
+                val cancellable = cancellableFuture.cancellable
+                cancel.set {
+                    try {
+                        cancellable.cancel()
+                    } finally {
+                        future.cancel(true)
+                    }
+                }
+            } catch (e: Throwable) {
+                UncaughtExceptionHandler.rethrowIfFatal(e)
+                if (isUserError) callback.onFailure(e)
+                else UncaughtExceptionHandler.logOrRethrow(e)
             }
         }
+        return cancel
     }
-}
 
-private class TaskFromCompletionStage<out T>(
-    private val builder: Callable<CancellableFuture<T>>
-) : AsyncFun<T> {
-
-    override fun invoke(callback: CompletionCallback<T>): Cancellable {
-        var userError = true
-        try {
-            val future = builder.call()
-            userError = false
-
-            future.future.whenComplete { value, error ->
+    companion object {
+        private fun <T> getCompletableFuture(
+            cancellableFuture: CancellableFuture<T>,
+            callback: CompletionCallback<T>
+        ): CompletableFuture<out T> {
+            val future = cancellableFuture.future
+            future.whenComplete { value, error ->
                 when (error) {
-                    null ->
-                        callback.onSuccess(value)
                     is InterruptedException, is CancellationException ->
                         callback.onCancel()
                     is ExecutionException ->
-                        callback.onFailure( error.cause ?: error)
+                        callback.onFailure(error.cause ?: error)
                     is CompletionException ->
-                        callback.onFailure( error.cause ?: error)
-                    else ->
-                        callback.onFailure(error)
-                }
-            }
-            return future.cancellable
-        } catch (e: Exception) {
-            if (userError) {
-                callback.onFailure(e)
-                return Cancellable.EMPTY
-            }
-            throw RuntimeException(e)
-        }
-    }
-}
-
-private class TaskFiberDefault<T> : TaskFiber<T> {
-    private sealed interface State<out T> {
-        data class Active<out T>(val listeners: List<Runnable>, val token: Cancellable?) : State<T>
-        data class Cancelled(val listeners: List<Runnable>) : State<Nothing>
-        data class Completed<out T>(val outcome: Outcome<T>) : State<T>
-
-        fun triggerListeners() {
-            when (this) {
-                is Active -> listeners.forEach(Trampoline::execute)
-                is Cancelled -> listeners.forEach(Trampoline::execute)
-                else -> {}
-            }
-        }
-
-        fun addListener(listener: Runnable): State<T> = when (this) {
-            is Active -> copy(listeners = listeners + listener)
-            is Cancelled -> copy(listeners = listeners + listener)
-            else -> this
-        }
-
-        fun removeListener(listener: Runnable): State<T> = when (this) {
-            is Active -> copy(listeners = listeners.filter { it != listener })
-            is Cancelled -> copy(listeners = listeners.filter { it != listener })
-            else -> this
-        }
-
-        companion object {
-            fun <T> start(): State<T> = Active(emptyList(), null)
-        }
-    }
-
-    private val ref = AtomicReference<State<T>>(State.start())
-
-    val completionCallback: CompletionCallback<T> = object : CompletionCallback<T> {
-        override fun onSuccess(value: T) =
-            signalComplete(Outcome.succeeded(value))
-        override fun onFailure(e: Throwable) =
-            signalComplete(Outcome.failed(e))
-        override fun onCancel() =
-            signalComplete(Outcome.cancelled())
-    }
-
-    fun registerCancel(token: Cancellable) {
-        while (true) {
-            when (val current = ref.get()) {
-                is State.Active -> {
-                    if (current.token != null) {
-                        throw IllegalStateException("Token already registered")
-                    }
-                    val update = current.copy(token = token)
-                    if (ref.compareAndSet(current, update)) {
-                        return
+                        callback.onFailure(error.cause ?: error)
+                    else -> {
+                        if (error != null) callback.onFailure(error)
+                        else callback.onSuccess(value)
                     }
                 }
-                is State.Cancelled -> {
-                    token.cancel()
-                    return
-                }
-                is State.Completed -> return
             }
+            return future
         }
     }
-
-    override fun cancel() {
-        while (true) {
-            when (val current = ref.get()) {
-                is State.Active -> {
-                    val update = State.Cancelled(current.listeners)
-                    if (ref.compareAndSet(current, update)) {
-                        current.token?.cancel()
-                        return
-                    }
-                }
-                is State.Cancelled -> return
-                is State.Completed -> return
-            }
-        }
-    }
-
-    override fun outcome(): Outcome<T>? =
-        when (val current = ref.get()) {
-            is State.Completed -> current.outcome
-            is State.Active, is State.Cancelled -> null
-        }
-
-    override fun joinAsync(onComplete: Runnable): Cancellable {
-        while (true) {
-            when (val current = ref.get()) {
-                is State.Active, is State.Cancelled -> {
-                    val update = current.addListener(onComplete)
-                    if (ref.compareAndSet(current, update)) {
-                        return cancelJoinAsync(onComplete)
-                    }
-                }
-                is State.Completed -> {
-                    Trampoline.execute(onComplete)
-                    return Cancellable.EMPTY
-                }
-            }
-        }
-    }
-
-    private fun cancelJoinAsync(onComplete: Runnable): Cancellable =
-        Cancellable {
-            while (true) {
-                val current = ref.get()
-                val update = current.removeListener(onComplete)
-                if (ref.compareAndSet(current, update)) {
-                    return@Cancellable
-                }
-            }
-        }
-
-    private fun signalComplete(outcome: Outcome<T>) {
-        while (true) {
-            when (val current = ref.get()) {
-                is State.Active, is State.Cancelled -> {
-                    val update = State.Completed(outcome)
-                    if (ref.compareAndSet(current, update)) {
-                        current.triggerListeners()
-                        return
-                    }
-                }
-                is State.Completed -> {
-                    if (outcome is Outcome.Failed) {
-                        UncaughtExceptionHandler.logException(outcome.exception)
-                    }
-                    return
-                }
-            }
-        }
-    }
-}
-
-/**
- * Internal utilities — not exposed yet, because lacking Loom support is only
- * temporary.
- */
-internal object VirtualThreads {
-    private val newThreadPerTaskExecutorMethodHandle: MethodHandle?
-
-    class NotSupportedException(feature: String) : Exception("$feature is not supported on this JVM")
-
-    init {
-        var tempHandle: MethodHandle?
-        try {
-            val executorsClass = Class.forName("java.util.concurrent.Executors")
-            val lookup = MethodHandles.lookup()
-            tempHandle = lookup.findStatic(
-                executorsClass,
-                "newThreadPerTaskExecutor",
-                MethodType.methodType(ExecutorService::class.java, ThreadFactory::class.java)
-            )
-        } catch (e: Throwable) {
-            tempHandle = null
-        }
-        newThreadPerTaskExecutorMethodHandle = tempHandle
-    }
-
-    /**
-     * Create a virtual thread executor, returns `null` if failed.
-     *
-     * This function can only return a non-`null` value if running on Java 21 or later,
-     * as it uses reflection to access the `Executors.newVirtualThreadPerTaskExecutor`.
-     *
-     * @throws NotSupportedException if the current JVM does not support virtual threads.
-     */
-    @JvmStatic
-    @Throws(NotSupportedException::class)
-    fun executorService(prefix: String): ExecutorService {
-        if (!areVirtualThreadsSupported()) {
-            throw NotSupportedException("Executors.newThreadPerTaskExecutor")
-        }
-        var thrown: Throwable? = null
-        try {
-            val factory = factory(prefix)
-            if (newThreadPerTaskExecutorMethodHandle != null) {
-                return newThreadPerTaskExecutorMethodHandle.invoke(factory) as ExecutorService
-            }
-        } catch (e: NotSupportedException) {
-            throw e
-        } catch (e: Throwable) {
-            thrown = e
-        }
-        val e2 = NotSupportedException("Executors.newThreadPerTaskExecutor")
-        if (thrown != null) e2.addSuppressed(thrown)
-        throw e2
-    }
-
-    @JvmStatic
-    @Throws(NotSupportedException::class)
-    fun factory(prefix: String = VIRTUAL_THREAD_NAME_PREFIX): ThreadFactory {
-        if (!areVirtualThreadsSupported()) {
-            throw NotSupportedException("Thread.ofVirtual")
-        }
-        try {
-            val builderClass = Class.forName("java.lang.Thread\$Builder")
-            val ofVirtualClass = Class.forName("java.lang.Thread\$Builder\$OfVirtual")
-            val lookup = MethodHandles.lookup()
-            val ofVirtualMethod = lookup.findStatic(Thread::class.java, "ofVirtual", MethodType.methodType(ofVirtualClass))
-            var builder = ofVirtualMethod.invoke()
-            val nameMethod = lookup.findVirtual(ofVirtualClass, "name", MethodType.methodType(ofVirtualClass, String::class.java, Long::class.javaPrimitiveType))
-            val factoryMethod = lookup.findVirtual(builderClass, "factory", MethodType.methodType(ThreadFactory::class.java))
-            builder = nameMethod.invoke(builder, prefix, 0L)
-            return factoryMethod.invoke(builder) as ThreadFactory
-        } catch (e: Throwable) {
-            val e2 = NotSupportedException("Thread.ofVirtual")
-            e2.addSuppressed(e)
-            throw e2
-        }
-    }
-
-    private val isVirtualMethodHandle: MethodHandle?
-
-    init {
-        var tempHandle: MethodHandle?
-        try {
-            val threadClass = Class.forName("java.lang.Thread")
-            val lookup = MethodHandles.lookup()
-            tempHandle = lookup.findVirtual(
-                threadClass,
-                "isVirtual",
-                MethodType.methodType(Boolean::class.javaPrimitiveType)
-            )
-        } catch (e: Throwable) {
-            tempHandle = null
-        }
-        isVirtualMethodHandle = tempHandle
-    }
-
-    @JvmStatic
-    fun isVirtualThread(th: Thread): Boolean {
-        try {
-            if (isVirtualMethodHandle != null) {
-                return isVirtualMethodHandle.invoke(th) as Boolean
-            }
-        } catch (e: Throwable) {
-            // Ignored
-        }
-        return false
-    }
-
-    @JvmStatic
-    fun areVirtualThreadsSupported(): Boolean {
-        val sp = System.getProperty("funfix.tasks.virtual-threads")
-        val disableFeature = sp.equals("off", ignoreCase = true)
-                || sp.equals("false", ignoreCase = true)
-                || sp.equals("no", ignoreCase = true)
-                || sp == "0"
-                || sp.equals("disabled", ignoreCase = true)
-        return !disableFeature && isVirtualMethodHandle != null && newThreadPerTaskExecutorMethodHandle != null
-    }
-
-    const val VIRTUAL_THREAD_NAME_PREFIX = "common-io-virtual-"
 }

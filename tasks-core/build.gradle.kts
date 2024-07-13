@@ -73,6 +73,11 @@ repositories {
     mavenCentral()
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
 kotlin {
     jvm {
         withJava()
@@ -115,13 +120,13 @@ kotlin {
     }
 
     tasks.withType<JavaCompile> {
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
+        sourceCompatibility = "11"
+        targetCompatibility = "11"
     }
 
     tasks.withType<KotlinCompile> {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
+            jvmTarget.set(JvmTarget.JVM_11)
             freeCompilerArgs.add("-Xjvm-default=all")
         }
     }
@@ -133,10 +138,10 @@ kotlin {
             }
     }
 
-    tasks.register<Test>("testsOn17") {
+    tasks.register<Test>("testsOn11") {
         javaLauncher =
             javaToolchains.launcherFor {
-                languageVersion = JavaLanguageVersion.of(17)
+                languageVersion = JavaLanguageVersion.of(11)
             }
     }
 }

@@ -1,14 +1,14 @@
-package org.funfix.tasks
+@file:Suppress("DEPRECATED_JAVA_ANNOTATION")
 
+package org.funfix.tasks.internals
+
+import org.funfix.tasks.UncaughtExceptionHandler
 import java.util.LinkedList
 import java.util.concurrent.Executor
 import kotlin.concurrent.getOrSet
 
 /**
- * [Executor] implementation that uses a thread-local trampoline to
- * execute tasks in a stack-safe way.
- *
- * INTERNAL API.
+ * INTERNAL API, do not use!
  */
 internal object Trampoline {
     private val queue = ThreadLocal<LinkedList<Runnable>>()
@@ -23,7 +23,7 @@ internal object Trampoline {
             try {
                 next?.run()
             } catch (e: Exception) {
-                UncaughtExceptionHandler.logException(e)
+                UncaughtExceptionHandler.logOrRethrow(e)
             }
         }
     }

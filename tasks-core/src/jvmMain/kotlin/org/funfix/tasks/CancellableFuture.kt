@@ -11,7 +11,6 @@ import java.util.concurrent.CompletableFuture
  * a task, we need to keep a reference to a [Cancellable] object that
  * can do the job.
  */
-@JvmRecord
 data class CancellableFuture<out T>(
     val future: CompletableFuture<out T>,
     val cancellable: Cancellable

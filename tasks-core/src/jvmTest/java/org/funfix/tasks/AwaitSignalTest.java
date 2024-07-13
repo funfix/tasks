@@ -1,5 +1,6 @@
 package org.funfix.tasks;
 
+import org.funfix.tasks.internals.*;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -10,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@SuppressWarnings("KotlinInternalInJava")
 public class AwaitSignalTest {
     final int repeat = 1000;
     @Test
@@ -39,7 +41,8 @@ public class AwaitSignalTest {
             t.start();
             wasStarted.await();
             latch.signal();
-            assertTrue(t.join(Duration.ofSeconds(5)));
+            t.join(TimedAwait.TIMEOUT.toMillis());
+            assertFalse(t.isAlive(), "isAlive");
             assertFalse(hasError.get());
         }
     }
@@ -57,7 +60,8 @@ public class AwaitSignalTest {
         });
         t.start();
         t.interrupt();
-        assertTrue(t.join(Duration.ofSeconds(5)));
+        t.join(TimedAwait.TIMEOUT.toMillis());
+        assertFalse(t.isAlive(), "isAlive");
         assertTrue(wasInterrupted.get());
     }
 }

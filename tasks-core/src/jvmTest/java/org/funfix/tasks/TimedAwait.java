@@ -1,10 +1,7 @@
 package org.funfix.tasks;
 
 import java.time.Duration;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -31,5 +28,13 @@ public class TimedAwait {
             latch.await(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS),
             name + ".await"
         );
+    }
+
+    static void future(final Future<?> future) throws InterruptedException, TimeoutException {
+        try {
+            future.get(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

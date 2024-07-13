@@ -1,26 +1,26 @@
 package org.funfix.tasks;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
-
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
+import org.funfix.tasks.internals.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@SuppressWarnings("KotlinInternalInJava")
+@NullMarked
 public class CompletionCallbackTest {
     @Test
-    void empty() throws InterruptedException {
-        final var cb = CompletionCallback.empty();
+    void emptyLogsRuntimeFailure() throws InterruptedException {
+        final var cb = CompletionCallback.<String>empty();
 
         cb.onSuccess("Hello, world!");
         cb.onCancel();
 
-        final var logged = new AtomicReference<Throwable>(null);
+        final var logged = new AtomicReference<@Nullable Throwable>(null);
         final var error = new RuntimeException("Sample exception");
-        final var th = new Thread(() -> {
-            cb.onFailure(error);
-        });
+        final var th = new Thread(() -> cb.onFailure(error));
 
         th.setUncaughtExceptionHandler((t, e) -> logged.set(e));
         th.start();
@@ -31,10 +31,10 @@ public class CompletionCallbackTest {
     }
 
     @Test
-    void protectedCallbackForSuccess() throws InterruptedException {
+    void protectedCallbackForSuccess() {
         final var called = new AtomicInteger(0);
-        final var outcome = new AtomicReference<Outcome<String>>(null);
-        final var cb = CompletionCallback.protect(
+        final var outcome = new AtomicReference<@Nullable Outcome<String>>(null);
+        final var cb = ProtectedCompletionCallback.invoke(
                 new CompletionCallback<String>() {
                     @Override
                     public void onSuccess(String value) {
@@ -43,7 +43,7 @@ public class CompletionCallbackTest {
                     }
 
                     @Override
-                    public void onFailure(@NotNull Throwable e) {
+                    public void onFailure(Throwable e) {
                         throw new IllegalStateException("Should not be called");
                     }
 
@@ -63,10 +63,10 @@ public class CompletionCallbackTest {
     }
 
     @Test
-    void protectedCallbackForFailure() throws InterruptedException {
+    void protectedCallbackForRuntimeFailure() throws InterruptedException {
         final var called = new AtomicInteger(0);
-        final var outcome = new AtomicReference<Outcome<String>>(null);
-        final var cb = CompletionCallback.protect(
+        final var outcome = new AtomicReference<@Nullable Outcome<String>>(null);
+        final var cb = ProtectedCompletionCallback.invoke(
                 new CompletionCallback<String>() {
                     @Override
                     public void onSuccess(String value) {
@@ -74,7 +74,7 @@ public class CompletionCallbackTest {
                     }
 
                     @Override
-                    public void onFailure(@NotNull Throwable e) {
+                    public void onFailure(Throwable e) {
                         called.incrementAndGet();
                         outcome.set(Outcome.failed(e));
                     }
@@ -92,7 +92,7 @@ public class CompletionCallbackTest {
         assertEquals(1, called.get());
         assertEquals(Outcome.failed(e), outcome.get());
 
-        final var logged = new AtomicReference<Throwable>(null);
+        final var logged = new AtomicReference<@Nullable Throwable>(null);
         final var th = new Thread(() -> cb.onFailure(e));
         th.setUncaughtExceptionHandler((t, ex) -> logged.set(ex));
         th.start();
@@ -102,11 +102,12 @@ public class CompletionCallbackTest {
         assertEquals(e, logged.get());
     }
 
+
     @Test
     void protectedCallbackForCancellation() {
         final var called = new AtomicInteger(0);
-        final var outcome = new AtomicReference<Outcome<String>>(null);
-        final var cb = CompletionCallback.protect(
+        final var outcome = new AtomicReference<@Nullable Outcome<String>>(null);
+        final var cb = ProtectedCompletionCallback.invoke(
                 new CompletionCallback<String>() {
                     @Override
                     public void onSuccess(String value) {
@@ -114,7 +115,7 @@ public class CompletionCallbackTest {
                     }
 
                     @Override
-                    public void onFailure(@NotNull Throwable e) {
+                    public void onFailure(Throwable e) {
                         throw new IllegalStateException("Should not be called");
                     }
 
