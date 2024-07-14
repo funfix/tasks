@@ -37,7 +37,7 @@ class Task<out T> private constructor(
             asyncFun(protected, executor ?: FiberExecutor.shared())
         } catch (e: Throwable) {
             UncaughtExceptionHandler.rethrowIfFatal(e)
-            protected.onFailure(e)
+            protected.complete(Outcome.failed(e))
             Cancellable.EMPTY
         }
     }
@@ -86,7 +86,7 @@ class Task<out T> private constructor(
             try {
                 asyncFun(h, executor ?: FiberExecutor.shared())
             } catch (e: Exception) {
-                h.onFailure(e)
+                h.complete(Outcome.failed(e))
                 Cancellable.EMPTY
             }
         return h.await(cancelToken)
@@ -120,7 +120,7 @@ class Task<out T> private constructor(
             try {
                 asyncFun(h, executor ?: FiberExecutor.shared())
             } catch (e: Exception) {
-                h.onFailure(e)
+                h.complete(Outcome.failed(e))
                 Cancellable.EMPTY
             }
         return h.await(cancelToken, timeout)
@@ -167,7 +167,7 @@ class Task<out T> private constructor(
                         cancel.set(run.invoke(callback, executor))
                     } catch (e: Throwable) {
                         UncaughtExceptionHandler.rethrowIfFatal(e)
-                        callback.onFailure(e)
+                        callback.complete(Outcome.failed(e))
                     }
                 }
                 cancel
@@ -200,7 +200,7 @@ class Task<out T> private constructor(
                         cancel.set(token)
                     } catch (e: Throwable) {
                         UncaughtExceptionHandler.rethrowIfFatal(e)
-                        callback.onFailure(e)
+                        callback.complete(Outcome.failed(e))
                     }
                 }
                 cancel
@@ -216,22 +216,21 @@ class Task<out T> private constructor(
                     {
                         try {
                             val result = run.invoke()
-                            callback.onSuccess(result)
-                        } catch (e: InterruptedException) {
-                            callback.onCancel()
-                        } catch (e: CancellationException) {
-                            callback.onCancel()
+                            callback.complete(Outcome.succeeded(result))
+                        } catch (_: InterruptedException) {
+                            callback.complete(Outcome.cancelled())
+                        } catch (_: CancellationException) {
+                            callback.complete(Outcome.cancelled())
                         } catch (e: Throwable) {
                             UncaughtExceptionHandler.rethrowIfFatal(e)
-                            callback.onFailure(e)
+                            callback.complete(Outcome.failed(e))
                         }
                     },
                     {
                         // This is a concurrent call that wouldn't be very safe
                         // with a naive implementation of the CompletionCallback
                         // (thankfully we protect the injected callback)
-                        // noinspection Convert2MethodRef
-                        callback.onCancel()
+                        callback.complete(Outcome.cancelled())
                     }
                 )
             }
@@ -327,11 +326,13 @@ class Task<out T> private constructor(
          * @return a new task that will complete with the given value
          */
         @JvmStatic
-        fun <T> successful(value: T): Task<T> =
-            Task { listener, _ ->
-                listener.onSuccess(value)
+        fun <T> successful(value: T): Task<T> {
+            val outcome = Outcome.succeeded(value)
+            return Task { listener, _ ->
+                listener.complete(outcome)
                 Cancellable.EMPTY
             }
+        }
 
         /**
          * Creates a task that will complete with the given exception.
@@ -340,11 +341,13 @@ class Task<out T> private constructor(
          * @return a new task that will complete with the given exception
          */
         @JvmStatic
-        fun <T> failed(e: Throwable): Task<T> =
-            Task { listener, _ ->
-                listener.onFailure(e)
+        fun <T> failed(e: Throwable): Task<T> {
+            val outcome = Outcome.failed<T>(e)
+            return Task { listener, _ ->
+                listener.complete(outcome)
                 Cancellable.EMPTY
             }
+        }
 
         /**
          * Creates a task that will complete with a cancellation signal.
@@ -354,7 +357,7 @@ class Task<out T> private constructor(
         @JvmStatic
         fun <T> cancelled(): Task<T> =
             Task { listener, _ ->
-                listener.onCancel()
+                listener.complete(Outcome.cancelled())
                 Cancellable.EMPTY
             }
     }
@@ -362,30 +365,14 @@ class Task<out T> private constructor(
 
 private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(), CompletionCallback<T> {
     private val isDone = AtomicBoolean(false)
-    private var result: T? = null
-    private var error: Throwable? = null
-    private var interrupted: InterruptedException? = null
+    private var outcome: Outcome<T>? = null
 
-    override fun onSuccess(value: T) {
+    override fun complete(outcome: Outcome<T>) {
         if (!isDone.getAndSet(true)) {
-            result = value
+            this.outcome = outcome
             releaseShared(1)
-        }
-    }
-
-    override fun onFailure(e: Throwable) {
-        if (!isDone.getAndSet(true)) {
-            error = e
-            releaseShared(1)
-        } else {
-            UncaughtExceptionHandler.logOrRethrow(e)
-        }
-    }
-
-    override fun onCancel() {
-        if (!isDone.getAndSet(true)) {
-            interrupted = InterruptedException("Task was cancelled")
-            releaseShared(1)
+        } else if (outcome is Outcome.Failed) {
+            UncaughtExceptionHandler.logOrRethrow(outcome.exception)
         }
     }
 
@@ -404,16 +391,16 @@ private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(), Compl
             try {
                 await(isNotCancelled)
                 break
-            } catch (e: TimeoutException) {
-                if (isNotCancelled) {
-                    isNotCancelled = false
-                    timedOut = e
-                    cancelToken.cancel()
-                }
-            } catch (e: InterruptedException) {
-                if (isNotCancelled) {
-                    isNotCancelled = false
-                    cancelToken.cancel()
+            } catch (e: Exception) {
+                when (e) {
+                    is InterruptedException, is TimeoutException ->
+                        if (isNotCancelled) {
+                            isNotCancelled = false
+                            timedOut = if (e is TimeoutException) e else null
+                            cancelToken.cancel()
+                        }
+                    else ->
+                        throw e
                 }
             }
             // Clearing the interrupted flag may not be necessary,
@@ -422,9 +409,10 @@ private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(), Compl
             Thread.interrupted()
         }
         if (timedOut != null) throw timedOut
-        if (interrupted != null) throw interrupted!!
-        if (error != null) throw ExecutionException(error)
-        return result!!
+        when  (outcome) {
+            is Outcome.Cancelled -> throw InterruptedException()
+            else -> return outcome!!.getOrThrow()
+        }
     }
 
     @Throws(InterruptedException::class, ExecutionException::class)
@@ -462,7 +450,7 @@ private class TaskFromCancellableFuture<T>(
                 }
             } catch (e: Throwable) {
                 UncaughtExceptionHandler.rethrowIfFatal(e)
-                if (isUserError) callback.onFailure(e)
+                if (isUserError) callback.complete(Outcome.failed(e))
                 else UncaughtExceptionHandler.logOrRethrow(e)
             }
         }
@@ -478,14 +466,14 @@ private class TaskFromCancellableFuture<T>(
             future.whenComplete { value, error ->
                 when (error) {
                     is InterruptedException, is CancellationException ->
-                        callback.onCancel()
+                        callback.complete(Outcome.cancelled())
                     is ExecutionException ->
-                        callback.onFailure(error.cause ?: error)
+                        callback.complete(Outcome.failed(error.cause ?: error))
                     is CompletionException ->
-                        callback.onFailure(error.cause ?: error)
+                        callback.complete(Outcome.failed(error.cause ?: error))
                     else -> {
-                        if (error != null) callback.onFailure(error)
-                        else callback.onSuccess(value)
+                        if (error != null) callback.complete(Outcome.failed(error))
+                        else callback.complete(Outcome.succeeded(value))
                     }
                 }
             }
@@ -497,56 +485,28 @@ private class TaskFromCancellableFuture<T>(
 private class ProtectedCompletionCallback<T> private constructor(
     private var listener: CompletionCallback<T>?
 ) : CompletionCallback<T>, Runnable {
-    private var isWaiting: AtomicBoolean? = AtomicBoolean(true)
-
-    private var value: T? = null
-    private var exception: Throwable? = null
-    private var cancelled: Boolean = false
+    private val isWaiting: AtomicBoolean = AtomicBoolean(true)
+    private var outcome: Outcome<T>? = null
 
     override fun run() {
         val listener = this.listener
         if (listener != null) {
-            if (exception != null) {
-                listener.onFailure(exception!!)
-                exception = null
-            } else if (cancelled) {
-                listener.onCancel()
-            } else {
-                @Suppress("UNCHECKED_CAST")
-                listener.onSuccess(value as T)
-                value = null
-            }
+            listener.complete(outcome!!)
+            // GC purposes
+            this.outcome = null
             this.listener = null
         }
     }
 
-    private inline fun signal(modifyInternalState: () -> Unit): Boolean {
-        val ref = this.isWaiting
-        if (ref != null && ref.getAndSet(false)) {
-            modifyInternalState()
+    override fun complete(outcome: Outcome<T>) {
+        if (isWaiting.getAndSet(false)) {
+            this.outcome = outcome
             // Trampolined execution is needed because, with chained tasks,
             // we might end up with a stack overflow
             ThreadPools.TRAMPOLINE.execute(this)
-            // For GC purposes; but it doesn't really matter if we nullify this or not
-            this.isWaiting = null
-            return true
+        } else if (outcome is Outcome.Failed) {
+            UncaughtExceptionHandler.logOrRethrow(outcome.exception)
         }
-        return false
-    }
-
-    override fun onSuccess(value: T) {
-        signal { this.value = value }
-    }
-
-    override fun onFailure(e: Throwable) {
-        val wasSignaled = signal { this.exception = e }
-        if (!wasSignaled) {
-            UncaughtExceptionHandler.logOrRethrow(e)
-        }
-    }
-
-    override fun onCancel() {
-        signal { this.cancelled = true }
     }
 
     companion object {

@@ -8,17 +8,17 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class OutcomeTest {
     @Test
     public void outcomeBuildSuccess() {
-        final var outcome1 = new Outcome.Succeeded<>("value");
+        final var outcome1 = Outcome.Succeeded.instance("value");
         final var outcome2 = Outcome.succeeded("value");
         assertEquals(outcome1, outcome2);
 
         if (outcome2 instanceof Outcome.Succeeded<?>) {
-            assertEquals("value", ((Outcome.Succeeded<String>)outcome2).getValue());
+            assertEquals("value", ((Outcome.Succeeded<String>)outcome2).value());
         } else {
             fail("Expected Success");
         }
 
-        assertEquals("value", outcome1.getOrThrow());
+        assertEquals("value", ((Outcome.Succeeded<String>) outcome1).getOrThrow());
         try {
             assertEquals("value", outcome2.getOrThrow());
         } catch (ExecutionException | CancellationException e) {
@@ -29,21 +29,21 @@ public class OutcomeTest {
     @Test
     public void outcomeBuildFailure() {
         final var e = new RuntimeException("error");
-        final var outcome1 = new Outcome.Failed(e);
+        final var outcome1 = Outcome.Failed.instance(e);
         final var outcome2 = Outcome.failed(e);
         assertEquals(outcome1, outcome2);
 
         if (outcome2 instanceof Outcome.Failed) {
             assertEquals(
                     "error",
-                    ((Outcome.Failed) outcome2).getException().getMessage()
+                    ((Outcome.Failed) outcome2).exception().getMessage()
             );
         } else {
             fail("Expected Failure");
         }
 
         try {
-            outcome1.getOrThrow();
+            ((Outcome.Failed) outcome1).getOrThrow();
             fail("Expected ExecutionException");
         } catch (ExecutionException ex) {
             assertEquals(ex.getCause(), e);
@@ -58,8 +58,8 @@ public class OutcomeTest {
 
     @Test
     public void outcomeBuildCancelled() {
-        final var outcome1 = Outcome.Cancelled.INSTANCE;
-        final var outcome2 = Outcome.<String>cancelled();
+        final var outcome1 = Outcome.Cancelled.instance();
+        final Outcome<String> outcome2 = Outcome.cancelled();
         assertEquals(outcome1, outcome2);
 
         if (!(outcome2 instanceof Outcome.Cancelled)) {
@@ -67,7 +67,7 @@ public class OutcomeTest {
         }
 
         try {
-            outcome1.getOrThrow();
+            ((Outcome.Cancelled)outcome1).getOrThrow();
             fail("Expected CancellationException");
         } catch (CancellationException ignored) {
         }

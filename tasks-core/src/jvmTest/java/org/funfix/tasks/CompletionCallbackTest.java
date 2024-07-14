@@ -13,12 +13,12 @@ public class CompletionCallbackTest {
     void emptyLogsRuntimeFailure() throws InterruptedException {
         final var cb = CompletionCallback.<String>empty();
 
-        cb.onSuccess("Hello, world!");
-        cb.onCancel();
+        cb.complete(Outcome.succeeded("Hello, world!"));
+        cb.complete(Outcome.cancelled());
 
         final var logged = new AtomicReference<@Nullable Throwable>(null);
         final var error = new RuntimeException("Sample exception");
-        final var th = new Thread(() -> cb.onFailure(error));
+        final var th = new Thread(() -> cb.complete(Outcome.failed(error)));
 
         th.setUncaughtExceptionHandler((t, e) -> logged.set(e));
         th.start();
@@ -31,67 +31,41 @@ public class CompletionCallbackTest {
     @Test
     void protectedCallbackForSuccess() {
         final var called = new AtomicInteger(0);
-        final var outcome = new AtomicReference<@Nullable Outcome<String>>(null);
+        final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.invoke(
-                new CompletionCallback<String>() {
-                    @Override
-                    public void onSuccess(String value) {
-                        called.incrementAndGet();
-                        outcome.set(Outcome.succeeded(value));
-                    }
-
-                    @Override
-                    public void onFailure(Throwable e) {
-                        throw new IllegalStateException("Should not be called");
-                    }
-
-                    @Override
-                    public void onCancel() {
-                        throw new IllegalStateException("Should not be called");
-                    }
+                (CompletionCallback<String>) outcome -> {
+                    called.incrementAndGet();
+                    outcomeRef.set(outcome);
                 }
         );
 
-        cb.onCompletion(Outcome.succeeded("Hello, world!"));
-        cb.onSuccess("Hello, world! (2)");
-        cb.onSuccess("Hello, world! (3)");
+        cb.complete(Outcome.succeeded("Hello, world!"));
+        cb.complete(Outcome.succeeded("Hello, world! (2)"));
+        cb.complete(Outcome.succeeded("Hello, world! (3)"));
 
         assertEquals(1, called.get());
-        assertEquals(Outcome.succeeded("Hello, world!"), outcome.get());
+        assertEquals(Outcome.succeeded("Hello, world!"), outcomeRef.get());
     }
 
     @Test
     void protectedCallbackForRuntimeFailure() throws InterruptedException {
         final var called = new AtomicInteger(0);
-        final var outcome = new AtomicReference<@Nullable Outcome<String>>(null);
+        final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.invoke(
-                new CompletionCallback<String>() {
-                    @Override
-                    public void onSuccess(String value) {
-                        throw new IllegalStateException("Should not be called");
-                    }
-
-                    @Override
-                    public void onFailure(Throwable e) {
-                        called.incrementAndGet();
-                        outcome.set(Outcome.failed(e));
-                    }
-
-                    @Override
-                    public void onCancel() {
-                        throw new IllegalStateException("Should not be called");
-                    }
+                (CompletionCallback<String>) outcome -> {
+                    called.incrementAndGet();
+                    outcomeRef.set(outcome);
                 }
         );
 
         final var e = new RuntimeException("Boom!");
-        cb.onCompletion(Outcome.failed(e));
+        cb.complete(Outcome.failed(e));
 
         assertEquals(1, called.get());
-        assertEquals(Outcome.failed(e), outcome.get());
+        assertEquals(Outcome.failed(e), outcomeRef.get());
 
         final var logged = new AtomicReference<@Nullable Throwable>(null);
-        final var th = new Thread(() -> cb.onFailure(e));
+        final var th = new Thread(() -> cb.complete(Outcome.failed(e)));
         th.setUncaughtExceptionHandler((t, ex) -> logged.set(ex));
         th.start();
         th.join();
@@ -104,32 +78,19 @@ public class CompletionCallbackTest {
     @Test
     void protectedCallbackForCancellation() {
         final var called = new AtomicInteger(0);
-        final var outcome = new AtomicReference<@Nullable Outcome<String>>(null);
+        final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.invoke(
-                new CompletionCallback<String>() {
-                    @Override
-                    public void onSuccess(String value) {
-                        throw new IllegalStateException("Should not be called");
-                    }
-
-                    @Override
-                    public void onFailure(Throwable e) {
-                        throw new IllegalStateException("Should not be called");
-                    }
-
-                    @Override
-                    public void onCancel() {
-                        called.incrementAndGet();
-                        outcome.set(Outcome.cancelled());
-                    }
+                (CompletionCallback<String>) outcome -> {
+                    called.incrementAndGet();
+                    outcomeRef.set(outcome);
                 }
         );
 
-        cb.onCompletion(Outcome.cancelled());
-        cb.onCancel();
-        cb.onCancel();
+        cb.complete(Outcome.cancelled());
+        cb.complete(Outcome.cancelled());
+        cb.complete(Outcome.cancelled());
 
         assertEquals(1, called.get());
-        assertEquals(Outcome.cancelled(), outcome.get());
+        assertEquals(Outcome.cancelled(), outcomeRef.get());
     }
 }

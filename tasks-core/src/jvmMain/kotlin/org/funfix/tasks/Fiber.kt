@@ -105,7 +105,7 @@ interface TaskFiber<out T> : Fiber {
                 fiber.registerCancel(token)
             } catch (e: Throwable) {
                 UncaughtExceptionHandler.rethrowIfFatal(e)
-                fiber.onComplete.onFailure(e)
+                fiber.onComplete.complete(Outcome.failed(e))
             }
             return fiber
         }
@@ -269,26 +269,11 @@ private class ExecutedTaskFiber<T>(
     }
 
     val onComplete: CompletionCallback<T> =
-        object : CompletionCallback<T> {
-            override fun onSuccess(value: T) {
-                signalComplete(Outcome.succeeded(value))
+        CompletionCallback { outcome ->
+            if (outcome is Outcome.Failed) {
+                UncaughtExceptionHandler.rethrowIfFatal(outcome.exception)
             }
-
-            override fun onFailure(e: Throwable) {
-                UncaughtExceptionHandler.rethrowIfFatal(e)
-                signalComplete(Outcome.failed(e))
-            }
-
-            override fun onCancel() {
-                signalComplete(Outcome.cancelled())
-            }
-
-            override fun onCompletion(outcome: Outcome<T>) {
-                if (outcome is Outcome.Failed) {
-                    UncaughtExceptionHandler.rethrowIfFatal(outcome.exception)
-                }
-                signalComplete(outcome)
-            }
+            signalComplete(outcome)
         }
 }
 
