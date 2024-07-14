@@ -1,14 +1,11 @@
 package org.funfix.tasks
 
-import org.funfix.tasks.internals.ExecutedTaskFiber
-import org.funfix.tasks.internals.MutableCancellable
-import org.funfix.tasks.internals.ProtectedCompletionCallback
-import org.funfix.tasks.internals.Trampoline
 import java.time.Duration
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.AbstractQueuedSynchronizer
 import java.io.Serializable
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Represents a suspended computation that can be executed asynchronously.
@@ -61,17 +58,8 @@ class Task<out T> private constructor(
      *
      * @param executor is the [FiberExecutor] that may be used to run the task
      */
-    fun executeConcurrently(executor: FiberExecutor?): TaskFiber<T> {
-        val fiber = ExecutedTaskFiber<T>()
-        try {
-            val token = asyncFun(fiber.onComplete, executor ?: FiberExecutor.shared())
-            fiber.registerCancel(token)
-        } catch (e: Throwable) {
-            UncaughtExceptionHandler.rethrowIfFatal(e)
-            fiber.onComplete.onFailure(e)
-        }
-        return fiber
-    }
+    fun executeConcurrently(executor: FiberExecutor?): TaskFiber<T> =
+        TaskFiber.start(asyncFun, executor ?: FiberExecutor.shared())
 
     /**
      * Overload of [executeConcurrently] that uses [FiberExecutor.shared]
@@ -174,7 +162,7 @@ class Task<out T> private constructor(
         fun <T> create(run: AsyncFun<T>): Task<T> =
             Task { callback, executor ->
                 val cancel = MutableCancellable()
-                Trampoline.execute {
+                ThreadPools.TRAMPOLINE.execute {
                     try {
                         cancel.set(run.invoke(callback, executor))
                     } catch (e: Throwable) {
@@ -503,5 +491,117 @@ private class TaskFromCancellableFuture<T>(
             }
             return future
         }
+    }
+}
+
+private class ProtectedCompletionCallback<T> private constructor(
+    private var listener: CompletionCallback<T>?
+) : CompletionCallback<T>, Runnable {
+    private var isWaiting: AtomicBoolean? = AtomicBoolean(true)
+
+    private var value: T? = null
+    private var exception: Throwable? = null
+    private var cancelled: Boolean = false
+
+    override fun run() {
+        val listener = this.listener
+        if (listener != null) {
+            if (exception != null) {
+                listener.onFailure(exception!!)
+                exception = null
+            } else if (cancelled) {
+                listener.onCancel()
+            } else {
+                @Suppress("UNCHECKED_CAST")
+                listener.onSuccess(value as T)
+                value = null
+            }
+            this.listener = null
+        }
+    }
+
+    private inline fun signal(modifyInternalState: () -> Unit): Boolean {
+        val ref = this.isWaiting
+        if (ref != null && ref.getAndSet(false)) {
+            modifyInternalState()
+            // Trampolined execution is needed because, with chained tasks,
+            // we might end up with a stack overflow
+            ThreadPools.TRAMPOLINE.execute(this)
+            // For GC purposes; but it doesn't really matter if we nullify this or not
+            this.isWaiting = null
+            return true
+        }
+        return false
+    }
+
+    override fun onSuccess(value: T) {
+        signal { this.value = value }
+    }
+
+    override fun onFailure(e: Throwable) {
+        val wasSignaled = signal { this.exception = e }
+        if (!wasSignaled) {
+            UncaughtExceptionHandler.logOrRethrow(e)
+        }
+    }
+
+    override fun onCancel() {
+        signal { this.cancelled = true }
+    }
+
+    companion object {
+        @JvmStatic
+        operator fun <T> invoke(listener: CompletionCallback<T>): CompletionCallback<T> =
+            when {
+                listener is ProtectedCompletionCallback<*> -> listener
+                else -> ProtectedCompletionCallback(listener)
+            }
+    }
+}
+
+private class MutableCancellable : Cancellable {
+    private val ref = AtomicReference<State>(State.Active(Cancellable.EMPTY, 0))
+
+    override fun cancel() {
+        (ref.getAndSet(State.Cancelled) as? State.Active)?.token?.cancel()
+    }
+
+    fun set(token: Cancellable) {
+        while (true) {
+            when (val current = ref.get()) {
+                is State.Active -> {
+                    val update = State.Active(token, current.order + 1)
+                    if (ref.compareAndSet(current, update)) return
+                }
+                is State.Cancelled -> {
+                    token.cancel()
+                    return
+                }
+            }
+        }
+    }
+
+    fun setOrdered(token: Cancellable, order: Int) {
+        while (true) {
+            when (val current = ref.get()) {
+                is State.Active -> {
+                    if (current.order < order) {
+                        val update = State.Active(token, order)
+                        if (ref.compareAndSet(current, update)) return
+                    } else {
+                        return
+                    }
+                }
+                is State.Cancelled -> {
+                    token.cancel()
+                    return
+                }
+            }
+        }
+    }
+
+    private sealed interface State {
+        data class Active(val token: Cancellable, val order: Int) : State
+        data object Cancelled : State
     }
 }

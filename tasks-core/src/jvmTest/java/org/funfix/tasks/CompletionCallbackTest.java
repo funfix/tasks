@@ -5,10 +5,8 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import org.funfix.tasks.internals.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@SuppressWarnings("KotlinInternalInJava")
 @NullMarked
 public class CompletionCallbackTest {
     @Test

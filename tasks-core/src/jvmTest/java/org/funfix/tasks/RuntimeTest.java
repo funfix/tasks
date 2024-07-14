@@ -1,6 +1,5 @@
 package org.funfix.tasks;
 
-import org.funfix.tasks.internals.*;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -201,7 +200,6 @@ class FiberExecutorFromThreadFactoryTest extends FiberExecutorFromExecutorTest {
     void tearDown() {}
 }
 
-@SuppressWarnings("KotlinInternalInJava")
 class FiberExecutorDefaultOlderJavaTest extends FiberExecutorFromExecutorTest {
     @BeforeEach
     @Override
@@ -212,7 +210,6 @@ class FiberExecutorDefaultOlderJavaTest extends FiberExecutorFromExecutorTest {
     }
 }
 
-@SuppressWarnings("KotlinInternalInJava")
 class FiberExecutorDefaultJava21Test extends FiberExecutorFromExecutorTest {
     @BeforeEach
     @Override

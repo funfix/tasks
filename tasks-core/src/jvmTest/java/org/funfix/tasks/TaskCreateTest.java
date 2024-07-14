@@ -1,6 +1,5 @@
 package org.funfix.tasks;
 
-import org.funfix.tasks.internals.*;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -134,7 +133,6 @@ class TaskCreateSimpleCustomJavaExecutorTest extends BaseTaskCreateTest {
 
 @NullMarked
 class TaskCreateSimpleCustomJavaThreadFactoryTest extends BaseTaskCreateTest {
-    @SuppressWarnings("deprecation")
     @BeforeEach
     void setUp() {
         executor = FiberExecutor.fromThreadFactory(
@@ -159,7 +157,6 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
         return Task.createAsync(builder);
     }
 
-    @SuppressWarnings("KotlinInternalInJava")
     @Test
     void java21Plus() throws ExecutionException, InterruptedException {
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
@@ -173,7 +170,6 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
         assertTrue(result.matches("common-io-virtual-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
     }
 
-    @SuppressWarnings("KotlinInternalInJava")
     @Test
     void olderJava() throws ExecutionException, InterruptedException {
         assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires older Java versions");

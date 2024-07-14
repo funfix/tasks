@@ -1,6 +1,5 @@
 package org.funfix.tasks;
 
-import org.funfix.tasks.internals.*;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -50,7 +49,6 @@ public class TaskFromBlockingFutureTest {
         assertTrue(name.get().startsWith("common-io-"));
     }
 
-    @SuppressWarnings("KotlinInternalInJava")
     @Test
     void loomHappyPath() throws ExecutionException, InterruptedException {
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");

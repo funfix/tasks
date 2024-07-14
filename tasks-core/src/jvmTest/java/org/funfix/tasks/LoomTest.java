@@ -1,6 +1,5 @@
 package org.funfix.tasks;
 
-import org.funfix.tasks.internals.*;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CountDownLatch;
@@ -10,7 +9,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-@SuppressWarnings("KotlinInternalInJava")
 public class LoomTest {
     @Test
     public void commonPoolInJava21() throws InterruptedException {
