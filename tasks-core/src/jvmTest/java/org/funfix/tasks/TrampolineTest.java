@@ -1,5 +1,6 @@
-package org.funfix.tasks.internals;
+package org.funfix.tasks;
 
+import org.funfix.tasks.internals.Trampoline;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
