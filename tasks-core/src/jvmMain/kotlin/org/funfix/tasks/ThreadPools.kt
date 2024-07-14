@@ -36,16 +36,6 @@ object ThreadPools {
         else
             sharedPlatformIO()
 
-    @JvmStatic
-    fun sharedThreadFactory(): ThreadFactory {
-        if (VirtualThreads.areVirtualThreadsSupported())
-            try {
-                return VirtualThreads.factory()
-            } catch (ignored: VirtualThreads.NotSupportedException) {
-            }
-        return platformThreadFactory("common-io")
-    }
-
     private fun sharedPlatformIO(): Executor {
         // Using double-checked locking to avoid synchronization
         if (sharedPlatformIORef == null) {
@@ -139,9 +129,20 @@ private object Trampoline: Executor {
     }
 }
 
+/**
+ * Provides utilities for working with virtual threads (from Project Loom,
+ * shipped in Java 21+), in case the runtime supports them.
+ *
+ * NOTE — even if the runtime supports virtual threads, support can be
+ * disabled by setting the system property `funfix.tasks.virtual-threads`
+ * to `off`.
+ */
 object VirtualThreads {
     private val newThreadPerTaskExecutorMethodHandle: MethodHandle?
 
+    /**
+     * Exception thrown when virtual threads aren't supported by the current JVM.
+     */
     class NotSupportedException(feature: String) : Exception("$feature is not supported on this JVM")
 
     init {
@@ -166,11 +167,17 @@ object VirtualThreads {
      * This function can only return a non-`null` value if running on Java 21 or later,
      * as it uses reflection to access the `Executors.newVirtualThreadPerTaskExecutor`.
      *
+     * @param prefix the prefix to use for the names of the virtual threads. The
+     *              default prefix is `common-io-virtual-`.
+     *
      * @throws NotSupportedException if the current JVM does not support virtual threads.
+     *
+     * @return a new [ExecutorService] that uses virtual threads, the equivalent
+     *         of `Executors.newThreadPerTaskExecutor`.
      */
     @JvmStatic
     @Throws(NotSupportedException::class)
-    fun executorService(prefix: String): ExecutorService {
+    fun executorService(prefix: String = DEFAULT_VIRTUAL_THREAD_NAME_PREFIX): ExecutorService {
         if (!areVirtualThreadsSupported()) {
             throw NotSupportedException("Executors.newThreadPerTaskExecutor")
         }
@@ -190,9 +197,20 @@ object VirtualThreads {
         throw e2
     }
 
+    /**
+     * Returns a [ThreadFactory] that creates virtual threads. The equivalent
+     * of `Thread.ofVirtual`.
+     *
+     * @param prefix the prefix to use for the names of the virtual threads. If
+     *               not specified, the default prefix is `common-io-virtual-`.
+     *
+     * @throws NotSupportedException if the current JVM does not support virtual
+     * threads, or if support is turned off via the `funfix.tasks.virtual-threads`
+     * system property.
+     */
     @JvmStatic
     @Throws(NotSupportedException::class)
-    fun factory(prefix: String = VIRTUAL_THREAD_NAME_PREFIX): ThreadFactory {
+    fun factory(prefix: String = DEFAULT_VIRTUAL_THREAD_NAME_PREFIX): ThreadFactory {
         if (!areVirtualThreadsSupported()) {
             throw NotSupportedException("Thread.ofVirtual")
         }
@@ -237,6 +255,10 @@ object VirtualThreads {
         isVirtualMethodHandle = tempHandle
     }
 
+    /**
+     * Returns `true` if the given [Thread] is a virtual thread, or `false`
+     * otherwise.
+     */
     @JvmStatic
     fun isVirtualThread(th: Thread): Boolean {
         try {
@@ -249,6 +271,11 @@ object VirtualThreads {
         return false
     }
 
+    /**
+     * Returns `true` if virtual threads are supported by the current JVM,
+     * and the feature is not disabled via the `funfix.tasks.virtual-threads`
+     * system property.
+     */
     @JvmStatic
     fun areVirtualThreadsSupported(): Boolean {
         val sp = System.getProperty("funfix.tasks.virtual-threads")
@@ -260,6 +287,6 @@ object VirtualThreads {
         return !disableFeature && isVirtualMethodHandle != null && newThreadPerTaskExecutorMethodHandle != null
     }
 
-    private const val VIRTUAL_THREAD_NAME_PREFIX =
+    private const val DEFAULT_VIRTUAL_THREAD_NAME_PREFIX =
         "common-io-virtual-"
 }
