@@ -11,7 +11,7 @@ import java.io.Serializable;
 @FunctionalInterface
 public interface AsyncFun<T> extends Serializable {
     Cancellable invoke(
-            CompletionCallback<? super T> callback,
-            FiberExecutor executor
+            FiberExecutor executor,
+            CompletionCallback<? super T> callback
     );
 }

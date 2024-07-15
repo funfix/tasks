@@ -33,7 +33,7 @@ public final class Task<T> {
     ) {
         final var cb = ProtectedCompletionCallback.protect(callback);
         try {
-            return asyncFun.invoke(cb, executor);
+            return asyncFun.invoke(executor, cb);
         } catch (final Throwable e) {
             UncaughtExceptionHandler.rethrowIfFatal(e);
             cb.onFailure(e);
@@ -66,8 +66,7 @@ public final class Task<T> {
         final var fiber = new TaskFiberDefault<T>();
         try {
             final var token = asyncFun.invoke(
-                    fiber.onComplete,
-                    executor == null ? FiberExecutor.shared() : executor
+                    executor == null ? FiberExecutor.shared() : executor, fiber.onComplete
             );
             fiber.registerCancel(token);
         } catch (final Throwable e) {
@@ -108,8 +107,7 @@ public final class Task<T> {
 
         final var blockingCallback = new BlockingCompletionCallback<T>();
         final var cancelToken = asyncFun.invoke(
-            blockingCallback,
-            executor == null ? FiberExecutor.shared() : executor
+                executor == null ? FiberExecutor.shared() : executor, blockingCallback
         );
         return blockingCallback.await(cancelToken);
     }
@@ -150,8 +148,7 @@ public final class Task<T> {
     ) throws ExecutionException, InterruptedException, TimeoutException {
         final var blockingCallback = new BlockingCompletionCallback<T>();
         final var cancelToken = asyncFun.invoke(
-                blockingCallback,
-                executor == null ? FiberExecutor.shared() : executor
+                executor == null ? FiberExecutor.shared() : executor, blockingCallback
         );
         return blockingCallback.await(cancelToken, timeout);
     }
@@ -205,11 +202,11 @@ public final class Task<T> {
      * @see #createAsync(AsyncFun)
      */
     public static <T> Task<T> create(final AsyncFun<? extends T> fun) {
-        return new Task<>((callback, executor) -> {
+        return new Task<>((executor, callback) -> {
             final var cancel = new MutableCancellable();
             Trampoline.execute(() -> {
                 try {
-                    cancel.set(fun.invoke(callback, executor));
+                    cancel.set(fun.invoke(executor, callback));
                 } catch (final Throwable e) {
                     UncaughtExceptionHandler.rethrowIfFatal(e);
                     callback.onFailure(e);
@@ -238,14 +235,14 @@ public final class Task<T> {
      * @see FiberExecutor
      */
     public static <T> Task<T> createAsync(final AsyncFun<? extends T> fun) {
-        return new Task<>((callback, executor) -> {
+        return new Task<>((executor, callback) -> {
             final var cancel = new MutableCancellable();
             // Starting the execution on another thread, to ensure concurrent
             // execution; NOTE: this execution is not cancellable, to simplify
             // the model (i.e., we are not using `executeCancellable` on purpose)
             executor.execute(() -> {
                 try {
-                    final var token = fun.invoke(callback, executor);
+                    final var token = fun.invoke(executor, callback);
                     cancel.set(token);
                 } catch (final Throwable e) {
                     UncaughtExceptionHandler.rethrowIfFatal(e);
@@ -260,7 +257,7 @@ public final class Task<T> {
      * Creates a task from a {@link Callable} executing blocking IO.
      */
     public static <T> Task<T> fromBlockingIO(final Callable<? extends T> callable) {
-        return new Task<>((callback, executor) -> executor.executeCancellable(
+        return new Task<>((executor, callback) -> executor.executeCancellable(
             () -> {
                 try {
                     final var result = callable.call();
@@ -491,8 +488,7 @@ final class TaskFromCancellableFuture<T> implements AsyncFun<T> {
 
     @Override
     public Cancellable invoke(
-        final CompletionCallback<? super T> callback,
-        final FiberExecutor executor
+            final FiberExecutor executor, final CompletionCallback<? super T> callback
     ) {
         final var cancel = new MutableCancellable();
         executor.execute(() -> {

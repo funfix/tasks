@@ -36,7 +36,7 @@ abstract class BaseTaskCreateTest {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
-        final Task<String> task = createTask((cb, executor) -> {
+        final Task<String> task = createTask((executor, cb) -> {
             cb.onSuccess("Hello, world!");
             // callback is idempotent
             cb.onSuccess("Hello, world! (2)");
@@ -54,7 +54,7 @@ abstract class BaseTaskCreateTest {
     void failed() throws InterruptedException {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
-        final Task<String> task = createTask((cb, executor) -> {
+        final Task<String> task = createTask((executor, cb) -> {
             Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
             cb.onFailure(new RuntimeException("Sample exception"));
             // callback is idempotent
@@ -80,7 +80,7 @@ abstract class BaseTaskCreateTest {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
-        final Task<String> task = createTask((cb, executor) -> () -> {
+        final Task<String> task = createTask((executor, cb) -> () -> {
             Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
             cb.onCancel();
             // callback is idempotent
@@ -161,7 +161,7 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
     void java21Plus() throws ExecutionException, InterruptedException {
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
 
-        final Task<String> task = createTask((cb, executor) -> {
+        final Task<String> task = createTask((executor, cb) -> {
             cb.onSuccess(Thread.currentThread().getName());
             return Cancellable.EMPTY;
         });
@@ -174,7 +174,7 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
     void olderJava() throws ExecutionException, InterruptedException {
         assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires older Java versions");
 
-        final Task<String> task = createTask((cb, executor) -> {
+        final Task<String> task = createTask((executor, cb) -> {
             cb.onSuccess(Thread.currentThread().getName());
             return Cancellable.EMPTY;
         });
