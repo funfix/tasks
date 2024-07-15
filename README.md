@@ -5,7 +5,7 @@
 ```xml
 <dependency>
   <groupId>org.funfix</groupId>
-  <artifactId>tasks-core-jvm</artifactId>
+  <artifactId>tasks-core</artifactId>
   <version>0.0.1</version>
 </dependency>
 ```
