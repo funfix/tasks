@@ -1,6 +1,6 @@
 rootProject.name = "tasks"
 
-include("tasks-core-jvm")
+include("tasks-core")
 
 pluginManagement {
     repositories {
