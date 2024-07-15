@@ -374,11 +374,23 @@ public final class Task<T> {
 final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer implements CompletionCallback<T> {
     private final AtomicBoolean isDone = new AtomicBoolean(false);
     @Nullable
+    private Outcome<T> outcome = null;
+    @Nullable
     private T result = null;
     @Nullable
     private Throwable error = null;
     @Nullable
     private InterruptedException interrupted = null;
+
+    @Override
+    public void onCompletion(Outcome<T> outcome) {
+        if (!isDone.getAndSet(true)) {
+            this.outcome = outcome;
+            releaseShared(1);
+        } else if (outcome instanceof Outcome.Failed<?> failed) {
+            UncaughtExceptionHandler.logOrRethrowException(failed.exception());
+        }
+    }
 
     @Override
     public void onSuccess(final T value) {
@@ -447,6 +459,12 @@ final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer imp
             Thread.interrupted();
         }
         if (timedOut != null) throw timedOut;
+        if (outcome != null)
+            try {
+                outcome.getOrThrow();
+            } catch (CancellationException e) {
+                throw interrupted != null ? interrupted : new InterruptedException();
+            }
         if (interrupted != null) throw interrupted;
         if (error != null) throw new ExecutionException(error);
         // noinspection DataFlowIssue
