@@ -20,7 +20,7 @@ public class TaskExecuteTest {
                 new AtomicReference<@Nullable Outcome<? extends String>>(null);
 
         final var task = Task.fromBlockingIO(() -> "Hello!");
-        task.executeAsync((CompletionCallback<String>) ref -> {
+        task.executeAsync(ref -> {
             outcome.set(ref);
             latch.countDown();
         });
@@ -40,7 +40,7 @@ public class TaskExecuteTest {
                 new RuntimeException("Error");
 
         final var task = Task.<String>fromBlockingIO(() -> { throw expectedError; });
-        task.executeAsync((CompletionCallback<String>) outcome -> {
+        task.executeAsync(outcome -> {
             outcomeRef.set(outcome);
             latch.countDown();
         });
@@ -68,7 +68,7 @@ public class TaskExecuteTest {
             nonTermination.await();
             return "Nooo";
         });
-        final var token = task.executeAsync((CompletionCallback<String>) outcome -> {
+        final var token = task.executeAsync(outcome -> {
             outcomeRef.set(outcome);
             latch.countDown();
         });
