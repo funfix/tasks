@@ -7,7 +7,7 @@ import java.io.Serializable
  */
 fun interface AsyncFun<out T> : Serializable {
     operator fun invoke(
-        callback: CompletionCallback<T>,
-        executor: FiberExecutor
+        executor: FiberExecutor,
+        callback: CompletionCallback<T>
     ): Cancellable
 }

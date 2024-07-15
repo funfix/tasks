@@ -73,7 +73,7 @@ interface Fiber : Cancellable {
         /**
          * INTERNAL API, do not use!
          */
-        internal fun start(command: Runnable, executor: ExecuteCancellableFun): Fiber {
+        internal fun start(executor: ExecuteCancellableFun, command: Runnable): Fiber {
             val fiber = ExecutedFiber()
             val token = executor.executeCancellable(command) { fiber.signalComplete() }
             fiber.registerCancel(token)
@@ -98,10 +98,10 @@ interface TaskFiber<out T> : Fiber {
         /**
          * INTERNAL API, do not use!
          */
-        internal fun <T> start(asyncFun: AsyncFun<T>, executor: FiberExecutor): TaskFiber<T> {
+        internal fun <T> start(executor: FiberExecutor, asyncFun: AsyncFun<T>): TaskFiber<T> {
             val fiber = ExecutedTaskFiber<T>()
             try {
-                val token = asyncFun(fiber.onComplete, executor)
+                val token = asyncFun(executor, fiber.onComplete)
                 fiber.registerCancel(token)
             } catch (e: Throwable) {
                 UncaughtExceptionHandler.rethrowIfFatal(e)
@@ -282,7 +282,7 @@ private class FiberExecutorDefault private constructor(
     private val _executor: Executor
 ) : FiberExecutor {
     override fun executeFiber(command: Runnable): Fiber =
-        Fiber.start(command, _executeFun)
+        Fiber.start(_executeFun, command)
 
     override fun executeCancellable(command: Runnable, onComplete: Runnable?): Cancellable =
         _executeFun.executeCancellable(command, onComplete)

@@ -36,7 +36,7 @@ abstract class BaseTaskCreateTest {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
-        final Task<String> task = createTask((cb, executor) -> {
+        final Task<String> task = createTask((executor, cb) -> {
             cb.complete(Outcome.succeeded("Hello, world!"));
             // callback is idempotent
             cb.complete(Outcome.succeeded("Hello, world! (2)"));
@@ -44,7 +44,7 @@ abstract class BaseTaskCreateTest {
             return Cancellable.EMPTY;
         });
 
-        final String result = task.executeBlockingTimed(TimedAwait.TIMEOUT);
+        final String result = task.executeBlockingTimed(FiberExecutor.Companion.shared(), TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", result);
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
         assertNull(reportedException.get(), "reportedException.get()");
@@ -54,7 +54,7 @@ abstract class BaseTaskCreateTest {
     void failed() throws InterruptedException {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
-        final Task<String> task = createTask((cb, executor) -> {
+        final Task<String> task = createTask((executor, cb) -> {
             Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
             cb.complete(Outcome.failed(new RuntimeException("Sample exception")));
             // callback is idempotent
@@ -63,7 +63,7 @@ abstract class BaseTaskCreateTest {
             return Cancellable.EMPTY;
         });
         try {
-            task.executeBlockingTimed(TimedAwait.TIMEOUT, executor);
+            task.executeBlockingTimed(executor, TimedAwait.TIMEOUT);
         } catch (final ExecutionException | TimeoutException ex) {
             assertEquals("Sample exception", ex.getCause().getMessage());
         }
@@ -80,7 +80,7 @@ abstract class BaseTaskCreateTest {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
-        final Task<String> task = createTask((cb, executor) -> () -> {
+        final Task<String> task = createTask((executor, cb) -> () -> {
             Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
             cb.complete(Outcome.cancelled());
             // callback is idempotent
@@ -161,7 +161,7 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
     void java21Plus() throws ExecutionException, InterruptedException {
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
 
-        final Task<String> task = createTask((cb, executor) -> {
+        final Task<String> task = createTask((executor, cb) -> {
             cb.complete(Outcome.succeeded(Thread.currentThread().getName()));
             return Cancellable.EMPTY;
         });
@@ -174,7 +174,7 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
     void olderJava() throws ExecutionException, InterruptedException {
         assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires older Java versions");
 
-        final Task<String> task = createTask((cb, executor) -> {
+        final Task<String> task = createTask((executor, cb) -> {
             cb.complete(Outcome.succeeded(Thread.currentThread().getName()));
             return Cancellable.EMPTY;
         });
