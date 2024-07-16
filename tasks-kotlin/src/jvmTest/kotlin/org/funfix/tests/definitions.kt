@@ -12,7 +12,6 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 
 val TIMEOUT = 5.seconds
 
@@ -29,7 +28,7 @@ suspend fun awaitLatchWithExpectationSuspended(latch: CountDownLatch, name: Stri
     }
 
 fun awaitFiberJoin(fiber: Fiber, name: String = "fiber") =
-    try { fiber.joinBlockingTimed(TIMEOUT.toJavaDuration()) }
+    try { fiber.joinBlockingTimed(TIMEOUT.inWholeMilliseconds) }
     catch (_: TimeoutException) { fail("Timed out waiting for `$name` to complete") }
 
 suspend fun awaitJoinWithTimeoutSuspended(job: Job, timeout: Duration = TIMEOUT) =
@@ -44,7 +43,7 @@ fun assertStartsWith(expectedPrefix: String, actual: String) {
 
 fun <T> awaitBlockingTask(task: Task<T>, name: String = "task", timeout: Duration = TIMEOUT): T =
     try {
-        task.runBlockingTimed(timeout.toJavaDuration())
+        task.runBlockingTimed(timeout.inWholeMilliseconds)
     } catch (_: TimeoutException) {
         fail("Timed out waiting for `$name` to complete")
     }

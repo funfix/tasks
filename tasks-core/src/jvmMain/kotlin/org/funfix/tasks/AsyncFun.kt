@@ -1,6 +1,5 @@
 package org.funfix.tasks
 
-import org.jetbrains.annotations.BlockingExecutor
 import org.jetbrains.annotations.NonBlocking
 import java.io.Serializable
 

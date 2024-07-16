@@ -3,11 +3,7 @@ package org.funfix.tasks
 import org.jetbrains.annotations.Blocking
 import org.jetbrains.annotations.BlockingExecutor
 import org.jetbrains.annotations.NonBlocking
-import java.time.Duration
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executor
-import java.util.concurrent.ThreadFactory
-import java.util.concurrent.TimeoutException
+import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.AbstractQueuedSynchronizer
 
@@ -38,11 +34,11 @@ interface Fiber : Cancellable {
 
     @Blocking
     @Throws(InterruptedException::class, TimeoutException::class)
-    fun joinBlockingTimed(timeout: Duration) {
+    fun joinBlockingTimed(timeoutMillis: Long) {
         val latch = AwaitSignal()
         val token = joinAsync { latch.signal() }
         try {
-            latch.await(timeout)
+            latch.await(timeoutMillis, TimeUnit.MILLISECONDS)
         } catch (e: InterruptedException) {
             token.cancel()
             throw e
@@ -457,9 +453,9 @@ private class AwaitSignal : AbstractQueuedSynchronizer() {
     }
 
     @Throws(InterruptedException::class, TimeoutException::class)
-    fun await(timeout: Duration) {
-        if (!tryAcquireSharedNanos(1, timeout.toNanos())) {
-            throw TimeoutException("Timed out after $timeout")
+    fun await(timeout: Long, unit: TimeUnit) {
+        if (!tryAcquireSharedNanos(1, unit.toNanos(timeout))) {
+            throw TimeoutException("Timed out after $timeout ${unit.name.lowercase()}")
         }
     }
 }

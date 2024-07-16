@@ -113,7 +113,7 @@ public class TaskFromBlockingFutureTest {
 
         TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");
         fiber.cancel();
-        fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
+        fiber.joinBlockingTimed(TimedAwait.TIMEOUT.toMillis());
 
         try {
             Objects.requireNonNull(fiber.outcome()).getOrThrow();
@@ -141,7 +141,7 @@ public class TaskFromBlockingFutureTest {
 
         wasStarted.await();
         fiber.cancel();
-        fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
+        fiber.joinBlockingTimed(TimedAwait.TIMEOUT.toMillis());
 
         try {
             Objects.requireNonNull(fiber.outcome()).getOrThrow();

@@ -44,7 +44,7 @@ abstract class BaseTaskCreateTest {
             return Cancellable.EMPTY;
         });
 
-        final String result = task.runBlockingTimed(FiberExecutor.Companion.shared(), TimedAwait.TIMEOUT);
+        final String result = task.runBlockingTimed(FiberExecutor.Companion.shared(), TimedAwait.TIMEOUT.toMillis());
         assertEquals("Hello, world!", result);
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
         assertNull(reportedException.get(), "reportedException.get()");
@@ -64,9 +64,9 @@ abstract class BaseTaskCreateTest {
         });
         try {
             if (executor != null)
-                task.runBlockingTimed(executor, TimedAwait.TIMEOUT);
+                task.runBlockingTimed(executor, TimedAwait.TIMEOUT.toMillis());
             else
-                task.runBlockingTimed(TimedAwait.TIMEOUT);
+                task.runBlockingTimed(TimedAwait.TIMEOUT.toMillis());
         } catch (final ExecutionException | TimeoutException ex) {
             assertEquals("Sample exception", ex.getCause().getMessage());
         }

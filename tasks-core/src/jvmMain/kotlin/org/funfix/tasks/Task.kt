@@ -2,7 +2,6 @@ package org.funfix.tasks
 
 import org.jetbrains.annotations.Blocking
 import org.jetbrains.annotations.NonBlocking
-import java.time.Duration
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -118,7 +117,7 @@ class Task<out T> private constructor(
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
     fun runBlockingTimed(
         executor: FiberExecutor,
-        timeout: Duration
+        timeoutMillis: Long
     ): T {
         val h = BlockingCompletionCallback<T>()
         val cancelToken =
@@ -128,7 +127,7 @@ class Task<out T> private constructor(
                 h.complete(Outcome.failed(e))
                 Cancellable.EMPTY
             }
-        return h.await(cancelToken, timeout)
+        return h.await(cancelToken, timeoutMillis)
     }
 
     /**
@@ -136,8 +135,8 @@ class Task<out T> private constructor(
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
-    fun runBlockingTimed(timeout: Duration): T =
-        runBlockingTimed(FiberExecutor.shared(), timeout)
+    fun runBlockingTimed(timeoutMillis: Long): T =
+        runBlockingTimed(FiberExecutor.shared(), timeoutMillis)
 
     companion object {
         /**
@@ -431,10 +430,10 @@ private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(), Compl
         }
 
     @Throws(InterruptedException::class, ExecutionException::class, TimeoutException::class)
-    fun await(cancelToken: Cancellable, timeout: Duration): T =
+    fun await(cancelToken: Cancellable, timeoutMillis: Long): T =
         awaitInline(cancelToken) {
-            if (!tryAcquireSharedNanos(1, timeout.toNanos()))
-                throw TimeoutException("Task timed-out after $timeout")
+            if (!tryAcquireSharedNanos(1, TimeUnit.MILLISECONDS.toNanos(timeoutMillis)))
+                throw TimeoutException("Task timed-out after $timeoutMillis millis")
         }
 }
 

@@ -60,7 +60,7 @@ class FiberExecutorFromExecutorTest {
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
             final var fiber = runtime.startFiber(() -> wasExecuted[0] = true);
-            fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
+            fiber.joinBlockingTimed(TimedAwait.TIMEOUT.toMillis());
             assertTrue(wasExecuted[0], "wasExecuted");
         }
     }
