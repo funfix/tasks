@@ -3,6 +3,7 @@ package org.funfix.tasks
 import org.jetbrains.annotations.Blocking
 import org.jetbrains.annotations.BlockingExecutor
 import org.jetbrains.annotations.NonBlocking
+import java.time.Duration
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -47,6 +48,11 @@ interface Fiber : Cancellable {
             throw e
         }
     }
+
+    @Blocking
+    @Throws(InterruptedException::class, TimeoutException::class)
+    fun joinBlockingTimed(timeout: Duration): Unit =
+        joinBlockingTimed(timeout.toMillis())
 
     @Blocking
     @Throws(InterruptedException::class)

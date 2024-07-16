@@ -35,7 +35,7 @@ abstract class TaskFromBlockingIOTestBase {
             Task.fromBlockingIO(() -> {
                 name.set(Thread.currentThread().getName());
                 return "Hello, world!";
-            }).runBlocking(executor);
+            }).executeBlocking(executor);
         assertEquals("Hello, world!", r);
         testThreadName(name.get());
     }
@@ -45,7 +45,7 @@ abstract class TaskFromBlockingIOTestBase {
         Objects.requireNonNull(executor);
         try {
             Task.fromBlockingIO(() -> { throw new RuntimeException("Error"); })
-                    .runBlocking(executor);
+                    .executeBlocking(executor);
             fail("Should have thrown an exception");
         } catch (final ExecutionException ex) {
             assertEquals("Error", ex.getCause().getMessage());
@@ -61,7 +61,7 @@ abstract class TaskFromBlockingIOTestBase {
             Thread.sleep(30000);
             return null;
         });
-        final var fiber = task.startFiber(executor);
+        final var fiber = task.executeConcurrently(executor);
         TimedAwait.latchAndExpectCompletion(latch, "latch");
 
         fiber.cancel();

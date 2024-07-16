@@ -43,7 +43,7 @@ fun assertStartsWith(expectedPrefix: String, actual: String) {
 
 fun <T> awaitBlockingTask(task: Task<T>, name: String = "task", timeout: Duration = TIMEOUT): T =
     try {
-        task.runBlockingTimed(timeout.inWholeMilliseconds)
+        task.executeBlockingTimed(timeout.inWholeMilliseconds)
     } catch (_: TimeoutException) {
         fail("Timed out waiting for `$name` to complete")
     }

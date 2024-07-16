@@ -44,7 +44,7 @@ abstract class BaseTaskCreateTest {
             return Cancellable.EMPTY;
         });
 
-        final String result = task.runBlockingTimed(FiberExecutor.Companion.shared(), TimedAwait.TIMEOUT.toMillis());
+        final String result = task.executeBlockingTimed(FiberExecutor.Companion.shared(), TimedAwait.TIMEOUT.toMillis());
         assertEquals("Hello, world!", result);
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
         assertNull(reportedException.get(), "reportedException.get()");
@@ -64,9 +64,9 @@ abstract class BaseTaskCreateTest {
         });
         try {
             if (executor != null)
-                task.runBlockingTimed(executor, TimedAwait.TIMEOUT.toMillis());
+                task.executeBlockingTimed(executor, TimedAwait.TIMEOUT.toMillis());
             else
-                task.runBlockingTimed(TimedAwait.TIMEOUT.toMillis());
+                task.executeBlockingTimed(TimedAwait.TIMEOUT.toMillis());
         } catch (final ExecutionException | TimeoutException ex) {
             assertEquals("Sample exception", ex.getCause().getMessage());
         }
@@ -93,8 +93,8 @@ abstract class BaseTaskCreateTest {
 
         final var fiber =
                 executor != null
-                        ? task.startFiber(executor)
-                        : task.startFiber();
+                        ? task.executeConcurrently(executor)
+                        : task.executeConcurrently();
         try {
             fiber.cancel();
             // call is idempotent
@@ -174,8 +174,8 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
 
         final var result =
                 executor != null
-                        ? task.runBlocking(executor)
-                        : task.runBlocking();
+                        ? task.executeBlocking(executor)
+                        : task.executeBlocking();
         assertTrue(
                 result.matches("common-io-virtual-\\d+"),
                 "result.matches(\"common-io-virtual-\\\\d+\")"
@@ -193,8 +193,8 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
 
         final var result =
                 executor != null
-                        ? task.runBlocking(executor)
-                        : task.runBlocking();
+                        ? task.executeBlocking(executor)
+                        : task.executeBlocking();
         assertTrue(
                 result.matches("common-io-platform-\\d+"),
                 "result.matches(\"common-io-virtual-\\\\d+\")"

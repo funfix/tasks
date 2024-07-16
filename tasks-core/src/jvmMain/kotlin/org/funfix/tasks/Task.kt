@@ -30,7 +30,7 @@ class Task<out T> private constructor(
      * @return a [Cancellable] that can be used to cancel a running task
      */
     @NonBlocking
-    fun startAsync(
+    fun executeAsync(
         executor: FiberExecutor,
         callback: CompletionCallback<T>
     ): Cancellable {
@@ -45,11 +45,11 @@ class Task<out T> private constructor(
     }
 
     /**
-     * Overload of [startAsync] that uses [FiberExecutor.shared] as the executor.
+     * Overload of [executeAsync] that uses [FiberExecutor.shared] as the executor.
      */
     @NonBlocking
-    fun startAsync(callback: CompletionCallback<T>): Cancellable =
-        startAsync(FiberExecutor.shared(), callback)
+    fun executeAsync(callback: CompletionCallback<T>): Cancellable =
+        executeAsync(FiberExecutor.shared(), callback)
 
     /**
      * Executes the task concurrently and returns a [TaskFiber] that can be
@@ -58,14 +58,15 @@ class Task<out T> private constructor(
      * @param executor is the [FiberExecutor] that may be used to run the task
      */
     @NonBlocking
-    fun startFiber(executor: FiberExecutor): TaskFiber<T> =
+    fun executeConcurrently(executor: FiberExecutor): TaskFiber<T> =
         TaskFiber.start(executor, asyncFun)
 
     /**
-     * Overload of [startFiber] that uses [FiberExecutor.shared] as the executor.
+     * Overload of [executeConcurrently] that uses [FiberExecutor.shared] as the executor.
      */
     @NonBlocking
-    fun startFiber(): TaskFiber<T> = startFiber(FiberExecutor.shared())
+    fun executeConcurrently(): TaskFiber<T> =
+        executeConcurrently(FiberExecutor.shared())
 
     /**
      * Executes the task and blocks until it completes, or the current
@@ -80,7 +81,7 @@ class Task<out T> private constructor(
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class)
-    fun runBlocking(executor: FiberExecutor): T {
+    fun executeBlocking(executor: FiberExecutor): T {
         val h = BlockingCompletionCallback<T>()
         val cancelToken =
             try {
@@ -93,11 +94,11 @@ class Task<out T> private constructor(
     }
 
     /**
-     * Overload of [runBlocking] that uses [FiberExecutor.shared] as the executor.
+     * Overload of [executeBlocking] that uses [FiberExecutor.shared] as the executor.
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class)
-    fun runBlocking(): T = runBlocking(FiberExecutor.shared())
+    fun executeBlocking(): T = executeBlocking(FiberExecutor.shared())
 
     /**
      * Executes the task and blocks until it completes, or the timeout is reached,
@@ -115,7 +116,7 @@ class Task<out T> private constructor(
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
-    fun runBlockingTimed(
+    fun executeBlockingTimed(
         executor: FiberExecutor,
         timeoutMillis: Long
     ): T {
@@ -131,12 +132,12 @@ class Task<out T> private constructor(
     }
 
     /**
-     * Overload of [runBlockingTimed] that uses [FiberExecutor.shared] as the executor.
+     * Overload of [executeBlockingTimed] that uses [FiberExecutor.shared] as the executor.
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
-    fun runBlockingTimed(timeoutMillis: Long): T =
-        runBlockingTimed(FiberExecutor.shared(), timeoutMillis)
+    fun executeBlockingTimed(timeoutMillis: Long): T =
+        executeBlockingTimed(FiberExecutor.shared(), timeoutMillis)
 
     companion object {
         /**
@@ -186,7 +187,7 @@ class Task<out T> private constructor(
          * builder function on the same thread.
          *
          * NOTE: The thread is created via the injected [FiberExecutor] in the
-         * "execute" methods (e.g., [startAsync]). Even when using one of the overloads,
+         * "execute" methods (e.g., [executeAsync]). Even when using one of the overloads,
          * then [FiberExecutor.shared] is assumed.
          *
          * @param run is the function that will trigger the async computation.

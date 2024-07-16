@@ -57,7 +57,7 @@ class SuspensionToTaskTest {
             }
         }
 
-        val fiber = task.startFiber()
+        val fiber = task.executeConcurrently()
         awaitLatchWithExpectation(wasStarted, "wasStarted")
         fiber.cancel()
         awaitFiberJoin(fiber)

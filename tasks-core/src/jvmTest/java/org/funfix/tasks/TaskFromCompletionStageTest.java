@@ -28,7 +28,7 @@ public class TaskFromCompletionStageTest {
             // Test that the future is suspended
             assertTrue(isSuspended.get(), "Future should be suspended");
 
-            final var result = task.runBlocking();
+            final var result = task.executeBlocking();
             assertFalse(isSuspended.get(), "Future should have been executed");
             assertEquals("Hello, world!", result);
         } finally {
@@ -51,7 +51,7 @@ public class TaskFromCompletionStageTest {
                     );
 
             try {
-                task.runBlocking();
+                task.executeBlocking();
                 fail("Should have thrown an exception");
             } catch (final ExecutionException ex) {
                 assertInstanceOf(SampleException.class, ex.getCause(), "Should have received a SampleException");
@@ -68,7 +68,7 @@ public class TaskFromCompletionStageTest {
                     throw new SampleException("Error");
                 });
         try {
-            task.runBlocking();
+            task.executeBlocking();
             fail("Should have thrown an exception");
         } catch (final ExecutionException ex) {
             assertInstanceOf(SampleException.class, ex.getCause(), "Should have received a SampleException");

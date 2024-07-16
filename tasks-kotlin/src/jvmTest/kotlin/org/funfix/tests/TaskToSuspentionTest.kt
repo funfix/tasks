@@ -3,7 +3,7 @@ package org.funfix.tests
 import kotlinx.coroutines.*
 import org.funfix.tasks.Task
 import org.funfix.tasks.VirtualThreads
-import org.funfix.tasks.awaitSuspended
+import org.funfix.tasks.executeSuspended
 import org.funfix.tasks.virtualThreadsOrBackup
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import java.util.concurrent.CountDownLatch
@@ -19,7 +19,7 @@ class TaskToSuspensionTest {
             1 + 1
         }
 
-        val r = task.awaitSuspended()
+        val r = task.executeSuspended()
         assertEquals(2, r)
     }
 
@@ -31,7 +31,7 @@ class TaskToSuspensionTest {
         }
 
         try {
-            task.awaitSuspended()
+            task.executeSuspended()
             fail("Should have thrown")
         } catch (e: RuntimeException) {
             assertEquals(exception.message, e.message)
@@ -55,7 +55,7 @@ class TaskToSuspensionTest {
             }
 
             val job = launch(Dispatchers.IO) {
-                task.awaitSuspended()
+                task.executeSuspended()
             }
             awaitLatchWithExpectationSuspended(wasStarted, "wasStarted")
             job.cancel()
@@ -80,7 +80,7 @@ class TaskToSuspensionTest {
             }
 
             val job = launch(Dispatchers.IO) {
-                task.awaitSuspended()
+                task.executeSuspended()
             }
             awaitLatchWithExpectationSuspended(wasStarted, "wasStarted")
             job.cancel()
@@ -95,7 +95,7 @@ class TaskToSuspensionTest {
             Thread.currentThread().name
         }
         val name = withContext(Dispatchers.Default) {
-            task.awaitSuspended()
+            task.executeSuspended()
         }
         assertStartsWith("DefaultDispatcher-worker-", name)
     }
@@ -109,7 +109,7 @@ class TaskToSuspensionTest {
             Thread.currentThread().name
         }
         val name = withContext(Dispatchers.virtualThreadsOrBackup()) {
-            task.awaitSuspended()
+            task.executeSuspended()
         }
         assertStartsWith("VirtualThreadsDispatcher-worker-", name)
     }
@@ -122,7 +122,7 @@ class TaskToSuspensionTest {
             Thread.currentThread().name
         }
         val name = withContext(Dispatchers.virtualThreadsOrBackup()) {
-            task.awaitSuspended()
+            task.executeSuspended()
         }
         assertStartsWith("DefaultDispatcher-worker-", name)
     }

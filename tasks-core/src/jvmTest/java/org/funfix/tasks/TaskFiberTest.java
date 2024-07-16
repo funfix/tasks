@@ -14,7 +14,7 @@ public class TaskFiberTest {
             return "Hello, world!";
         });
 
-        final var fiber = task.startFiber();
+        final var fiber = task.executeConcurrently();
         assertNull(fiber.outcome(), "fiber.outcome()");
 
         latch.countDown();
@@ -33,7 +33,7 @@ public class TaskFiberTest {
                     fiberStarted.countDown();
                     fiberGo.await();
                     return "Hello, world!";
-                }).startFiber();
+                }).executeConcurrently();
 
         TimedAwait.latchAndExpectCompletion(fiberStarted, "fiberStarted");
         // Adding multiple consumers
@@ -51,7 +51,7 @@ public class TaskFiberTest {
         final TaskFiber<?> fiber = Task
                 .fromBlockingIO(() -> {
                     throw new RuntimeException("My Error");
-                }).startFiber();
+                }).executeConcurrently();
 
         fiber.joinBlocking();
         try {
@@ -66,7 +66,7 @@ public class TaskFiberTest {
     public void resultIsMemoized() throws InterruptedException, TaskCancellationException, ExecutionException {
         final var fiber = Task
                 .fromBlockingIO(() -> ThreadLocalRandom.current().nextInt())
-                .startFiber();
+                .executeConcurrently();
 
         fiber.joinBlocking();
         final int result = Objects.requireNonNull(fiber.outcome()).getOrThrow();
@@ -83,7 +83,7 @@ public class TaskFiberTest {
         final var started = new CountDownLatch(1);
         final var fiber = Task
                 .fromBlockingIO(() -> TimedAwait.latchNoExpectations(latch))
-                .startFiber();
+                .executeConcurrently();
 
         final var fiber2 = Task
                 .fromBlockingIO(() -> {
@@ -91,7 +91,7 @@ public class TaskFiberTest {
                     fiber.joinBlocking();
                     return Objects.requireNonNull(fiber.outcome()).getOrThrow();
                 })
-                .startFiber();
+                .executeConcurrently();
 
         TimedAwait.latchAndExpectCompletion(started, "started");
         fiber2.cancel();
