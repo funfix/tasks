@@ -1,5 +1,6 @@
 package org.funfix.tasks
 
+import org.jetbrains.annotations.NonBlocking
 import java.io.Serializable
 
 /**
@@ -16,6 +17,7 @@ fun interface CompletionCallback<in T> : Serializable {
     /**
      * Signals a final [Outcome].
      */
+    @NonBlocking
     fun complete(outcome: Outcome<T>)
 
     companion object {

@@ -7,14 +7,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class TaskFiberTest {
     @Test
-    public void notCompletedException() throws CancellationException, ExecutionException, InterruptedException {
+    public void notCompletedException() throws TaskCancellationException, ExecutionException, InterruptedException {
         final var latch = new CountDownLatch(1);
         final var task = Task.fromBlockingIO(() -> {
             latch.await();
             return "Hello, world!";
         });
 
-        final var fiber = task.executeConcurrently();
+        final var fiber = task.startFiber();
         assertNull(fiber.outcome(), "fiber.outcome()");
 
         latch.countDown();
@@ -24,7 +24,7 @@ public class TaskFiberTest {
     }
 
     @Test
-    public void joinAsync() throws InterruptedException, CancellationException, ExecutionException {
+    public void joinAsync() throws InterruptedException, TaskCancellationException, ExecutionException {
         final var fiberStarted = new CountDownLatch(1);
         final var fiberGo = new CountDownLatch(1);
         final var awaitConsumers = new CountDownLatch(3);
@@ -33,7 +33,7 @@ public class TaskFiberTest {
                     fiberStarted.countDown();
                     fiberGo.await();
                     return "Hello, world!";
-                }).executeConcurrently();
+                }).startFiber();
 
         TimedAwait.latchAndExpectCompletion(fiberStarted, "fiberStarted");
         // Adding multiple consumers
@@ -47,11 +47,11 @@ public class TaskFiberTest {
     }
 
     @Test
-    public void canFail() throws InterruptedException, CancellationException {
+    public void canFail() throws InterruptedException, TaskCancellationException {
         final TaskFiber<?> fiber = Task
                 .fromBlockingIO(() -> {
                     throw new RuntimeException("My Error");
-                }).executeConcurrently();
+                }).startFiber();
 
         fiber.joinBlocking();
         try {
@@ -63,10 +63,10 @@ public class TaskFiberTest {
     }
 
     @Test
-    public void resultIsMemoized() throws InterruptedException, CancellationException, ExecutionException {
+    public void resultIsMemoized() throws InterruptedException, TaskCancellationException, ExecutionException {
         final var fiber = Task
                 .fromBlockingIO(() -> ThreadLocalRandom.current().nextInt())
-                .executeConcurrently();
+                .startFiber();
 
         fiber.joinBlocking();
         final int result = Objects.requireNonNull(fiber.outcome()).getOrThrow();
@@ -78,12 +78,12 @@ public class TaskFiberTest {
     }
 
     @Test
-    public void joinCanBeInterrupted() throws InterruptedException, ExecutionException, CancellationException {
+    public void joinCanBeInterrupted() throws InterruptedException, ExecutionException, TaskCancellationException {
         final var latch = new CountDownLatch(1);
         final var started = new CountDownLatch(1);
         final var fiber = Task
                 .fromBlockingIO(() -> TimedAwait.latchNoExpectations(latch))
-                .executeConcurrently();
+                .startFiber();
 
         final var fiber2 = Task
                 .fromBlockingIO(() -> {
@@ -91,7 +91,7 @@ public class TaskFiberTest {
                     fiber.joinBlocking();
                     return Objects.requireNonNull(fiber.outcome()).getOrThrow();
                 })
-                .executeConcurrently();
+                .startFiber();
 
         TimedAwait.latchAndExpectCompletion(started, "started");
         fiber2.cancel();
@@ -99,7 +99,7 @@ public class TaskFiberTest {
         try {
             Objects.requireNonNull(fiber2.outcome()).getOrThrow();
             fail("Should have thrown a CancellationException");
-        } catch (final CancellationException ignored) {}
+        } catch (final TaskCancellationException ignored) {}
 
         latch.countDown();
         fiber.joinBlocking();

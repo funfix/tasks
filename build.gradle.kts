@@ -6,12 +6,16 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlinx.kover) apply false
-    alias(libs.plugins.dokka) apply false
+    alias(libs.plugins.dokka)
     alias(libs.plugins.versions)
 }
 
 repositories {
     mavenCentral()
+}
+
+tasks.dokkaHtmlMultiModule {
+    outputDirectory.set(file("build/dokka"))
 }
 
 subprojects {

@@ -2,6 +2,7 @@
 
 package org.funfix.tasks
 
+import org.jetbrains.annotations.NonBlocking
 import java.util.concurrent.ExecutionException
 
 /**
@@ -14,9 +15,10 @@ sealed interface Outcome<out T> {
      * @return the successful value (in case the outcome is [Succeeded])
      *
      * @throws ExecutionException if the task failed with an exception ([Failed])
-     * @throws CancellationException if the task was cancelled ([Cancelled])
+     * @throws TaskCancellationException if the task was cancelled ([Cancelled])
      */
-    @Throws(ExecutionException::class, CancellationException::class)
+    @NonBlocking
+    @Throws(ExecutionException::class, TaskCancellationException::class)
     fun getOrThrow(): T
 
     /**
@@ -110,9 +112,9 @@ sealed interface Outcome<out T> {
      * ```
      */
     data object Cancelled: Outcome<Nothing> {
-        @Throws(CancellationException::class)
+        @Throws(TaskCancellationException::class)
         override fun getOrThrow(): Nothing {
-            throw CancellationException()
+            throw TaskCancellationException()
         }
 
         @JvmStatic

@@ -96,6 +96,8 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
+                implementation(project(":tasks-core"))
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
 
@@ -107,17 +109,20 @@ kotlin {
 
         val jvmMain by getting {
             dependencies {
-                compileOnly(libs.jetbrains.annotations)
+                implementation(project(":tasks-core"))
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
 
-        val jvmTest by getting {
+        val jvmTest by getting
+
+        val jsMain by getting {
             dependencies {
-                implementation(libs.jspecify)
+                implementation(project(":tasks-core"))
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
 
-        val jsMain by getting
         val jsTest by getting
     }
 

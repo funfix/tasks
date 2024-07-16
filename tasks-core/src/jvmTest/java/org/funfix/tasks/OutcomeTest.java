@@ -21,7 +21,7 @@ public class OutcomeTest {
         assertEquals("value", ((Outcome.Succeeded<String>) outcome1).getOrThrow());
         try {
             assertEquals("value", outcome2.getOrThrow());
-        } catch (ExecutionException | CancellationException e) {
+        } catch (ExecutionException | TaskCancellationException e) {
             throw new RuntimeException(e);
         }
     }
@@ -51,7 +51,7 @@ public class OutcomeTest {
         try {
             outcome2.getOrThrow();
             fail("Expected ExecutionException");
-        } catch (ExecutionException | CancellationException ex) {
+        } catch (ExecutionException | TaskCancellationException ex) {
             assertEquals(ex.getCause(), e);
         }
     }
@@ -69,12 +69,12 @@ public class OutcomeTest {
         try {
             ((Outcome.Cancelled)outcome1).getOrThrow();
             fail("Expected CancellationException");
-        } catch (CancellationException ignored) {
+        } catch (TaskCancellationException ignored) {
         }
         try {
             outcome2.getOrThrow();
             fail("Expected CancellationException");
-        } catch (CancellationException ignored) {
+        } catch (TaskCancellationException ignored) {
         } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }

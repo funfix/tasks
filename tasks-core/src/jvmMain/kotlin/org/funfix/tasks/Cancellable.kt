@@ -1,5 +1,6 @@
 package org.funfix.tasks
 
+import org.jetbrains.annotations.NonBlocking
 import kotlin.jvm.JvmField
 
 /**
@@ -18,6 +19,7 @@ import kotlin.jvm.JvmField
  *   with cancellation or without, must lead to the [CompletionCallback] being called.
  */
 fun interface Cancellable {
+    @NonBlocking
     fun cancel()
 
     companion object {

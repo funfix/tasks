@@ -1,5 +1,7 @@
 package org.funfix.tasks
 
+import org.jetbrains.annotations.Blocking
+
 /**
  * Represents a delayed computation (a thunk).
  *
@@ -9,6 +11,7 @@ package org.funfix.tasks
  * @see [AsyncFun]
  */
 fun interface DelayedFun<out T> {
+    @Blocking
     @Throws(Exception::class)
     operator fun invoke(): T
 }

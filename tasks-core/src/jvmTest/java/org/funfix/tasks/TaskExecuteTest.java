@@ -13,14 +13,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @NullMarked
 public class TaskExecuteTest {
     @Test
-    void executeAsyncWorksForSuccess() throws InterruptedException, CancellationException, ExecutionException {
+    void startAsyncWorksForSuccess() throws InterruptedException, TaskCancellationException, ExecutionException {
         final var latch =
                 new CountDownLatch(1);
         final var outcome =
                 new AtomicReference<@Nullable Outcome<? extends String>>(null);
 
         final var task = Task.fromBlockingIO(() -> "Hello!");
-        task.executeAsync(ref -> {
+        task.startAsync(ref -> {
             outcome.set(ref);
             latch.countDown();
         });
@@ -31,7 +31,7 @@ public class TaskExecuteTest {
     }
 
     @Test
-    void executeAsyncWorksForFailure() throws InterruptedException, CancellationException {
+    void startAsyncWorksForFailure() throws InterruptedException, TaskCancellationException {
         final var latch =
                 new CountDownLatch(1);
         final var outcomeRef =
@@ -40,7 +40,7 @@ public class TaskExecuteTest {
                 new RuntimeException("Error");
 
         final var task = Task.<String>fromBlockingIO(() -> { throw expectedError; });
-        task.executeAsync(outcome -> {
+        task.startAsync(outcome -> {
             outcomeRef.set(outcome);
             latch.countDown();
         });
@@ -56,7 +56,7 @@ public class TaskExecuteTest {
     }
 
     @Test
-    void executeAsyncWorksForCancellation() throws InterruptedException {
+    void startAsyncWorksForCancellation() throws InterruptedException {
         final var nonTermination =
                 new CountDownLatch(1);
         final var latch =
@@ -68,7 +68,7 @@ public class TaskExecuteTest {
             nonTermination.await();
             return "Nooo";
         });
-        final var token = task.executeAsync(outcome -> {
+        final var token = task.startAsync(outcome -> {
             outcomeRef.set(outcome);
             latch.countDown();
         });
@@ -79,7 +79,7 @@ public class TaskExecuteTest {
     }
 
     @Test
-    void executeBlockingStackedIsCancellable() throws InterruptedException {
+    void runBlockingStackedIsCancellable() throws InterruptedException {
         final var started = new CountDownLatch(1);
         final var latch = new CountDownLatch(1);
         final var interruptedHits = new AtomicInteger(0);
@@ -97,14 +97,14 @@ public class TaskExecuteTest {
                 }
             });
             try {
-                return innerTask.executeBlocking();
+                return innerTask.runBlocking();
             } catch (final InterruptedException e) {
                 interruptedHits.incrementAndGet();
                 throw e;
             }
         });
 
-        final var fiber = task.executeConcurrently();
+        final var fiber = task.startFiber();
         TimedAwait.latchAndExpectCompletion(started, "started");
 
         fiber.cancel();

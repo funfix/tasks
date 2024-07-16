@@ -44,7 +44,7 @@ public class TaskFromBlockingFutureTest {
             return es.submit(() -> "Hello, world!");
         });
 
-        final var r = task.executeBlocking();
+        final var r = task.runBlocking();
         assertEquals("Hello, world!", r);
         assertTrue(name.get().startsWith("common-io-"));
     }
@@ -60,7 +60,7 @@ public class TaskFromBlockingFutureTest {
             return es.submit(() -> "Hello, world!");
         });
 
-        final var r = task.executeBlocking();
+        final var r = task.runBlocking();
         assertEquals("Hello, world!", r);
         assertTrue(name.get().startsWith("common-io-virtual-"));
     }
@@ -72,7 +72,7 @@ public class TaskFromBlockingFutureTest {
         try {
             Task.fromBlockingFuture(() -> {
                 throw new RuntimeException("Error");
-            }).executeBlocking();
+            }).runBlocking();
         } catch (final ExecutionException ex) {
             assertEquals("Error", ex.getCause().getMessage());
         }
@@ -85,7 +85,7 @@ public class TaskFromBlockingFutureTest {
             Task.fromBlockingFuture(() -> es.submit(() -> {
                         throw new RuntimeException("Error");
                     }))
-                    .executeBlocking();
+                    .runBlocking();
         } catch (final ExecutionException ex) {
             assertEquals("Error", ex.getCause().getMessage());
         }
@@ -109,7 +109,7 @@ public class TaskFromBlockingFutureTest {
                         latch.countDown();
                         throw e;
                     }
-                }).executeConcurrently();
+                }).startFiber();
 
         TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");
         fiber.cancel();
@@ -117,7 +117,7 @@ public class TaskFromBlockingFutureTest {
 
         try {
             Objects.requireNonNull(fiber.outcome()).getOrThrow();
-        } catch (final CancellationException ignored) {
+        } catch (final TaskCancellationException ignored) {
         }
         TimedAwait.latchAndExpectCompletion(latch, "latch");
     }
@@ -137,7 +137,7 @@ public class TaskFromBlockingFutureTest {
                     } catch (final InterruptedException e) {
                         latch.countDown();
                     }
-                })).executeConcurrently();
+                })).startFiber();
 
         wasStarted.await();
         fiber.cancel();
@@ -145,7 +145,7 @@ public class TaskFromBlockingFutureTest {
 
         try {
             Objects.requireNonNull(fiber.outcome()).getOrThrow();
-        } catch (final CancellationException ignored) {
+        } catch (final TaskCancellationException ignored) {
         }
         TimedAwait.latchAndExpectCompletion(latch, "latch");
     }

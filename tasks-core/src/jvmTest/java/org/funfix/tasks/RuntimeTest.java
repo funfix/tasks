@@ -46,7 +46,7 @@ class FiberExecutorFromExecutorTest {
         for (int i = 0; i < repeatCount; i++) {
             final var latch = new CountDownLatch(1);
             final boolean[] wasExecuted = { false };
-            final var fiber = runtime.executeFiber(() -> wasExecuted[0] = true);
+            final var fiber = runtime.startFiber(() -> wasExecuted[0] = true);
             fiber.joinAsync(latch::countDown);
             TimedAwait.latchAndExpectCompletion(latch);
             assertTrue(wasExecuted[0], "wasExecuted");
@@ -59,7 +59,7 @@ class FiberExecutorFromExecutorTest {
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
-            final var fiber = runtime.executeFiber(() -> wasExecuted[0] = true);
+            final var fiber = runtime.startFiber(() -> wasExecuted[0] = true);
             fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
             assertTrue(wasExecuted[0], "wasExecuted");
         }
@@ -71,7 +71,7 @@ class FiberExecutorFromExecutorTest {
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
-            final var fiber = runtime.executeFiber(() -> wasExecuted[0] = true);
+            final var fiber = runtime.startFiber(() -> wasExecuted[0] = true);
             fiber.joinBlocking();
             assertTrue(wasExecuted[0], "wasExecuted");
         }
@@ -83,7 +83,7 @@ class FiberExecutorFromExecutorTest {
 
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = { false };
-            final var fiber = runtime.executeFiber(() -> wasExecuted[0] = true);
+            final var fiber = runtime.startFiber(() -> wasExecuted[0] = true);
             TimedAwait.future(fiber.joinAsync().getFuture());
             assertTrue(wasExecuted[0], "wasExecuted");
         }
@@ -97,7 +97,7 @@ class FiberExecutorFromExecutorTest {
             final var awaitCancellation = new CountDownLatch(1);
             final var onCompletion = new CountDownLatch(1);
             final var hits = new AtomicInteger(0);
-            final var fiber = runtime.executeFiber(() -> {
+            final var fiber = runtime.startFiber(() -> {
                 hits.incrementAndGet();
                 try {
                     TimedAwait.latchNoExpectations(awaitCancellation);
@@ -119,7 +119,7 @@ class FiberExecutorFromExecutorTest {
         for (int i = 0; i < repeatCount; i++) {
             final var onComplete = new CountDownLatch(2);
             final var awaitCancellation = new CountDownLatch(1);
-            final var fiber = runtime.executeFiber(() -> {
+            final var fiber = runtime.startFiber(() -> {
                 try {
                     TimedAwait.latchNoExpectations(awaitCancellation);
                 } catch (InterruptedException ignored) {}
@@ -144,7 +144,7 @@ class FiberExecutorFromExecutorTest {
         for (int i = 0; i < repeatCount; i++) {
             final var onComplete = new CountDownLatch(2);
             final var awaitCancellation = new CountDownLatch(1);
-            final var fiber = runtime.executeFiber(() -> {
+            final var fiber = runtime.startFiber(() -> {
                 try {
                     TimedAwait.latchNoExpectations(awaitCancellation);
                 } catch (InterruptedException ignored) {}
@@ -173,7 +173,7 @@ class FiberExecutorFromExecutorTest {
 
         for (int i = 0; i < repeatCount; i++) {
             final var latch = new CountDownLatch(1);
-            final var fiber = runtime.executeFiber(() -> {});
+            final var fiber = runtime.startFiber(() -> {});
             fiber.joinAsync(latch::countDown);
             TimedAwait.latchAndExpectCompletion(latch);
             fiber.cancel();

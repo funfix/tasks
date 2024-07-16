@@ -1,6 +1,6 @@
 rootProject.name = "tasks"
 
-include("tasks-core")
+include("tasks-core", "tasks-kotlin")
 
 pluginManagement {
     repositories {
@@ -27,16 +27,22 @@ dependencyResolutionManagement {
             // https://github.com/Kotlin/kotlinx-kover
             plugin("kotlinx-kover", "org.jetbrains.kotlinx.kover")
                 .version("0.8.2")
-
             // https://github.com/ben-manes/gradle-versions-plugin
-            plugin("versions", "com.github.ben-manes.versions").version("0.51.0")
-
+            plugin("versions", "com.github.ben-manes.versions")
+                .version("0.51.0")
             // https://github.com/Kotlin/dokka
-            plugin("dokka", "org.jetbrains.dokka").version("1.9.20")
+            plugin("dokka", "org.jetbrains.dokka")
+                .version("1.9.20")
+
+            // https://github.com/Kotlin/kotlinx.coroutines
+            library("kotlinx-coroutines-core", "org.jetbrains.kotlinx", "kotlinx-coroutines-core")
+                .version("1.9.0-RC")
 
             // https://jspecify.dev/docs/start-here
             library("jspecify", "org.jspecify", "jspecify")
                 .version("0.3.0")
+            library("jetbrains-annotations", "org.jetbrains", "annotations")
+                .version("24.1.0")
 
             // https://kotlinlang.org/api/latest/kotlin.test/
             library("kotlin-test", "org.jetbrains.kotlin", "kotlin-test")

@@ -1,5 +1,6 @@
 package org.funfix.tasks
 
+import org.jetbrains.annotations.NonBlockingExecutor
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
@@ -83,9 +84,8 @@ object ThreadPools {
      * to avoid stack overflows.
      */
     @JvmField
-    val TRAMPOLINE: Executor = Trampoline
+    val TRAMPOLINE: @NonBlockingExecutor Executor = Trampoline
 
-    @Suppress("DEPRECATION")
     private fun platformThreadFactory(prefix: String): ThreadFactory =
         ThreadFactory { r ->
             Thread(r).apply {
@@ -98,6 +98,7 @@ object ThreadPools {
 /**
  * INTERNAL API, do not use!
  */
+@NonBlockingExecutor
 private object Trampoline: Executor {
     private val queue = ThreadLocal<LinkedList<Runnable>>()
 

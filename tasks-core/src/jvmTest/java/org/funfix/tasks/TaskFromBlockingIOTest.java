@@ -35,7 +35,7 @@ abstract class TaskFromBlockingIOTestBase {
             Task.fromBlockingIO(() -> {
                 name.set(Thread.currentThread().getName());
                 return "Hello, world!";
-            }).executeBlocking(executor);
+            }).runBlocking(executor);
         assertEquals("Hello, world!", r);
         testThreadName(name.get());
     }
@@ -45,7 +45,7 @@ abstract class TaskFromBlockingIOTestBase {
         Objects.requireNonNull(executor);
         try {
             Task.fromBlockingIO(() -> { throw new RuntimeException("Error"); })
-                    .executeBlocking(executor);
+                    .runBlocking(executor);
             fail("Should have thrown an exception");
         } catch (final ExecutionException ex) {
             assertEquals("Error", ex.getCause().getMessage());
@@ -61,7 +61,7 @@ abstract class TaskFromBlockingIOTestBase {
             Thread.sleep(30000);
             return null;
         });
-        final var fiber = task.executeConcurrently(executor);
+        final var fiber = task.startFiber(executor);
         TimedAwait.latchAndExpectCompletion(latch, "latch");
 
         fiber.cancel();
@@ -69,7 +69,7 @@ abstract class TaskFromBlockingIOTestBase {
         try {
             Objects.requireNonNull(fiber.outcome()).getOrThrow();
             fail("Should have thrown a CancellationException");
-        } catch (final CancellationException ignored) {}
+        } catch (final TaskCancellationException ignored) {}
     }
 }
 

@@ -44,7 +44,7 @@ abstract class BaseTaskCreateTest {
             return Cancellable.EMPTY;
         });
 
-        final String result = task.executeBlockingTimed(FiberExecutor.Companion.shared(), TimedAwait.TIMEOUT);
+        final String result = task.runBlockingTimed(FiberExecutor.Companion.shared(), TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", result);
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
         assertNull(reportedException.get(), "reportedException.get()");
@@ -63,7 +63,10 @@ abstract class BaseTaskCreateTest {
             return Cancellable.EMPTY;
         });
         try {
-            task.executeBlockingTimed(executor, TimedAwait.TIMEOUT);
+            if (executor != null)
+                task.runBlockingTimed(executor, TimedAwait.TIMEOUT);
+            else
+                task.runBlockingTimed(TimedAwait.TIMEOUT);
         } catch (final ExecutionException | TimeoutException ex) {
             assertEquals("Sample exception", ex.getCause().getMessage());
         }
@@ -88,14 +91,17 @@ abstract class BaseTaskCreateTest {
             noErrors.countDown();
         });
 
-        final var fiber = task.executeConcurrently(executor);
+        final var fiber =
+                executor != null
+                        ? task.startFiber(executor)
+                        : task.startFiber();
         try {
             fiber.cancel();
             // call is idempotent
             fiber.cancel();
             fiber.joinBlocking();
             Objects.requireNonNull(fiber.outcome()).getOrThrow();
-        } catch (final CancellationException ex) {
+        } catch (final TaskCancellationException ex) {
             // Expected
         }
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
@@ -166,8 +172,14 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
             return Cancellable.EMPTY;
         });
 
-        final var result = task.executeBlocking(executor);
-        assertTrue(result.matches("common-io-virtual-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
+        final var result =
+                executor != null
+                        ? task.runBlocking(executor)
+                        : task.runBlocking();
+        assertTrue(
+                result.matches("common-io-virtual-\\d+"),
+                "result.matches(\"common-io-virtual-\\\\d+\")"
+        );
     }
 
     @Test
@@ -179,8 +191,14 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
             return Cancellable.EMPTY;
         });
 
-        final var result = task.executeBlocking(executor);
-        assertTrue(result.matches("common-io-platform-\\d+"), "result.matches(\"common-io-virtual-\\\\d+\")");
+        final var result =
+                executor != null
+                        ? task.runBlocking(executor)
+                        : task.runBlocking();
+        assertTrue(
+                result.matches("common-io-platform-\\d+"),
+                "result.matches(\"common-io-virtual-\\\\d+\")"
+        );
     }
 }
 
