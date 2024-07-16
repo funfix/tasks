@@ -18,21 +18,21 @@ dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
             version("kotlin", "2.0.0")
-
-            // https://plugins.gradle.org/plugin/org.jetbrains.kotlin.jvm
-            plugin("kotlin-jvm", "org.jetbrains.kotlin.jvm")
-                .versionRef("kotlin")
-            plugin("kotlin-multiplatform", "org.jetbrains.kotlin.multiplatform")
-                .versionRef("kotlin")
-            // https://github.com/Kotlin/kotlinx-kover
-            plugin("kotlinx-kover", "org.jetbrains.kotlinx.kover")
-                .version("0.8.2")
-            // https://github.com/ben-manes/gradle-versions-plugin
-            plugin("versions", "com.github.ben-manes.versions")
-                .version("0.51.0")
-            // https://github.com/Kotlin/dokka
-            plugin("dokka", "org.jetbrains.dokka")
-                .version("1.9.20")
+//
+//            // https://plugins.gradle.org/plugin/org.jetbrains.kotlin.jvm
+//            plugin("kotlin-jvm", "org.jetbrains.kotlin.jvm")
+//                .versionRef("kotlin")
+//            plugin("kotlin-multiplatform", "org.jetbrains.kotlin.multiplatform")
+//                .versionRef("kotlin")
+//            // https://github.com/Kotlin/kotlinx-kover
+//            plugin("kotlinx-kover", "org.jetbrains.kotlinx.kover")
+//                .version("0.8.2")
+//            // https://github.com/ben-manes/gradle-versions-plugin
+//            plugin("versions", "com.github.ben-manes.versions")
+//                .version("0.51.0")
+//            // https://github.com/Kotlin/dokka
+//            plugin("dokka", "org.jetbrains.dokka")
+//                .version("1.9.20")
 
             // https://github.com/Kotlin/kotlinx.coroutines
             library("kotlinx-coroutines-core", "org.jetbrains.kotlinx", "kotlinx-coroutines-core")

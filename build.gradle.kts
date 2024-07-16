@@ -3,11 +3,8 @@ import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 val projectVersion = property("project.version").toString()
 
 plugins {
-    alias(libs.plugins.kotlin.jvm) apply false
-    alias(libs.plugins.kotlin.multiplatform) apply false
-    alias(libs.plugins.kotlinx.kover) apply false
-    alias(libs.plugins.dokka)
-    alias(libs.plugins.versions)
+    id("org.jetbrains.dokka")
+    id("com.github.ben-manes.versions")
 }
 
 repositories {
@@ -16,39 +13,6 @@ repositories {
 
 tasks.dokkaHtmlMultiModule {
     outputDirectory.set(file("build/dokka"))
-}
-
-subprojects {
-    group = "org.funfix"
-    version = projectVersion.let { version ->
-        if (!project.hasProperty("buildRelease"))
-            "$version-SNAPSHOT"
-        else
-            version
-    }
-
-    apply(plugin = "maven-publish")
-
-    configure<PublishingExtension> {
-        repositories {
-            mavenLocal()
-
-            maven {
-                name = "GitHubPackages"
-                url = uri("https://maven.pkg.github.com/funfix/tasks")
-                credentials {
-                    username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
-                    password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
-                }
-            }
-        }
-    }
-
-    tasks.register("printVersion") {
-        doLast {
-            println("Project version: $version")
-        }
-    }
 }
 
 tasks.named<DependencyUpdatesTask>("dependencyUpdates").configure {
