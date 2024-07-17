@@ -1,3 +1,6 @@
+@file:JvmName("CoroutinesKt")
+@file:JvmMultifileClass
+
 package org.funfix.tasks
 
 import kotlinx.coroutines.CoroutineDispatcher
@@ -20,10 +23,10 @@ private val virtualThreadsDispatcherRef by lazy {
 }
 
 @Suppress("UnusedReceiverParameter")
-val Dispatchers.VirtualThreads: @BlockingExecutor CoroutineDispatcher?
+public val Dispatchers.VirtualThreads: @BlockingExecutor CoroutineDispatcher?
     get() = virtualThreadsDispatcherRef
 
-fun Dispatchers.virtualThreadsOrBackup(backup: () -> CoroutineDispatcher = { IO }): @BlockingExecutor CoroutineDispatcher =
+public fun Dispatchers.virtualThreadsOrBackup(backup: () -> CoroutineDispatcher = { IO }): @BlockingExecutor CoroutineDispatcher =
     VirtualThreads ?: backup()
 
 private suspend fun currentDispatcher(): CoroutineDispatcher {
@@ -32,17 +35,17 @@ private suspend fun currentDispatcher(): CoroutineDispatcher {
     return continuationInterceptor as? CoroutineDispatcher ?: Dispatchers.Default
 }
 
-fun FiberExecutor.asCoroutineDispatcher(): CoroutineDispatcher =
+public fun FiberExecutor.asCoroutineDispatcher(): CoroutineDispatcher =
     when (this) {
         is CoroutineDispatcherAsFiberExecutor -> dispatcher
         else -> FiberExecutorAsCoroutineDispatcher(this)
     }
 
-fun CoroutineDispatcher.asFiberExecutor(): FiberExecutor =
+public fun CoroutineDispatcher.asFiberExecutor(): FiberExecutor =
     when (this) {
         is FiberExecutorAsCoroutineDispatcher -> executor
         else -> CoroutineDispatcherAsFiberExecutor(this)
     }
 
-suspend fun currentFiberExecutor(): FiberExecutor =
+public suspend fun currentFiberExecutor(): FiberExecutor =
     currentDispatcher().asFiberExecutor()

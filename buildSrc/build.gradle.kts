@@ -21,8 +21,8 @@ fun version(k: String) =
     props.getProperty("versions.$k")?.toString()
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:${version("kotlin")}")
-    implementation("org.jetbrains.kotlinx:kover-gradle-plugin:${version("kotlinx.kover")}")
-    implementation("org.jetbrains.dokka:dokka-gradle-plugin:${version("dokka")}")
-    implementation("com.github.ben-manes:gradle-versions-plugin:${version("gradle.versions")}")
+    implementation(libs.kotlin.gradle.plugin)
+    implementation(libs.kover.gradle.plugin)
+    implementation(libs.dokka.gradle.plugin)
+    implementation(libs.gradle.versions.plugin)
 }

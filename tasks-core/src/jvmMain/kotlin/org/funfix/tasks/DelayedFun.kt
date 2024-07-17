@@ -10,8 +10,8 @@ import org.jetbrains.annotations.Blocking
  *
  * @see [AsyncFun]
  */
-fun interface DelayedFun<out T> {
+public fun interface DelayedFun<out T> {
     @Blocking
     @Throws(Exception::class)
-    operator fun invoke(): T
+    public operator fun invoke(): T
 }

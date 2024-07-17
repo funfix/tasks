@@ -18,10 +18,12 @@ import kotlin.jvm.JvmField
  *   still be eventually triggered, if it wasn't already. So all paths,
  *   with cancellation or without, must lead to the [CompletionCallback] being called.
  */
-fun interface Cancellable {
-    @NonBlocking fun cancel()
+public fun interface Cancellable {
+    @NonBlocking
+    public fun cancel()
 
-    companion object {
-        @JvmField val EMPTY: Cancellable = Cancellable {}
+    public companion object {
+        @JvmField
+        public val EMPTY: Cancellable = Cancellable {}
     }
 }

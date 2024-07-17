@@ -1,3 +1,5 @@
+import org.jetbrains.dokka.gradle.DokkaTask
+
 plugins {
     id("tasks.kmp-project")
 }
@@ -13,19 +15,18 @@ publishing {
     }
 }
 
-
 kotlin {
     sourceSets {
-        val commonMain by getting {
-            dependencies {
-            }
-        }
-
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.kotlin.test)
-            }
-        }
+//        val commonMain by getting {
+//            dependencies {
+//            }
+//        }
+//
+//        val commonTest by getting {
+//            dependencies {
+//                implementation(libs.kotlin.test)
+//            }
+//        }
 
         val jvmMain by getting {
             dependencies {
@@ -35,11 +36,18 @@ kotlin {
 
         val jvmTest by getting {
             dependencies {
-                implementation(libs.jspecify)
+                implementation(libs.jetbrains.annotations)
+                implementation(libs.junit.jupiter.api)
             }
         }
 
-        val jsMain by getting
-        val jsTest by getting
+//        val jsMain by getting
+//        val jsTest by getting
+    }
+}
+
+tasks.withType<DokkaTask>().configureEach {
+    dependencies {
+        plugins("org.jetbrains.dokka:kotlin-as-java-plugin:1.9.20")
     }
 }

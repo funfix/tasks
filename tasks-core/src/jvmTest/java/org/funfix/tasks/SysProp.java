@@ -1,12 +1,10 @@
 package org.funfix.tasks;
 
-import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-@NullMarked
 public class SysProp implements AutoCloseable {
     private static final ConcurrentMap<String, ReentrantLock> locks =
         new java.util.concurrent.ConcurrentHashMap<>();

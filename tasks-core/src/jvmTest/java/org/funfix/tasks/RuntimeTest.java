@@ -1,7 +1,6 @@
 package org.funfix.tasks;
 
-import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,10 +12,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-@NullMarked
 class FiberExecutorFromExecutorTest {
     final int repeatCount = 1000;
-    @Nullable AutoCloseable closeable = null;
+    @Nullable
+    AutoCloseable closeable = null;
     @Nullable FiberExecutor fiberExecutor = null;
 
     @BeforeEach

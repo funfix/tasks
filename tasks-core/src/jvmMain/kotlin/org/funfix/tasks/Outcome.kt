@@ -8,7 +8,7 @@ import java.util.concurrent.ExecutionException
 /**
  * Represents the outcome of a concurrent computation (e.g., `Fiber`).
  */
-sealed interface Outcome<out T> {
+public sealed interface Outcome<out T> {
     /**
      * Returns the value of the task if it was successful, or throws an exception.
      *
@@ -19,7 +19,7 @@ sealed interface Outcome<out T> {
      */
     @NonBlocking
     @Throws(ExecutionException::class, TaskCancellationException::class)
-    fun getOrThrow(): T
+    public fun getOrThrow(): T
 
     /**
      * Value signalling the concurrent job completed successfully with a result.
@@ -38,7 +38,7 @@ sealed interface Outcome<out T> {
      * }
      * ```
      */
-    data class Succeeded<out T> private constructor(
+    public data class Succeeded<out T> private constructor(
         private val _value: T
     ) : Outcome<T> {
         val value: T
@@ -49,10 +49,10 @@ sealed interface Outcome<out T> {
             return value
         }
 
-        companion object {
+        public companion object {
             @JvmStatic
             @JvmName("instance")
-            operator fun <T> invoke(value: T): Outcome<T> =
+            public operator fun <T> invoke(value: T): Outcome<T> =
                 Succeeded(value)
         }
     }
@@ -74,7 +74,7 @@ sealed interface Outcome<out T> {
      * }
      * ```
      */
-    data class Failed private constructor(
+    public data class Failed private constructor(
         private val _exception: Throwable
     ) : Outcome<Nothing> {
         val exception: Throwable
@@ -86,10 +86,10 @@ sealed interface Outcome<out T> {
             throw ExecutionException(exception)
         }
 
-        companion object {
+        public companion object {
             @JvmStatic
             @JvmName("instance")
-            operator fun <T> invoke(exception: Throwable): Outcome<T> =
+            public operator fun <T> invoke(exception: Throwable): Outcome<T> =
                 Failed(exception)
         }
     }
@@ -111,7 +111,7 @@ sealed interface Outcome<out T> {
      * }
      * ```
      */
-    data object Cancelled: Outcome<Nothing> {
+    public data object Cancelled: Outcome<Nothing> {
         @Throws(TaskCancellationException::class)
         override fun getOrThrow(): Nothing {
             throw TaskCancellationException()
@@ -119,16 +119,21 @@ sealed interface Outcome<out T> {
 
         @JvmStatic
         @JvmName("instance")
-        operator fun <T> invoke(): Outcome<T> =
+        public operator fun <T> invoke(): Outcome<T> =
             Cancelled
     }
 
-    companion object {
-        @JvmStatic fun <T> succeeded(value: T): Outcome<T> =
+    public companion object {
+        @JvmStatic
+        public fun <T> succeeded(value: T): Outcome<T> =
             Succeeded(value)
-        @JvmStatic fun <T> failed(exception: Throwable): Outcome<T> =
+
+        @JvmStatic
+        public fun <T> failed(exception: Throwable): Outcome<T> =
             Failed(exception)
-        @JvmStatic fun <T> cancelled(): Outcome<T> =
+
+        @JvmStatic
+        public fun <T> cancelled(): Outcome<T> =
             Cancelled()
     }
 }

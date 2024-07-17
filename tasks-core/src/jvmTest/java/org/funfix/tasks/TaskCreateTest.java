@@ -1,7 +1,6 @@
 package org.funfix.tasks;
 
-import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,9 +16,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-@NullMarked
 abstract class BaseTaskCreateTest {
-    @Nullable protected AutoCloseable closeable;
+    @Nullable
+    protected AutoCloseable closeable;
     @Nullable protected FiberExecutor executor;
     protected abstract  <T> Task<T> createTask(final AsyncFun<? extends T> builder);
 
@@ -109,7 +108,6 @@ abstract class BaseTaskCreateTest {
     }
 }
 
-@NullMarked
 class TaskCreateSimpleDefaultExecutorTest extends BaseTaskCreateTest {
     @BeforeEach
     void setUp() {
@@ -122,7 +120,6 @@ class TaskCreateSimpleDefaultExecutorTest extends BaseTaskCreateTest {
     }
 }
 
-@NullMarked
 class TaskCreateSimpleCustomJavaExecutorTest extends BaseTaskCreateTest {
     @BeforeEach
     void setUp() {
@@ -137,7 +134,6 @@ class TaskCreateSimpleCustomJavaExecutorTest extends BaseTaskCreateTest {
     }
 }
 
-@NullMarked
 class TaskCreateSimpleCustomJavaThreadFactoryTest extends BaseTaskCreateTest {
     @BeforeEach
     void setUp() {
@@ -156,7 +152,6 @@ class TaskCreateSimpleCustomJavaThreadFactoryTest extends BaseTaskCreateTest {
     }
 }
 
-@NullMarked
 abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
     @Override
     protected <T> Task<T> createTask(final AsyncFun<? extends T> builder) {

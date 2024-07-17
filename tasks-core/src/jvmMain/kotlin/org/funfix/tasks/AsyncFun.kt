@@ -6,9 +6,9 @@ import java.io.Serializable
 /**
  * A function that is a delayed, asynchronous computation.
  */
-fun interface AsyncFun<out T> : Serializable {
+public fun interface AsyncFun<out T> : Serializable {
     @NonBlocking
-    operator fun invoke(
+    public operator fun invoke(
         executor: FiberExecutor,
         callback: CompletionCallback<T>
     ): Cancellable

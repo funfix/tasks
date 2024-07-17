@@ -15,7 +15,7 @@ import kotlin.concurrent.getOrSet
  * Provides utilities for working with [Executor] instances, optimized
  * for common use-cases.
  */
-object ThreadPools {
+public object ThreadPools {
     @Volatile
     private var sharedVirtualIORef: Executor? = null
 
@@ -31,7 +31,7 @@ object ThreadPools {
      * [Executors.newCachedThreadPool] on older JVM versions.
      */
     @JvmStatic
-    fun sharedIO(): Executor =
+    public fun sharedIO(): Executor =
         if (VirtualThreads.areVirtualThreadsSupported())
             sharedVirtualIO()
         else
@@ -69,7 +69,7 @@ object ThreadPools {
      * On older JVM versions, it returns a plain [Executors.newCachedThreadPool].
      */
     @JvmStatic
-    fun unlimitedThreadPoolForIO(prefix: String): ExecutorService {
+    public fun unlimitedThreadPoolForIO(prefix: String): ExecutorService {
         if (VirtualThreads.areVirtualThreadsSupported())
             try {
                 return VirtualThreads.executorService("$prefix-virtual-")
@@ -84,7 +84,7 @@ object ThreadPools {
      * to avoid stack overflows.
      */
     @JvmField
-    val TRAMPOLINE: @NonBlockingExecutor Executor = Trampoline
+    public val TRAMPOLINE: @NonBlockingExecutor Executor = Trampoline
 
     private fun platformThreadFactory(prefix: String): ThreadFactory =
         ThreadFactory { r ->
@@ -138,13 +138,13 @@ private object Trampoline: Executor {
  * disabled by setting the system property `funfix.tasks.virtual-threads`
  * to `off`.
  */
-object VirtualThreads {
+public object VirtualThreads {
     private val newThreadPerTaskExecutorMethodHandle: MethodHandle?
 
     /**
      * Exception thrown when virtual threads aren't supported by the current JVM.
      */
-    class NotSupportedException(feature: String) : Exception("$feature is not supported on this JVM")
+    public class NotSupportedException(feature: String) : Exception("$feature is not supported on this JVM")
 
     init {
         var tempHandle: MethodHandle?
@@ -178,7 +178,7 @@ object VirtualThreads {
      */
     @JvmStatic
     @Throws(NotSupportedException::class)
-    fun executorService(prefix: String = DEFAULT_VIRTUAL_THREAD_NAME_PREFIX): ExecutorService {
+    public fun executorService(prefix: String = DEFAULT_VIRTUAL_THREAD_NAME_PREFIX): ExecutorService {
         if (!areVirtualThreadsSupported()) {
             throw NotSupportedException("Executors.newThreadPerTaskExecutor")
         }
@@ -211,7 +211,7 @@ object VirtualThreads {
      */
     @JvmStatic
     @Throws(NotSupportedException::class)
-    fun factory(prefix: String = DEFAULT_VIRTUAL_THREAD_NAME_PREFIX): ThreadFactory {
+    public fun factory(prefix: String = DEFAULT_VIRTUAL_THREAD_NAME_PREFIX): ThreadFactory {
         if (!areVirtualThreadsSupported()) {
             throw NotSupportedException("Thread.ofVirtual")
         }
@@ -261,7 +261,7 @@ object VirtualThreads {
      * otherwise.
      */
     @JvmStatic
-    fun isVirtualThread(th: Thread): Boolean {
+    public fun isVirtualThread(th: Thread): Boolean {
         try {
             if (isVirtualMethodHandle != null) {
                 return isVirtualMethodHandle.invoke(th) as Boolean
@@ -278,7 +278,7 @@ object VirtualThreads {
      * system property.
      */
     @JvmStatic
-    fun areVirtualThreadsSupported(): Boolean {
+    public fun areVirtualThreadsSupported(): Boolean {
         val sp = System.getProperty("funfix.tasks.virtual-threads")
         val disableFeature = sp.equals("off", ignoreCase = true)
             || sp.equals("false", ignoreCase = true)

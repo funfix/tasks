@@ -1,14 +1,17 @@
+@file:JvmName("CoroutinesKt")
+@file:JvmMultifileClass
+
 package org.funfix.tasks
 
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-suspend fun Fiber.cancelAndJoinSuspended(): Unit {
+public suspend fun Fiber.cancelAndJoinSuspended() {
     cancel()
     joinSuspended()
 }
 
-suspend fun Fiber.joinSuspended(): Unit =
+public suspend fun Fiber.joinSuspended() {
     suspendCancellableCoroutine { cont ->
         val token = joinAsync {
             cont.resume(Unit)
@@ -17,8 +20,9 @@ suspend fun Fiber.joinSuspended(): Unit =
             token.cancel()
         }
     }
+}
 
-suspend fun <T> TaskFiber<T>.awaitOutcomeSuspended(): Outcome<T> {
+public suspend fun <T> TaskFiber<T>.awaitOutcomeSuspended(): Outcome<T> {
     joinSuspended()
     return outcome()!!
 }

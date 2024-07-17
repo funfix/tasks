@@ -10,32 +10,32 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer
 
 
 @BlockingExecutor
-interface FiberExecutor: Executor, ExecuteCancellableFun {
+public interface FiberExecutor: Executor, ExecuteCancellableFun {
     @NonBlocking
-    fun startFiber(command: Runnable): Fiber
+    public fun startFiber(command: Runnable): Fiber
 
-    companion object {
+    public companion object {
         @JvmStatic
-        fun fromThreadFactory(factory: ThreadFactory): FiberExecutor =
+        public fun fromThreadFactory(factory: ThreadFactory): FiberExecutor =
             FiberExecutorDefault.fromThreadFactory(factory)
 
         @JvmStatic
-        fun fromExecutor(executor: Executor): FiberExecutor =
+        public fun fromExecutor(executor: Executor): FiberExecutor =
             FiberExecutorDefault.fromExecutor(executor)
 
         @JvmStatic
-        fun shared(): FiberExecutor =
+        public fun shared(): FiberExecutor =
             FiberExecutorDefault.shared()
     }
 }
 
-interface Fiber : Cancellable {
+public interface Fiber : Cancellable {
     @NonBlocking
-    fun joinAsync(onComplete: Runnable): Cancellable
+    public fun joinAsync(onComplete: Runnable): Cancellable
 
     @Blocking
     @Throws(InterruptedException::class, TimeoutException::class)
-    fun joinBlockingTimed(timeoutMillis: Long) {
+    public fun joinBlockingTimed(timeoutMillis: Long) {
         val latch = AwaitSignal()
         val token = joinAsync { latch.signal() }
         try {
@@ -51,12 +51,12 @@ interface Fiber : Cancellable {
 
     @Blocking
     @Throws(InterruptedException::class, TimeoutException::class)
-    fun joinBlockingTimed(timeout: Duration): Unit =
+    public fun joinBlockingTimed(timeout: Duration): Unit =
         joinBlockingTimed(timeout.toMillis())
 
     @Blocking
     @Throws(InterruptedException::class)
-    fun joinBlocking() {
+    public fun joinBlocking() {
         val latch = AwaitSignal()
         val token = joinAsync { latch.signal() }
         try {
@@ -67,7 +67,7 @@ interface Fiber : Cancellable {
     }
 
     @NonBlocking
-    fun joinAsync(): CancellableFuture<Void?> {
+    public fun joinAsync(): CancellableFuture<Void?> {
         val p = CompletableFuture<Void?>()
         val token = joinAsync { p.complete(null) }
         val cRef = Cancellable {
@@ -80,7 +80,7 @@ interface Fiber : Cancellable {
         return CancellableFuture(p, cRef)
     }
 
-    companion object {
+    public companion object {
         /**
          * INTERNAL API, do not use!
          */
@@ -99,15 +99,15 @@ interface Fiber : Cancellable {
  *
  * @param T is the type of the value that the task will complete with
  */
-interface TaskFiber<out T> : Fiber {
+public interface TaskFiber<out T> : Fiber {
     /**
      * @return the [Outcome] of the task, if it has completed, or `null` if the
      * task is still running.
      */
     @NonBlocking
-    fun outcome(): Outcome<T>?
+    public fun outcome(): Outcome<T>?
 
-    companion object {
+    public companion object {
         /**
          * INTERNAL API, do not use!
          */
@@ -126,9 +126,9 @@ interface TaskFiber<out T> : Fiber {
     }
 }
 
-fun interface ExecuteCancellableFun {
+public fun interface ExecuteCancellableFun {
     @NonBlocking
-    fun executeCancellable(command: Runnable, onComplete: Runnable?): Cancellable
+    public fun executeCancellable(command: Runnable, onComplete: Runnable?): Cancellable
 }
 
 /**

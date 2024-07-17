@@ -1,3 +1,6 @@
+@file:JvmName("CoroutinesKt")
+@file:JvmMultifileClass
+
 package org.funfix.tasks
 
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -19,7 +22,7 @@ import kotlin.coroutines.resumeWithException
  *   possibility for back-pressuring on the fiber's completion after
  *   cancellation).
  */
-suspend fun <T> Task<T>.executeSuspended(): T = run {
+public suspend fun <T> Task<T>.executeSuspended(): T = run {
     val executor = currentFiberExecutor()
     suspendCancellableCoroutine { cont ->
         val callback = CompletionCallback<T> { outcome ->
@@ -58,7 +61,7 @@ suspend fun <T> Task<T>.executeSuspended(): T = run {
  *   after cancellation).
  */
 @OptIn(DelicateCoroutinesApi::class)
-fun <T> Task.Companion.fromSuspended(block: suspend () -> T): Task<T> =
+public fun <T> Task.Companion.fromSuspended(block: suspend () -> T): Task<T> =
     create { executor, callback ->
         val context = executor.asCoroutineDispatcher()
         val job = GlobalScope.launch(context) {

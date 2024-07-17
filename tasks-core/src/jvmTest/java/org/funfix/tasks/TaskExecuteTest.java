@@ -1,16 +1,15 @@
 package org.funfix.tasks;
 
-import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import static org.junit.jupiter.api.Assertions.*;
 
-@NullMarked
 public class TaskExecuteTest {
     @Test
     void executeAsyncWorksForSuccess() throws InterruptedException, TaskCancellationException, ExecutionException {

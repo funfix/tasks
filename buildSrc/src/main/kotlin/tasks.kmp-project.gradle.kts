@@ -1,4 +1,7 @@
-import org.jetbrains.dokka.gradle.DokkaTask
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class)
+
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.ExplicitApiMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -74,12 +77,6 @@ publishing {
 
 val dokkaOutputDir = layout.buildDirectory.dir("dokka").get().asFile
 
-tasks.withType<DokkaTask>().configureEach {
-    dependencies {
-        plugins("org.jetbrains.dokka:kotlin-as-java-plugin:1.9.20")
-    }
-}
-
 tasks.dokkaHtml {
     outputDirectory.set(dokkaOutputDir)
 }
@@ -122,6 +119,8 @@ kotlin {
 
     tasks.withType<KotlinCompile> {
         compilerOptions {
+            // explicitApiMode = ExplicitApiMode.Strict
+            // allWarningsAsErrors = true
             jvmTarget.set(JvmTarget.JVM_11)
             freeCompilerArgs.add("-Xjvm-default=all")
         }
@@ -139,6 +138,29 @@ kotlin {
             javaToolchains.launcherFor {
                 languageVersion = JavaLanguageVersion.of(11)
             }
+    }
+
+    sourceSets {
+        val commonMain by getting {
+            compilerOptions {
+                explicitApi = ExplicitApiMode.Strict
+                allWarningsAsErrors = true
+            }
+        }
+
+        val jsMain by getting {
+            compilerOptions {
+                explicitApi = ExplicitApiMode.Strict
+                allWarningsAsErrors = true
+            }
+        }
+
+        val jvmMain by getting {
+            compilerOptions {
+                explicitApi = ExplicitApiMode.Strict
+                allWarningsAsErrors = true
+            }
+        }
     }
 }
 

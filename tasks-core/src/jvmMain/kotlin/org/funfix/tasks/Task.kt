@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicReference
  * - [fromBlockingFuture]
  * - [fromCancellableFuture]
  */
-class Task<out T> private constructor(
+public class Task<out T> private constructor(
     private val asyncFun: AsyncFun<T>
 ): Serializable {
     /**
@@ -30,7 +30,7 @@ class Task<out T> private constructor(
      * @return a [Cancellable] that can be used to cancel a running task
      */
     @NonBlocking
-    fun executeAsync(
+    public fun executeAsync(
         executor: FiberExecutor,
         callback: CompletionCallback<T>
     ): Cancellable {
@@ -48,7 +48,7 @@ class Task<out T> private constructor(
      * Overload of [executeAsync] that uses [FiberExecutor.shared] as the executor.
      */
     @NonBlocking
-    fun executeAsync(callback: CompletionCallback<T>): Cancellable =
+    public fun executeAsync(callback: CompletionCallback<T>): Cancellable =
         executeAsync(FiberExecutor.shared(), callback)
 
     /**
@@ -58,14 +58,14 @@ class Task<out T> private constructor(
      * @param executor is the [FiberExecutor] that may be used to run the task
      */
     @NonBlocking
-    fun executeConcurrently(executor: FiberExecutor): TaskFiber<T> =
+    public fun executeConcurrently(executor: FiberExecutor): TaskFiber<T> =
         TaskFiber.start(executor, asyncFun)
 
     /**
      * Overload of [executeConcurrently] that uses [FiberExecutor.shared] as the executor.
      */
     @NonBlocking
-    fun executeConcurrently(): TaskFiber<T> =
+    public fun executeConcurrently(): TaskFiber<T> =
         executeConcurrently(FiberExecutor.shared())
 
     /**
@@ -81,7 +81,7 @@ class Task<out T> private constructor(
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class)
-    fun executeBlocking(executor: FiberExecutor): T {
+    public fun executeBlocking(executor: FiberExecutor): T {
         val h = BlockingCompletionCallback<T>()
         val cancelToken =
             try {
@@ -98,7 +98,7 @@ class Task<out T> private constructor(
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class)
-    fun executeBlocking(): T = executeBlocking(FiberExecutor.shared())
+    public fun executeBlocking(): T = executeBlocking(FiberExecutor.shared())
 
     /**
      * Executes the task and blocks until it completes, or the timeout is reached,
@@ -116,7 +116,7 @@ class Task<out T> private constructor(
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
-    fun executeBlockingTimed(
+    public fun executeBlockingTimed(
         executor: FiberExecutor,
         timeoutMillis: Long
     ): T {
@@ -136,10 +136,10 @@ class Task<out T> private constructor(
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
-    fun executeBlockingTimed(timeoutMillis: Long): T =
+    public fun executeBlockingTimed(timeoutMillis: Long): T =
         executeBlockingTimed(FiberExecutor.shared(), timeoutMillis)
 
-    companion object {
+    public companion object {
         /**
          * Creates a task from a builder function that, on evaluation, will have
          * same-thread execution.
@@ -165,7 +165,7 @@ class Task<out T> private constructor(
          */
         @NonBlocking
         @JvmStatic
-        fun <T> create(run: AsyncFun<T>): Task<T> =
+        public fun <T> create(run: AsyncFun<T>): Task<T> =
             Task { executor, callback ->
                 val cancel = MutableCancellable()
                 ThreadPools.TRAMPOLINE.execute {
@@ -198,7 +198,7 @@ class Task<out T> private constructor(
          */
         @NonBlocking
         @JvmStatic
-        fun <T> createAsync(run: AsyncFun<T>): Task<T> =
+        public fun <T> createAsync(run: AsyncFun<T>): Task<T> =
             Task { executor, callback ->
                 val cancel = MutableCancellable()
                 executor.execute {
@@ -218,11 +218,13 @@ class Task<out T> private constructor(
          */
         @NonBlocking
         @JvmStatic
-        fun <T> fromBlockingIO(run: DelayedFun<T>): Task<T> =
+        public fun <T> fromBlockingIO(run: DelayedFun<T>): Task<T> =
             Task { executor, callback ->
                 executor.executeCancellable(
                     {
                         try {
+                            // This warning shouldn't happen (?!)
+                            @Suppress("BlockingMethodInNonBlockingContext")
                             val result = run.invoke()
                             callback.complete(Outcome.succeeded(result))
                         } catch (_: InterruptedException) {
@@ -259,7 +261,7 @@ class Task<out T> private constructor(
          * @see fromCancellableFuture
          */
         @JvmStatic
-        fun <T> fromBlockingFuture(builder: DelayedFun<Future<out T>>): Task<T> =
+        public fun <T> fromBlockingFuture(builder: DelayedFun<Future<out T>>): Task<T> =
             fromBlockingIO {
                 builder.invoke().let { future ->
                     try {
@@ -300,7 +302,7 @@ class Task<out T> private constructor(
          * @see fromCancellableFuture
          */
         @JvmStatic
-        fun <T> fromCompletionStage(builder: DelayedFun<CompletionStage<out T>>): Task<T> =
+        public fun <T> fromCompletionStage(builder: DelayedFun<CompletionStage<out T>>): Task<T> =
             fromCancellableFuture {
                 CancellableFuture(
                     builder.invoke().toCompletableFuture(),
@@ -324,7 +326,7 @@ class Task<out T> private constructor(
          * the created `CancellableCompletionStage`
          */
         @JvmStatic
-        fun <T> fromCancellableFuture(run: DelayedFun<CancellableFuture<T>>): Task<T> =
+        public fun <T> fromCancellableFuture(run: DelayedFun<CancellableFuture<T>>): Task<T> =
             Task(TaskFromCancellableFuture(run))
 
         /**
@@ -334,7 +336,7 @@ class Task<out T> private constructor(
          * @return a new task that will complete with the given value
          */
         @JvmStatic
-        fun <T> successful(value: T): Task<T> {
+        public fun <T> successful(value: T): Task<T> {
             val outcome = Outcome.succeeded(value)
             return Task { _, cb ->
                 cb.complete(outcome)
@@ -349,7 +351,7 @@ class Task<out T> private constructor(
          * @return a new task that will complete with the given exception
          */
         @JvmStatic
-        fun <T> failed(e: Throwable): Task<T> {
+        public fun <T> failed(e: Throwable): Task<T> {
             val outcome = Outcome.failed<T>(e)
             return Task { _, cb ->
                 cb.complete(outcome)
@@ -363,7 +365,7 @@ class Task<out T> private constructor(
          * @return a new task that will complete with a cancellation signal
          */
         @JvmStatic
-        fun <T> cancelled(): Task<T> =
+        public fun <T> cancelled(): Task<T> =
             Task { _, cb ->
                 cb.complete(Outcome.cancelled())
                 Cancellable.EMPTY

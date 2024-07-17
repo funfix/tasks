@@ -4,7 +4,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.asExecutor
-import org.funfix.tasks.BlockingRunnable
 import org.funfix.tasks.Cancellable
 import org.funfix.tasks.Fiber
 import org.funfix.tasks.FiberExecutor
@@ -15,13 +14,13 @@ internal class CoroutineDispatcherAsFiberExecutor(
 ): FiberExecutor {
     private val executor = FiberExecutor.fromExecutor(dispatcher.asExecutor())
 
-    override fun startFiber(command: BlockingRunnable): Fiber =
+    override fun startFiber(command: Runnable): Fiber =
         executor.startFiber(command)
 
     override fun execute(command: Runnable) =
         executor.execute(command)
 
-    override fun executeCancellable(command: BlockingRunnable, onComplete: Runnable?): Cancellable =
+    override fun executeCancellable(command: Runnable, onComplete: Runnable?): Cancellable =
         executor.executeCancellable(command, onComplete)
 }
 

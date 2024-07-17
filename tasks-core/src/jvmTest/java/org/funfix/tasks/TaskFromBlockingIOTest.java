@@ -1,7 +1,6 @@
 package org.funfix.tasks;
 
-import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,9 +10,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@NullMarked
 abstract class TaskFromBlockingIOTestBase {
-    @Nullable protected FiberExecutor executor;
+    @Nullable
+    protected FiberExecutor executor;
     @Nullable protected AutoCloseable closeable;
 
     @AfterEach
@@ -73,7 +72,6 @@ abstract class TaskFromBlockingIOTestBase {
     }
 }
 
-@NullMarked
 final class TaskFromBlockingWithExecutorIOTest extends TaskFromBlockingIOTestBase {
     @Override
     void testThreadName(final String name) {
@@ -95,7 +93,6 @@ final class TaskFromBlockingWithExecutorIOTest extends TaskFromBlockingIOTestBas
     }
 }
 
-@NullMarked
 final class TaskFromBlockingWithSharedExecutorTest extends TaskFromBlockingIOTestBase {
     @Override
     void testThreadName(String name) {}

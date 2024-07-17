@@ -13,19 +13,19 @@ import java.io.Serializable
  *
  * @param T is the type of the value that the task will complete with
  */
-fun interface CompletionCallback<in T> : Serializable {
+public fun interface CompletionCallback<in T> : Serializable {
     /**
      * Signals a final [Outcome].
      */
     @NonBlocking
-    fun complete(outcome: Outcome<T>)
+    public fun complete(outcome: Outcome<T>)
 
-    companion object {
+    public companion object {
         /**
          * @return a [CompletionCallback] that does nothing.
          */
         @JvmStatic
-        fun <T> empty(): CompletionCallback<T> =
+        public fun <T> empty(): CompletionCallback<T> =
             CompletionCallback { outcome ->
                 if (outcome is Outcome.Failed) {
                     UncaughtExceptionHandler.logOrRethrow(outcome.exception)

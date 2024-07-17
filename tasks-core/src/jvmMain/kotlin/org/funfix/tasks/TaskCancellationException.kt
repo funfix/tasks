@@ -14,6 +14,6 @@ package org.funfix.tasks
  * the current thread being interrupted, and also, the current thread
  * might be interrupted without the concurrent job being cancelled.
  */
-class TaskCancellationException(message: String?): Exception(message) {
-    constructor() : this(null)
+public class TaskCancellationException(message: String?): Exception(message) {
+    public constructor() : this(null)
 }
