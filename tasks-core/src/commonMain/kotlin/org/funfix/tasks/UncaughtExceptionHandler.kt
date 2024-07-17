@@ -2,6 +2,8 @@
 
 package org.funfix.tasks
 
+import org.funfix.tasks.support.NonBlocking
+
 @NonBlocking
 public expect object UncaughtExceptionHandler {
     public fun rethrowIfFatal(e: Throwable)

@@ -1,5 +1,7 @@
 package org.funfix.tasks
 
+import org.funfix.tasks.support.Blocking
+
 /**
  * Represents a delayed computation (a thunk).
  *

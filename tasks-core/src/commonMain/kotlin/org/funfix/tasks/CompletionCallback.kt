@@ -1,5 +1,7 @@
 package org.funfix.tasks
 
+import org.funfix.tasks.support.NonBlocking
+import org.funfix.tasks.support.Serializable
 import kotlin.jvm.JvmStatic
 
 /**

@@ -2,6 +2,8 @@
 
 package org.funfix.tasks
 
+import org.jetbrains.annotations.NonBlocking
+
 /**
  * Logs an uncaught exception.
  *

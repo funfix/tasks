@@ -1,7 +1,8 @@
+
 package org.funfix.tasks
 
-import org.jetbrains.annotations.NonBlocking
-import java.io.Serializable
+import org.funfix.tasks.support.NonBlocking
+import org.funfix.tasks.support.Serializable
 
 /**
  * A function that is a delayed, asynchronous computation.

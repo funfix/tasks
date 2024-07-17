@@ -1,5 +1,9 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package org.funfix.tasks
 
+import org.jetbrains.annotations.Blocking
+import org.jetbrains.annotations.NonBlocking
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -16,9 +20,9 @@ import java.util.concurrent.atomic.AtomicReference
  * - [fromBlockingFuture]
  * - [fromCancellableFuture]
  */
-public class Task<out T> private constructor(
-    private val asyncFun: AsyncFun<T>
-): Serializable {
+public actual abstract class Task<out T>: Serializable {
+    protected actual abstract val unsafeExecuteAsync: AsyncFun<T>
+
     /**
      * Starts the asynchronous execution of this task.
      *
@@ -28,13 +32,13 @@ public class Task<out T> private constructor(
      * @return a [Cancellable] that can be used to cancel a running task
      */
     @NonBlocking
-    public fun executeAsync(
+    public actual fun executeAsync(
         executor: FiberExecutor,
         callback: CompletionCallback<T>
     ): Cancellable {
         val protected = ProtectedCompletionCallback(callback)
         return try {
-            asyncFun(executor, protected)
+            unsafeExecuteAsync(executor, protected)
         } catch (e: Throwable) {
             UncaughtExceptionHandler.rethrowIfFatal(e)
             protected.complete(Outcome.failed(e))
@@ -57,7 +61,7 @@ public class Task<out T> private constructor(
      */
     @NonBlocking
     public fun executeConcurrently(executor: FiberExecutor): TaskFiber<T> =
-        TaskFiber.start(executor, asyncFun)
+        TaskFiber.start(executor, unsafeExecuteAsync)
 
     /**
      * Overload of [executeConcurrently] that uses [FiberExecutor.shared] as the executor.
@@ -83,7 +87,7 @@ public class Task<out T> private constructor(
         val h = BlockingCompletionCallback<T>()
         val cancelToken =
             try {
-                asyncFun(executor, h)
+                unsafeExecuteAsync(executor, h)
             } catch (e: Exception) {
                 h.complete(Outcome.failed(e))
                 Cancellable.EMPTY
@@ -121,7 +125,7 @@ public class Task<out T> private constructor(
         val h = BlockingCompletionCallback<T>()
         val cancelToken =
             try {
-                asyncFun(executor, h)
+                unsafeExecuteAsync(executor, h)
             } catch (e: Exception) {
                 h.complete(Outcome.failed(e))
                 Cancellable.EMPTY
@@ -138,6 +142,11 @@ public class Task<out T> private constructor(
         executeBlockingTimed(FiberExecutor.shared(), timeoutMillis)
 
     public companion object {
+        private operator fun <T> invoke(asyncFun: AsyncFun<T>): Task<T> =
+            object : Task<T>() {
+                override val unsafeExecuteAsync: AsyncFun<T> = asyncFun
+            }
+
         /**
          * Creates a task from a builder function that, on evaluation, will have
          * same-thread execution.
@@ -221,8 +230,6 @@ public class Task<out T> private constructor(
                 executor.executeCancellable(
                     {
                         try {
-                            // This warning shouldn't happen (?!)
-                            @Suppress("BlockingMethodInNonBlockingContext")
                             val result = run.invoke()
                             callback.complete(Outcome.succeeded(result))
                         } catch (_: InterruptedException) {
@@ -552,7 +559,7 @@ private class MutableCancellable : Cancellable {
             }
         }
     }
-
+    /*
     fun setOrdered(token: Cancellable, order: Int) {
         while (true) {
             when (val current = ref.get()) {
@@ -570,7 +577,7 @@ private class MutableCancellable : Cancellable {
                 }
             }
         }
-    }
+    }*/
 
     private sealed interface State {
         data class Active(val token: Cancellable, val order: Int) : State

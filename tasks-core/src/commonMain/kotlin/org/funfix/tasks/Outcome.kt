@@ -2,6 +2,8 @@
 
 package org.funfix.tasks
 
+import org.funfix.tasks.support.ExecutionException
+import org.funfix.tasks.support.NonBlocking
 import kotlin.jvm.JvmName
 import kotlin.jvm.JvmStatic
 

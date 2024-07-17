@@ -1,3 +1,5 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package org.funfix.tasks
 
 import org.jetbrains.annotations.NonBlockingExecutor
@@ -15,7 +17,7 @@ import kotlin.concurrent.getOrSet
  * Provides utilities for working with [Executor] instances, optimized
  * for common use-cases.
  */
-public object ThreadPools {
+public actual object ThreadPools {
     @Volatile
     private var sharedVirtualIORef: Executor? = null
 
@@ -84,7 +86,7 @@ public object ThreadPools {
      * to avoid stack overflows.
      */
     @JvmField
-    public val TRAMPOLINE: @NonBlockingExecutor Executor = Trampoline
+    public actual val TRAMPOLINE: @NonBlockingExecutor Executor = Trampoline
 
     private fun platformThreadFactory(prefix: String): ThreadFactory =
         ThreadFactory { r ->

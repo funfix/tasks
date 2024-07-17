@@ -1,12 +1,16 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package org.funfix.tasks
 
+import org.jetbrains.annotations.Blocking
+import org.jetbrains.annotations.NonBlocking
 import java.time.Duration
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.AbstractQueuedSynchronizer
 
 
-public interface FiberExecutor: Executor, ExecuteCancellableFun {
+public actual interface FiberExecutor: Executor, ExecuteCancellableFun {
     @NonBlocking
     public fun startFiber(command: Runnable): Fiber
 

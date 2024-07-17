@@ -1,5 +1,6 @@
 package org.funfix.tasks
 
+import org.funfix.tasks.support.ExecutionException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
