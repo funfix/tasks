@@ -1,6 +1,6 @@
-package org.funfix.tasks
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 
-import org.jetbrains.annotations.NonBlocking
+package org.funfix.tasks
 
 /**
  * Logs an uncaught exception.
@@ -8,10 +8,11 @@ import org.jetbrains.annotations.NonBlocking
  * On top of the JVM, this function will use the default uncaught exception
  * handler of the current thread. On top of JS, it will use `console.log`.
  */
-public object UncaughtExceptionHandler {
+@NonBlocking
+public actual object UncaughtExceptionHandler {
     @NonBlocking
     @JvmStatic
-    public fun rethrowIfFatal(e: Throwable) {
+    public actual fun rethrowIfFatal(e: Throwable) {
         when (e) {
             is StackOverflowError -> return
             is Error -> throw e
@@ -20,7 +21,7 @@ public object UncaughtExceptionHandler {
 
     @NonBlocking
     @JvmStatic
-    public fun logOrRethrow(e: Throwable) {
+    public actual fun logOrRethrow(e: Throwable) {
         rethrowIfFatal(e)
         val thread = Thread.currentThread()
         val logger: Thread.UncaughtExceptionHandler =

@@ -1,6 +1,5 @@
 package org.funfix.tasks
 
-import org.jetbrains.annotations.NonBlocking
 import kotlin.jvm.JvmField
 
 /**
@@ -18,8 +17,8 @@ import kotlin.jvm.JvmField
  *   still be eventually triggered, if it wasn't already. So all paths,
  *   with cancellation or without, must lead to the [CompletionCallback] being called.
  */
-public fun interface Cancellable {
-    @NonBlocking
+@NonBlocking
+public fun interface Cancellable: Serializable {
     public fun cancel()
 
     public companion object {

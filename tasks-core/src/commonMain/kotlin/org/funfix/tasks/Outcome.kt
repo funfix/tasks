@@ -2,12 +2,13 @@
 
 package org.funfix.tasks
 
-import org.jetbrains.annotations.NonBlocking
-import java.util.concurrent.ExecutionException
+import kotlin.jvm.JvmName
+import kotlin.jvm.JvmStatic
 
 /**
  * Represents the outcome of a concurrent computation (e.g., `Fiber`).
  */
+@NonBlocking
 public sealed interface Outcome<out T> {
     /**
      * Returns the value of the task if it was successful, or throws an exception.
@@ -17,7 +18,6 @@ public sealed interface Outcome<out T> {
      * @throws ExecutionException if the task failed with an exception ([Failed])
      * @throws TaskCancellationException if the task was cancelled ([Cancelled])
      */
-    @NonBlocking
     @Throws(ExecutionException::class, TaskCancellationException::class)
     public fun getOrThrow(): T
 

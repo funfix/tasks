@@ -21,7 +21,7 @@ public class OutcomeTest {
         assertEquals("value", ((Outcome.Succeeded<String>) outcome1).getOrThrow());
         try {
             assertEquals("value", outcome2.getOrThrow());
-        } catch (ExecutionException | TaskCancellationException e) {
+        } catch (final ExecutionException | TaskCancellationException e) {
             throw new RuntimeException(e);
         }
     }

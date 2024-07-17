@@ -1,7 +1,6 @@
 package org.funfix.tasks
 
-import org.jetbrains.annotations.NonBlocking
-import java.io.Serializable
+import kotlin.jvm.JvmStatic
 
 /**
  * Represents a callback that will be invoked when a task completes.
@@ -13,11 +12,11 @@ import java.io.Serializable
  *
  * @param T is the type of the value that the task will complete with
  */
+@NonBlocking
 public fun interface CompletionCallback<in T> : Serializable {
     /**
      * Signals a final [Outcome].
      */
-    @NonBlocking
     public fun complete(outcome: Outcome<T>)
 
     public companion object {
@@ -34,4 +33,3 @@ public fun interface CompletionCallback<in T> : Serializable {
 
     }
 }
-

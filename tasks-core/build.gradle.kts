@@ -17,16 +17,14 @@ publishing {
 
 kotlin {
     sourceSets {
-//        val commonMain by getting {
-//            dependencies {
-//            }
-//        }
-//
-//        val commonTest by getting {
-//            dependencies {
-//                implementation(libs.kotlin.test)
-//            }
-//        }
+        val commonMain by getting {
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+            }
+        }
 
         val jvmMain by getting {
             dependencies {
@@ -41,7 +39,11 @@ kotlin {
             }
         }
 
-        val jsMain by getting
+        val jsMain by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+            }
+        }
 //        val jsTest by getting
     }
 }

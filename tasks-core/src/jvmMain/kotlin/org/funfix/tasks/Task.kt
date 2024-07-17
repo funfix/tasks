@@ -1,7 +1,5 @@
 package org.funfix.tasks
 
-import org.jetbrains.annotations.Blocking
-import org.jetbrains.annotations.NonBlocking
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -373,7 +371,8 @@ public class Task<out T> private constructor(
     }
 }
 
-private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(), CompletionCallback<T> {
+private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(),
+    CompletionCallback<T> {
     private val isDone = AtomicBoolean(false)
     private var outcome: Outcome<T>? = null
 
