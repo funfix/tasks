@@ -19,8 +19,7 @@ import kotlin.jvm.JvmField
  *   with cancellation or without, must lead to the [CompletionCallback] being called.
  */
 fun interface Cancellable {
-    @NonBlocking
-    fun cancel()
+    @NonBlocking fun cancel()
 
     companion object {
         @JvmField val EMPTY: Cancellable = Cancellable {}

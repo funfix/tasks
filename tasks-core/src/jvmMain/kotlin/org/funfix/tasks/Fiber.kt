@@ -12,7 +12,7 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer
 @BlockingExecutor
 interface FiberExecutor: Executor, ExecuteCancellableFun {
     @NonBlocking
-    fun startFiber(command: BlockingRunnable): Fiber
+    fun startFiber(command: Runnable): Fiber
 
     companion object {
         @JvmStatic
@@ -85,7 +85,7 @@ interface Fiber : Cancellable {
          * INTERNAL API, do not use!
          */
         @NonBlocking
-        internal fun start(executor: ExecuteCancellableFun, command: BlockingRunnable): Fiber {
+        internal fun start(executor: ExecuteCancellableFun, command: Runnable): Fiber {
             val fiber = ExecutedFiber()
             val token = executor.executeCancellable(command) { fiber.signalComplete() }
             fiber.registerCancel(token)
@@ -128,7 +128,7 @@ interface TaskFiber<out T> : Fiber {
 
 fun interface ExecuteCancellableFun {
     @NonBlocking
-    fun executeCancellable(command: BlockingRunnable, onComplete: Runnable?): Cancellable
+    fun executeCancellable(command: Runnable, onComplete: Runnable?): Cancellable
 }
 
 /**
@@ -296,10 +296,10 @@ private class FiberExecutorDefault private constructor(
     private val _executeFun: ExecuteCancellableFun,
     private val _executor: Executor
 ) : FiberExecutor {
-    override fun startFiber(command: BlockingRunnable): Fiber =
+    override fun startFiber(command: Runnable): Fiber =
         Fiber.start(_executeFun, command)
 
-    override fun executeCancellable(command: BlockingRunnable, onComplete: Runnable?): Cancellable =
+    override fun executeCancellable(command: Runnable, onComplete: Runnable?): Cancellable =
         _executeFun.executeCancellable(command, onComplete)
 
     override fun execute(command: Runnable) =
@@ -351,7 +351,7 @@ private class FiberExecutorDefault private constructor(
 private class ExecuteCancellableFunViaThreadFactory(
     private val _factory: ThreadFactory
 ) : ExecuteCancellableFun {
-    override fun executeCancellable(command: BlockingRunnable, onComplete: Runnable?): Cancellable {
+    override fun executeCancellable(command: Runnable, onComplete: Runnable?): Cancellable {
         val t = _factory.newThread {
             try {
                 command.run()
@@ -367,7 +367,7 @@ private class ExecuteCancellableFunViaThreadFactory(
 private class ExecuteCancellableFunViaExecutor(
     private val _executor: Executor
 ) : ExecuteCancellableFun {
-    override fun executeCancellable(command: BlockingRunnable, onComplete: Runnable?): Cancellable {
+    override fun executeCancellable(command: Runnable, onComplete: Runnable?): Cancellable {
         val state = AtomicReference<State>(State.NotStarted)
         _executor.execute {
             val running = State.Running(Thread.currentThread())

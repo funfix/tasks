@@ -223,7 +223,6 @@ class Task<out T> private constructor(
                 executor.executeCancellable(
                     {
                         try {
-                            @Suppress("BlockingMethodInNonBlockingContext")
                             val result = run.invoke()
                             callback.complete(Outcome.succeeded(result))
                         } catch (_: InterruptedException) {

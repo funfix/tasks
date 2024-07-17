@@ -11,6 +11,13 @@ repositories {
     mavenCentral()
 }
 
+buildscript {
+    dependencies {
+        classpath("org.jetbrains.dokka:dokka-base:1.9.20")
+        classpath("org.jetbrains.dokka:kotlin-as-java-plugin:1.9.20")
+    }
+}
+
 tasks.dokkaHtmlMultiModule {
     outputDirectory.set(file("build/dokka"))
 }

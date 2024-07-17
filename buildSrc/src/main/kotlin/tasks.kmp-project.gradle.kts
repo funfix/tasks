@@ -1,3 +1,4 @@
+import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -72,6 +73,12 @@ publishing {
 }
 
 val dokkaOutputDir = layout.buildDirectory.dir("dokka").get().asFile
+
+tasks.withType<DokkaTask>().configureEach {
+    dependencies {
+        plugins("org.jetbrains.dokka:kotlin-as-java-plugin:1.9.20")
+    }
+}
 
 tasks.dokkaHtml {
     outputDirectory.set(dokkaOutputDir)
