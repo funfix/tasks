@@ -5,5 +5,8 @@ dependency-updates:
 		--refresh-dependencies && \
 		open build/dependencyUpdates/report.html
 
+update-gradle:
+	./gradlew wrapper --gradle-version latest
+
 test-watch:
 	./gradlew -t -i check

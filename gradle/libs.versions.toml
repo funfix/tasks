@@ -5,7 +5,7 @@ dokka = "1.9.20"
 gradleVersions = "0.51.0"
 kotlinx-coroutines = "1.9.0-RC"
 jetbrains-annotations = "24.1.0"
-junit-jupiter = "5.10.2"
+junit-jupiter = "5.10.3"
 
 [libraries]
 # Plugins specified in buildSrc/build.gradle.kts
