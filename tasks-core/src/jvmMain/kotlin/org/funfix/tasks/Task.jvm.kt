@@ -27,13 +27,13 @@ public actual abstract class Task<out T>: Serializable {
      * Starts the asynchronous execution of this task.
      *
      * @param callback will be invoked with the result when the task completes
-     * @param executor is the [FiberExecutor] that may be used to run the task
+     * @param executor is the [Executor] that may be used to run the task
      *
      * @return a [Cancellable] that can be used to cancel a running task
      */
     @NonBlocking
     public actual fun executeAsync(
-        executor: FiberExecutor,
+        executor: Executor,
         callback: CompletionCallback<T>
     ): Cancellable {
         val protected = ProtectedCompletionCallback(callback)
@@ -47,28 +47,28 @@ public actual abstract class Task<out T>: Serializable {
     }
 
     /**
-     * Overload of [executeAsync] that uses [FiberExecutor.global] as the executor.
+     * Overload of [executeAsync] that uses [TaskExecutors.global] as the executor.
      */
     @NonBlocking
     public actual fun executeAsync(callback: CompletionCallback<T>): Cancellable =
-        executeAsync(FiberExecutor.global, callback)
+        executeAsync(TaskExecutors.global, callback)
 
     /**
-     * Executes the task concurrently and returns a [TaskFiber] that can be
+     * Executes the task concurrently and returns a [Fiber] that can be
      * used to wait for the result or cancel the task.
      *
-     * @param executor is the [FiberExecutor] that may be used to run the task
+     * @param executor is the [Executor] that may be used to run the task
      */
     @NonBlocking
-    public actual fun executeFiber(executor: FiberExecutor): TaskFiber<T> =
-        TaskFiber.start(executor, unsafeExecuteAsync)
+    public actual fun executeFiber(executor: Executor): Fiber<T> =
+        Fiber.start(executor, unsafeExecuteAsync)
 
     /**
-     * Overload of [executeFiber] that uses [FiberExecutor.global] as the executor.
+     * Overload of [executeFiber] that uses [TaskExecutors.global] as the executor.
      */
     @NonBlocking
-    public actual fun executeFiber(): TaskFiber<T> =
-        executeFiber(FiberExecutor.global)
+    public actual fun executeFiber(): Fiber<T> =
+        executeFiber(TaskExecutors.global)
 
     /**
      * Executes the task and blocks until it completes, or the current
@@ -83,7 +83,7 @@ public actual abstract class Task<out T>: Serializable {
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class)
-    public fun executeBlocking(executor: FiberExecutor): T {
+    public fun executeBlocking(executor: Executor): T {
         val h = BlockingCompletionCallback<T>()
         val cancelToken =
             try {
@@ -96,11 +96,11 @@ public actual abstract class Task<out T>: Serializable {
     }
 
     /**
-     * Overload of [executeBlocking] that uses [FiberExecutor.global] as the executor.
+     * Overload of [executeBlocking] that uses [TaskExecutors.global] as the executor.
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class)
-    public fun executeBlocking(): T = executeBlocking(FiberExecutor.global)
+    public fun executeBlocking(): T = executeBlocking(TaskExecutors.global)
 
     /**
      * Executes the task and blocks until it completes, or the timeout is reached,
@@ -119,7 +119,7 @@ public actual abstract class Task<out T>: Serializable {
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
     public fun executeBlockingTimed(
-        executor: FiberExecutor,
+        executor: Executor,
         timeoutMillis: Long
     ): T {
         val h = BlockingCompletionCallback<T>()
@@ -134,45 +134,22 @@ public actual abstract class Task<out T>: Serializable {
     }
 
     /**
-     * Overload of [executeBlockingTimed] that uses [FiberExecutor.global] as the executor.
+     * Overload of [executeBlockingTimed] that uses [TaskExecutors.global] as the executor.
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
     public fun executeBlockingTimed(timeoutMillis: Long): T =
-        executeBlockingTimed(FiberExecutor.global, timeoutMillis)
+        executeBlockingTimed(TaskExecutors.global, timeoutMillis)
 
-    public companion object {
+    public actual companion object {
         private operator fun <T> invoke(asyncFun: AsyncFun<T>): Task<T> =
             object : Task<T>() {
                 override val unsafeExecuteAsync: AsyncFun<T> = asyncFun
             }
 
-        /**
-         * Creates a task from a builder function that, on evaluation, will have
-         * same-thread execution.
-         *
-         * This method ensures:
-         * 1. Idempotent cancellation
-         * 2. Trampolined execution to avoid stack-overflows
-         *
-         * The created task will execute the given function on the current
-         * thread, by using a "trampoline" to avoid stack overflows. This may be
-         * useful if the computation for initiating the async process is
-         * expected to be fast. However, if the computation can block the
-         * current thread, it is recommended to use [createAsync] instead, which
-         * will initiate the computation on a separate thread.
-         *
-         * @param run is the function that will trigger the async
-         * computation, injecting a callback that will be used to signal the
-         * result, and an executor that can be used for creating additional
-         * threads.
-         *
-         * @return a new task that will execute the given builder function upon execution
-         * @see createAsync
-         */
         @NonBlocking
         @JvmStatic
-        public fun <T> create(run: AsyncFun<T>): Task<T> =
+        public actual fun <T> create(run: AsyncFun<T>): Task<T> =
             Task { executor, callback ->
                 val cancel = MutableCancellable()
                 TaskExecutors.trampoline.execute {
@@ -193,15 +170,15 @@ public actual abstract class Task<out T>: Serializable {
          * This is a variant of [create], which executes the given
          * builder function on the same thread.
          *
-         * NOTE: The thread is created via the injected [FiberExecutor] in the
+         * NOTE: The thread is created via the injected [Executor] in the
          * "execute" methods (e.g., [executeAsync]). Even when using one of the overloads,
-         * then [FiberExecutor.global] is assumed.
+         * then [TaskExecutors.global] is assumed.
          *
          * @param run is the function that will trigger the async computation.
          * @return a new task that will execute the given builder function.
          *
          * @see create
-         * @see FiberExecutor
+         * @see Executor
          */
         @NonBlocking
         @JvmStatic
@@ -227,27 +204,29 @@ public actual abstract class Task<out T>: Serializable {
         @JvmStatic
         public fun <T> fromBlockingIO(run: DelayedFun<T>): Task<T> =
             Task { executor, callback ->
-                executor.executeCancellable(
-                    {
-                        try {
-                            val result = run.invoke()
-                            callback.complete(Outcome.succeeded(result))
-                        } catch (_: InterruptedException) {
-                            callback.complete(Outcome.cancelled())
-                        } catch (_: TaskCancellationException) {
-                            callback.complete(Outcome.cancelled())
-                        } catch (e: Throwable) {
-                            UncaughtExceptionHandler.rethrowIfFatal(e)
-                            callback.complete(Outcome.failed(e))
-                        }
-                    },
-                    {
-                        // This is a concurrent call that wouldn't be very safe
-                        // with a naive implementation of the CompletionCallback
-                        // (thankfully we protect the injected callback)
-                        callback.complete(Outcome.cancelled())
+                val cancelToken = MutableCancellable()
+                executor.execute {
+                    val th = Thread.currentThread()
+                    cancelToken.set {
+                        th.interrupt()
                     }
-                )
+                    try {
+                        val result = try {
+                            run.invoke()
+                        } finally {
+                            cancelToken.set(Cancellable.EMPTY)
+                        }
+                        callback.complete(Outcome.succeeded(result))
+                    } catch (_: InterruptedException) {
+                        callback.complete(Outcome.cancelled())
+                    } catch (_: TaskCancellationException) {
+                        callback.complete(Outcome.cancelled())
+                    } catch (e: Throwable) {
+                        UncaughtExceptionHandler.rethrowIfFatal(e)
+                        callback.complete(Outcome.failed(e))
+                    }
+                }
+                cancelToken
             }
 
         /**
@@ -449,7 +428,7 @@ private class TaskFromCancellableFuture<T>(
     private val builder: DelayedFun<CancellableFuture<T>>
 ) : AsyncFun<T> {
     override fun invoke(
-        executor: FiberExecutor,
+        executor: Executor,
         callback: CompletionCallback<T>
     ): Cancellable {
         val cancel = MutableCancellable()

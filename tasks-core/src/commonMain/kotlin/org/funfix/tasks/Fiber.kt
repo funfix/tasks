@@ -2,22 +2,34 @@
 
 package org.funfix.tasks
 
-import org.funfix.tasks.support.Executor
 import org.funfix.tasks.support.NonBlocking
 import org.funfix.tasks.support.Runnable
 
-public expect interface Fiber : Cancellable {
+/**
+ * Represents a [Task] that has started execution and is running concurrently.
+ *
+ * @param T is the type of the value that the task will complete with
+ */
+public expect interface Fiber<out T> : Cancellable {
+    /**
+     * @return the [Outcome] of the task, if it has completed, or `null` if the
+     * task is still running.
+     */
+    public val outcome: Outcome<T>?
+
+    /**
+     * Registers a callback that will be invoked when the task completes.
+     *
+     * @return a [Cancellable] reference that can be used to unregister
+     * the callback. Note — cancelling the token will not cancel the running
+     * task, it will only unregister the callback.
+     */
     @NonBlocking
     public fun joinAsync(onComplete: Runnable): Cancellable
-}
 
-public expect interface TaskFiber<out T> : Fiber {
+    /**
+     * Tries cancelling the running task.
+     */
     @NonBlocking
-    public fun outcome(): Outcome<T>?
-}
-
-public expect interface FiberExecutor: Executor {
-    public companion object {
-        public val global: FiberExecutor
-    }
+    override fun cancel()
 }

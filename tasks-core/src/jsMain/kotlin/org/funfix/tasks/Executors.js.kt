@@ -21,7 +21,7 @@ private val globalOrSelf =
     globalOrSelfDynamic.unsafeCast<WindowOrWorkerGlobalScope>()
 
 internal object JSExecutor: Executor {
-    class NotSupported(val execType: ExecType): Exception(
+    class NotSupported(execType: ExecType): Exception(
         "Executor type $execType is not supported on this runtime"
     )
 

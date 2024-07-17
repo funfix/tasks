@@ -2,10 +2,8 @@
 
 package org.funfix.tasks
 
+import org.funfix.tasks.support.*
 import org.funfix.tasks.support.MutableCancellable
-import org.funfix.tasks.support.NonBlocking
-import org.funfix.tasks.support.Runnable
-import org.funfix.tasks.support.Serializable
 import kotlin.js.Promise
 
 /**
@@ -18,13 +16,13 @@ public actual abstract class Task<out T> : Serializable {
      * Starts the asynchronous execution of this task.
      *
      * @param callback will be invoked with the result when the task completes
-     * @param executor is the [FiberExecutor] that may be used to run the task
+     * @param executor is the [Executor] that may be used to run the task
      *
      * @return a [Cancellable] that can be used to cancel a running task
      */
     @NonBlocking
     public actual fun executeAsync(
-        executor: FiberExecutor,
+        executor: Executor,
         callback: CompletionCallback<T>
     ): Cancellable {
         val protected = ProtectedCompletionCallback(callback)
@@ -39,31 +37,22 @@ public actual abstract class Task<out T> : Serializable {
 
     @NonBlocking
     public actual fun executeAsync(callback: CompletionCallback<T>): Cancellable {
-        return executeAsync(FiberExecutor.global, callback)
+        return executeAsync(TaskExecutors.global, callback)
     }
 
-    /**
-     * Executes the task concurrently and returns a [TaskFiber] that can be
-     * used to wait for the result or cancel the task.
-     *
-     * @param executor is the [FiberExecutor] that may be used to run the task
-     */
     @NonBlocking
-    public actual fun executeFiber(executor: FiberExecutor): TaskFiber<T> =
-        TaskFiber.start(executor, unsafeExecuteAsync)
+    public actual fun executeFiber(executor: Executor): Fiber<T> =
+        Fiber.start(executor, unsafeExecuteAsync)
 
-    /**
-     * Overload of [executeFiber] that uses [FiberExecutor.global] as the executor.
-     */
     @NonBlocking
-    public actual fun executeFiber(): TaskFiber<T> =
-        executeFiber(FiberExecutor.global)
+    public actual fun executeFiber(): Fiber<T> =
+        executeFiber(TaskExecutors.global)
 
     /**
      * Starts the asynchronous execution of this task, returning a [CancellablePromise].
      */
     @NonBlocking
-    public fun executePromise(executor: FiberExecutor): CancellablePromise<T> {
+    public fun executePromise(executor: Executor): CancellablePromise<T> {
         val cancel = MutableCancellable()
         val promise = Promise { resolve, reject ->
             val token = executeAsync(executor) { outcome ->
@@ -85,13 +74,28 @@ public actual abstract class Task<out T> : Serializable {
     }
 
     public fun executePromise(): CancellablePromise<T> {
-        return executePromise(FiberExecutor.global)
+        return executePromise(TaskExecutors.global)
     }
 
-    public companion object {
+    public actual companion object {
         private operator fun <T> invoke(run: AsyncFun<T>): Task<T> =
             object : Task<T>() {
                 override val unsafeExecuteAsync: AsyncFun<T> = run
+            }
+
+        @NonBlocking
+        public actual fun <T> create(run: AsyncFun<T>): Task<T> =
+            Task { executor, callback ->
+                val cancel = MutableCancellable()
+                TaskExecutors.trampoline.execute {
+                    try {
+                        cancel.set(run.invoke(executor, callback))
+                    } catch (e: Throwable) {
+                        UncaughtExceptionHandler.rethrowIfFatal(e)
+                        callback.complete(Outcome.failed(e))
+                    }
+                }
+                cancel
             }
 
         /**

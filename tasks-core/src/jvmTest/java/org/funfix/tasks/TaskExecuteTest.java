@@ -109,7 +109,7 @@ public class TaskExecuteTest {
         fiber.cancel();
         fiber.joinBlocking();
 
-        assertInstanceOf(Outcome.Cancelled.class, fiber.outcome());
+        assertInstanceOf(Outcome.Cancelled.class, fiber.getOutcome());
         assertEquals(3, interruptedHits.get(), "interruptedHits.get");
     }
 }

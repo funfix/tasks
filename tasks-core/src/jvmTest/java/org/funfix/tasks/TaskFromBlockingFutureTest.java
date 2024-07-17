@@ -114,7 +114,7 @@ public class TaskFromBlockingFutureTest {
         fiber.joinBlockingTimed(TimedAwait.TIMEOUT.toMillis());
 
         try {
-            Objects.requireNonNull(fiber.outcome()).getOrThrow();
+            Objects.requireNonNull(fiber.getOutcome()).getOrThrow();
         } catch (final TaskCancellationException ignored) {
         }
         TimedAwait.latchAndExpectCompletion(latch, "latch");
@@ -142,7 +142,7 @@ public class TaskFromBlockingFutureTest {
         fiber.joinBlockingTimed(TimedAwait.TIMEOUT.toMillis());
 
         try {
-            Objects.requireNonNull(fiber.outcome()).getOrThrow();
+            Objects.requireNonNull(fiber.getOutcome()).getOrThrow();
         } catch (final TaskCancellationException ignored) {
         }
         TimedAwait.latchAndExpectCompletion(latch, "latch");

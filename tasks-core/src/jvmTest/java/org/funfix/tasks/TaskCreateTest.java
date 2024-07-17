@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -18,7 +19,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 abstract class BaseTaskCreateTest {
     @Nullable
     protected AutoCloseable closeable;
-    @Nullable protected FiberExecutor executor;
+    @Nullable protected Executor executor;
     protected abstract  <T> Task<T> createTask(final AsyncFun<? extends T> builder);
 
     @AfterEach
@@ -42,7 +43,7 @@ abstract class BaseTaskCreateTest {
             return Cancellable.EMPTY;
         });
 
-        final String result = task.executeBlockingTimed(FiberExecutor.global(), TimedAwait.TIMEOUT.toMillis());
+        final String result = task.executeBlockingTimed(TaskExecutors.global(), TimedAwait.TIMEOUT.toMillis());
         assertEquals("Hello, world!", result);
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
         assertNull(reportedException.get(), "reportedException.get()");
@@ -98,7 +99,7 @@ abstract class BaseTaskCreateTest {
             // call is idempotent
             fiber.cancel();
             fiber.joinBlocking();
-            Objects.requireNonNull(fiber.outcome()).getOrThrow();
+            Objects.requireNonNull(fiber.getOutcome()).getOrThrow();
         } catch (final TaskCancellationException ex) {
             // Expected
         }
@@ -123,26 +124,8 @@ class TaskCreateSimpleCustomJavaExecutorTest extends BaseTaskCreateTest {
     @BeforeEach
     void setUp() {
         final var javaExecutor = java.util.concurrent.Executors.newCachedThreadPool();
-        executor = FiberExecutor.fromExecutor(javaExecutor);
+        executor = javaExecutor;
         closeable = javaExecutor::shutdown;
-    }
-
-    @Override
-    protected <T> Task<T> createTask(final AsyncFun<? extends T> builder) {
-        return Task.create(builder);
-    }
-}
-
-class TaskCreateSimpleCustomJavaThreadFactoryTest extends BaseTaskCreateTest {
-    @BeforeEach
-    void setUp() {
-        executor = FiberExecutor.fromThreadFactory(
-                r -> {
-                    final var t = new Thread(r);
-                    t.setName("my-thread-" + t.getId());
-                    return t;
-                }
-        );
     }
 
     @Override
@@ -216,7 +199,7 @@ class TaskCreateAsyncCustomExecutorOlderJavaTest extends BaseTaskCreateAsyncTest
     @BeforeEach
     void setUp() {
         closeable = SysProp.withVirtualThreads(false);
-        executor = FiberExecutor.fromExecutor(TaskExecutors.global());
+        executor = TaskExecutors.global();
     }
 }
 
@@ -224,6 +207,6 @@ class TaskCreateAsyncCustomExecutorJava21Test extends BaseTaskCreateAsyncTest {
     @BeforeEach
     void setUp() {
         closeable = SysProp.withVirtualThreads(true);
-        executor = FiberExecutor.fromExecutor(TaskExecutors.global());
+        executor = TaskExecutors.global();
     }
 }

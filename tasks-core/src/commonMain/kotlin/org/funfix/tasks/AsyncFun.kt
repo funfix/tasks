@@ -1,6 +1,7 @@
 
 package org.funfix.tasks
 
+import org.funfix.tasks.support.Executor
 import org.funfix.tasks.support.NonBlocking
 import org.funfix.tasks.support.Serializable
 
@@ -10,7 +11,7 @@ import org.funfix.tasks.support.Serializable
 public fun interface AsyncFun<out T> : Serializable {
     @NonBlocking
     public operator fun invoke(
-        executor: FiberExecutor,
+        executor: Executor,
         callback: CompletionCallback<T>
     ): Cancellable
 }

@@ -2,9 +2,9 @@ package org.funfix.tests
 
 import kotlinx.coroutines.*
 import org.funfix.tasks.Task
-import org.funfix.tasks.VirtualThreads
-import org.funfix.tasks.executeSuspended
-import org.funfix.tasks.virtualThreadsOrBackup
+import org.funfix.tasks.kt.VirtualThreads
+import org.funfix.tasks.kt.executeSuspended
+import org.funfix.tasks.kt.virtualThreadsOrBackup
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger

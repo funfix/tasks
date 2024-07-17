@@ -14,3 +14,5 @@ public actual typealias Blocking = org.jetbrains.annotations.Blocking
 public actual typealias Runnable = java.lang.Runnable
 
 public actual typealias Executor = java.util.concurrent.Executor
+
+public actual typealias InterruptedException = java.lang.InterruptedException

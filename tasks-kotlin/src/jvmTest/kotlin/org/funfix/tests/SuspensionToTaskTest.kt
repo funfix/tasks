@@ -3,7 +3,7 @@ package org.funfix.tests
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.yield
 import org.funfix.tasks.Task
-import org.funfix.tasks.fromSuspended
+import org.funfix.tasks.kt.fromSuspended
 import org.junit.jupiter.api.assertThrows
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException

@@ -11,8 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.*;
 
 abstract class TaskFromBlockingIOTestBase {
-    @Nullable
-    protected FiberExecutor executor;
+    @Nullable protected Executor executor;
     @Nullable protected AutoCloseable closeable;
 
     @AfterEach
@@ -66,7 +65,7 @@ abstract class TaskFromBlockingIOTestBase {
         fiber.cancel();
         fiber.joinBlocking();
         try {
-            Objects.requireNonNull(fiber.outcome()).getOrThrow();
+            Objects.requireNonNull(fiber.getOutcome()).getOrThrow();
             fail("Should have thrown a CancellationException");
         } catch (final TaskCancellationException ignored) {}
     }
@@ -89,7 +88,7 @@ final class TaskFromBlockingWithExecutorIOTest extends TaskFromBlockingIOTestBas
             return th;
         });
         this.closeable = es::shutdown;
-        this.executor = FiberExecutor.fromExecutor(es);
+        this.executor = es;
     }
 }
 
@@ -99,6 +98,6 @@ final class TaskFromBlockingWithSharedExecutorTest extends TaskFromBlockingIOTes
 
     @BeforeEach
     void setup() {
-        this.executor = FiberExecutor.global();
+        this.executor = TaskExecutors.global();
     }
 }

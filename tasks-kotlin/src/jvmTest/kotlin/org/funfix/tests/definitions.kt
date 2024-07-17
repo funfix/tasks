@@ -27,7 +27,7 @@ suspend fun awaitLatchWithExpectationSuspended(latch: CountDownLatch, name: Stri
         awaitLatchWithExpectation(latch, name, timeout)
     }
 
-fun awaitFiberJoin(fiber: Fiber, name: String = "fiber") =
+fun <T> awaitFiberJoin(fiber: Fiber<T>, name: String = "fiber") =
     try { fiber.joinBlockingTimed(TIMEOUT.inWholeMilliseconds) }
     catch (_: TimeoutException) { fail("Timed out waiting for `$name` to complete") }
 
