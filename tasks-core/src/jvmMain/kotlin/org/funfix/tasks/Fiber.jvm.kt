@@ -14,7 +14,7 @@ public actual interface FiberExecutor: Executor, ExecuteCancellableFun {
     @NonBlocking
     public fun startFiber(command: Runnable): Fiber
 
-    public companion object {
+    public actual companion object {
         @JvmStatic
         public fun fromThreadFactory(factory: ThreadFactory): FiberExecutor =
             FiberExecutorDefault.fromThreadFactory(factory)
@@ -23,15 +23,15 @@ public actual interface FiberExecutor: Executor, ExecuteCancellableFun {
         public fun fromExecutor(executor: Executor): FiberExecutor =
             FiberExecutorDefault.fromExecutor(executor)
 
-        @JvmStatic
-        public fun shared(): FiberExecutor =
-            FiberExecutorDefault.shared()
+        public actual val global: FiberExecutor
+            @JvmStatic @JvmName("global")
+            get() = FiberExecutorDefault.global()
     }
 }
 
-public interface Fiber : Cancellable {
+public actual interface Fiber : Cancellable {
     @NonBlocking
-    public fun joinAsync(onComplete: Runnable): Cancellable
+    public actual fun joinAsync(onComplete: Runnable): Cancellable
 
     @Blocking
     @Throws(InterruptedException::class, TimeoutException::class)
@@ -67,9 +67,9 @@ public interface Fiber : Cancellable {
     }
 
     @NonBlocking
-    public fun joinAsync(): CancellableFuture<Void?> {
-        val p = CompletableFuture<Void?>()
-        val token = joinAsync { p.complete(null) }
+    public fun joinAsync(): CancellableFuture<Unit> {
+        val p = CompletableFuture<Unit>()
+        val token = joinAsync { p.complete(Unit) }
         val cRef = Cancellable {
             try {
                 token.cancel()
@@ -99,13 +99,13 @@ public interface Fiber : Cancellable {
  *
  * @param T is the type of the value that the task will complete with
  */
-public interface TaskFiber<out T> : Fiber {
+public actual interface TaskFiber<out T> : Fiber {
     /**
      * @return the [Outcome] of the task, if it has completed, or `null` if the
      * task is still running.
      */
     @NonBlocking
-    public fun outcome(): Outcome<T>?
+    public actual fun outcome(): Outcome<T>?
 
     public companion object {
         /**
@@ -147,7 +147,7 @@ private class ExecutedFiber : Fiber {
                     }
                 }
                 State.Completed -> {
-                    ThreadPools.TRAMPOLINE.execute(onComplete)
+                    TaskExecutors.trampoline.execute(onComplete)
                     return Cancellable.EMPTY
                 }
             }
@@ -227,8 +227,8 @@ private class ExecutedFiber : Fiber {
 
         fun triggerListeners() =
             when (this) {
-                is Active -> listeners.forEach(ThreadPools.TRAMPOLINE::execute)
-                is Cancelled -> listeners.forEach(ThreadPools.TRAMPOLINE::execute)
+                is Active -> listeners.forEach(TaskExecutors.trampoline::execute)
+                is Cancelled -> listeners.forEach(TaskExecutors.trampoline::execute)
                 is Completed -> {}
             }
 
@@ -325,7 +325,7 @@ private class FiberExecutorDefault private constructor(
         @Volatile
         private var defaultFiberExecutorLoomRef: FiberExecutor? = null
 
-        fun shared(): FiberExecutor {
+        fun global(): FiberExecutor {
             if (VirtualThreads.areVirtualThreadsSupported()) {
                 // Double-checked locking
                 if (defaultFiberExecutorLoomRef != null) return defaultFiberExecutorLoomRef!!
@@ -341,7 +341,7 @@ private class FiberExecutorDefault private constructor(
             if (defaultFiberExecutorOlderJavaRef != null) return defaultFiberExecutorOlderJavaRef!!
             synchronized(this) {
                 if (defaultFiberExecutorOlderJavaRef != null) return defaultFiberExecutorOlderJavaRef!!
-                defaultFiberExecutorOlderJavaRef = fromExecutor(ThreadPools.sharedIO())
+                defaultFiberExecutorOlderJavaRef = fromExecutor(TaskExecutors.global)
                 return defaultFiberExecutorOlderJavaRef!!
             }
         }

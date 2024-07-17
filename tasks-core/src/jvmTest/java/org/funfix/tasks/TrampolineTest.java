@@ -8,16 +8,16 @@ public class TrampolineTest {
     Runnable recursiveRunnable(int level, int maxLevel, Runnable onComplete) {
         return () -> {
             if (maxLevel >= level)
-                ThreadPools.TRAMPOLINE.execute(onComplete);
+                TaskExecutors.trampoline().execute(onComplete);
             else
-                ThreadPools.TRAMPOLINE.execute(recursiveRunnable(level + 1, maxLevel, onComplete));
+                TaskExecutors.trampoline().execute(recursiveRunnable(level + 1, maxLevel, onComplete));
         };
     }
 
     @Test
     void testDepth() {
         final boolean[] wasExecuted = { false };
-        ThreadPools.TRAMPOLINE.execute(recursiveRunnable(
+        TaskExecutors.trampoline().execute(recursiveRunnable(
                 0, 10000, () -> wasExecuted[0] = true
         ));
         assertTrue(wasExecuted[0]);
@@ -26,9 +26,9 @@ public class TrampolineTest {
     @Test
     void testBreath() {
         final int[] calls = { 0 };
-        ThreadPools.TRAMPOLINE.execute(() -> {
+        TaskExecutors.trampoline().execute(() -> {
             for (int i = 0; i < 10000; i++) {
-                ThreadPools.TRAMPOLINE.execute(() -> calls[0]++);
+                TaskExecutors.trampoline().execute(() -> calls[0]++);
             }
         });
         assertEquals(10000, calls[0]);

@@ -20,7 +20,7 @@ class FiberExecutorFromExecutorTest {
 
     @BeforeEach
     void setUp() {
-        final var es = Executors.newCachedThreadPool(r -> {
+        final var es = java.util.concurrent.Executors.newCachedThreadPool(r -> {
             final var t = new Thread(r);
             t.setDaemon(true);
             t.setName("test-thread-" + t.getId());
@@ -204,7 +204,7 @@ class FiberExecutorDefaultOlderJavaTest extends FiberExecutorFromExecutorTest {
     @Override
     void setUp() {
         this.closeable = SysProp.withVirtualThreads(false);
-        this.fiberExecutor = FiberExecutor.shared();
+        this.fiberExecutor = FiberExecutor.global();
         assertFalse(VirtualThreads.areVirtualThreadsSupported());
     }
 }
@@ -214,7 +214,7 @@ class FiberExecutorDefaultJava21Test extends FiberExecutorFromExecutorTest {
     @Override
     void setUp() {
         this.closeable = SysProp.withVirtualThreads(true);
-        this.fiberExecutor = FiberExecutor.shared();
+        this.fiberExecutor = FiberExecutor.global();
         assumeTrue(VirtualThreads.areVirtualThreadsSupported());
     }
 }

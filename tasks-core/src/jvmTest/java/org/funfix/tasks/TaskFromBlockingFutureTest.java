@@ -44,7 +44,7 @@ public class TaskFromBlockingFutureTest {
 
         final var r = task.executeBlocking();
         assertEquals("Hello, world!", r);
-        assertTrue(name.get().startsWith("common-io-"));
+        assertTrue(name.get().startsWith("tasks-io-"));
     }
 
     @Test
@@ -60,7 +60,7 @@ public class TaskFromBlockingFutureTest {
 
         final var r = task.executeBlocking();
         assertEquals("Hello, world!", r);
-        assertTrue(name.get().startsWith("common-io-virtual-"));
+        assertTrue(name.get().startsWith("tasks-io-virtual-"));
     }
 
     @Test
@@ -107,7 +107,7 @@ public class TaskFromBlockingFutureTest {
                         latch.countDown();
                         throw e;
                     }
-                }).executeConcurrently();
+                }).executeFiber();
 
         TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");
         fiber.cancel();
@@ -135,7 +135,7 @@ public class TaskFromBlockingFutureTest {
                     } catch (final InterruptedException e) {
                         latch.countDown();
                     }
-                })).executeConcurrently();
+                })).executeFiber();
 
         wasStarted.await();
         fiber.cancel();

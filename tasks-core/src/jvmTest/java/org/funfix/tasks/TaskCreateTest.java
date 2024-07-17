@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -43,7 +42,7 @@ abstract class BaseTaskCreateTest {
             return Cancellable.EMPTY;
         });
 
-        final String result = task.executeBlockingTimed(FiberExecutor.Companion.shared(), TimedAwait.TIMEOUT.toMillis());
+        final String result = task.executeBlockingTimed(FiberExecutor.global(), TimedAwait.TIMEOUT.toMillis());
         assertEquals("Hello, world!", result);
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
         assertNull(reportedException.get(), "reportedException.get()");
@@ -92,8 +91,8 @@ abstract class BaseTaskCreateTest {
 
         final var fiber =
                 executor != null
-                        ? task.executeConcurrently(executor)
-                        : task.executeConcurrently();
+                        ? task.executeFiber(executor)
+                        : task.executeFiber();
         try {
             fiber.cancel();
             // call is idempotent
@@ -123,7 +122,7 @@ class TaskCreateSimpleDefaultExecutorTest extends BaseTaskCreateTest {
 class TaskCreateSimpleCustomJavaExecutorTest extends BaseTaskCreateTest {
     @BeforeEach
     void setUp() {
-        final var javaExecutor = Executors.newCachedThreadPool();
+        final var javaExecutor = java.util.concurrent.Executors.newCachedThreadPool();
         executor = FiberExecutor.fromExecutor(javaExecutor);
         closeable = javaExecutor::shutdown;
     }
@@ -172,8 +171,8 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
                         ? task.executeBlocking(executor)
                         : task.executeBlocking();
         assertTrue(
-                result.matches("common-io-virtual-\\d+"),
-                "result.matches(\"common-io-virtual-\\\\d+\")"
+                result.matches("tasks-io-virtual-\\d+"),
+                "result.matches(\"tasks-io-virtual-\\\\d+\")"
         );
     }
 
@@ -191,8 +190,8 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
                         ? task.executeBlocking(executor)
                         : task.executeBlocking();
         assertTrue(
-                result.matches("common-io-platform-\\d+"),
-                "result.matches(\"common-io-virtual-\\\\d+\")"
+                result.matches("tasks-io-platform-\\d+"),
+                "result.matches(\"tasks-io-virtual-\\\\d+\")"
         );
     }
 }
@@ -217,7 +216,7 @@ class TaskCreateAsyncCustomExecutorOlderJavaTest extends BaseTaskCreateAsyncTest
     @BeforeEach
     void setUp() {
         closeable = SysProp.withVirtualThreads(false);
-        executor = FiberExecutor.fromExecutor(ThreadPools.sharedIO());
+        executor = FiberExecutor.fromExecutor(TaskExecutors.global());
     }
 }
 
@@ -225,6 +224,6 @@ class TaskCreateAsyncCustomExecutorJava21Test extends BaseTaskCreateAsyncTest {
     @BeforeEach
     void setUp() {
         closeable = SysProp.withVirtualThreads(true);
-        executor = FiberExecutor.fromExecutor(ThreadPools.sharedIO());
+        executor = FiberExecutor.fromExecutor(TaskExecutors.global());
     }
 }

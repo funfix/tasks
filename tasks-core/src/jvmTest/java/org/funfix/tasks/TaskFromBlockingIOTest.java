@@ -60,7 +60,7 @@ abstract class TaskFromBlockingIOTestBase {
             Thread.sleep(30000);
             return null;
         });
-        final var fiber = task.executeConcurrently(executor);
+        final var fiber = task.executeFiber(executor);
         TimedAwait.latchAndExpectCompletion(latch, "latch");
 
         fiber.cancel();
@@ -99,6 +99,6 @@ final class TaskFromBlockingWithSharedExecutorTest extends TaskFromBlockingIOTes
 
     @BeforeEach
     void setup() {
-        this.executor = FiberExecutor.shared();
+        this.executor = FiberExecutor.global();
     }
 }

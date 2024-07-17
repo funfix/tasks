@@ -47,11 +47,11 @@ public actual abstract class Task<out T>: Serializable {
     }
 
     /**
-     * Overload of [executeAsync] that uses [FiberExecutor.shared] as the executor.
+     * Overload of [executeAsync] that uses [FiberExecutor.global] as the executor.
      */
     @NonBlocking
-    public fun executeAsync(callback: CompletionCallback<T>): Cancellable =
-        executeAsync(FiberExecutor.shared(), callback)
+    public actual fun executeAsync(callback: CompletionCallback<T>): Cancellable =
+        executeAsync(FiberExecutor.global, callback)
 
     /**
      * Executes the task concurrently and returns a [TaskFiber] that can be
@@ -60,15 +60,15 @@ public actual abstract class Task<out T>: Serializable {
      * @param executor is the [FiberExecutor] that may be used to run the task
      */
     @NonBlocking
-    public fun executeConcurrently(executor: FiberExecutor): TaskFiber<T> =
+    public actual fun executeFiber(executor: FiberExecutor): TaskFiber<T> =
         TaskFiber.start(executor, unsafeExecuteAsync)
 
     /**
-     * Overload of [executeConcurrently] that uses [FiberExecutor.shared] as the executor.
+     * Overload of [executeFiber] that uses [FiberExecutor.global] as the executor.
      */
     @NonBlocking
-    public fun executeConcurrently(): TaskFiber<T> =
-        executeConcurrently(FiberExecutor.shared())
+    public actual fun executeFiber(): TaskFiber<T> =
+        executeFiber(FiberExecutor.global)
 
     /**
      * Executes the task and blocks until it completes, or the current
@@ -96,11 +96,11 @@ public actual abstract class Task<out T>: Serializable {
     }
 
     /**
-     * Overload of [executeBlocking] that uses [FiberExecutor.shared] as the executor.
+     * Overload of [executeBlocking] that uses [FiberExecutor.global] as the executor.
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class)
-    public fun executeBlocking(): T = executeBlocking(FiberExecutor.shared())
+    public fun executeBlocking(): T = executeBlocking(FiberExecutor.global)
 
     /**
      * Executes the task and blocks until it completes, or the timeout is reached,
@@ -134,12 +134,12 @@ public actual abstract class Task<out T>: Serializable {
     }
 
     /**
-     * Overload of [executeBlockingTimed] that uses [FiberExecutor.shared] as the executor.
+     * Overload of [executeBlockingTimed] that uses [FiberExecutor.global] as the executor.
      */
     @Blocking
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
     public fun executeBlockingTimed(timeoutMillis: Long): T =
-        executeBlockingTimed(FiberExecutor.shared(), timeoutMillis)
+        executeBlockingTimed(FiberExecutor.global, timeoutMillis)
 
     public companion object {
         private operator fun <T> invoke(asyncFun: AsyncFun<T>): Task<T> =
@@ -175,7 +175,7 @@ public actual abstract class Task<out T>: Serializable {
         public fun <T> create(run: AsyncFun<T>): Task<T> =
             Task { executor, callback ->
                 val cancel = MutableCancellable()
-                ThreadPools.TRAMPOLINE.execute {
+                TaskExecutors.trampoline.execute {
                     try {
                         cancel.set(run.invoke(executor, callback))
                     } catch (e: Throwable) {
@@ -195,7 +195,7 @@ public actual abstract class Task<out T>: Serializable {
          *
          * NOTE: The thread is created via the injected [FiberExecutor] in the
          * "execute" methods (e.g., [executeAsync]). Even when using one of the overloads,
-         * then [FiberExecutor.shared] is assumed.
+         * then [FiberExecutor.global] is assumed.
          *
          * @param run is the function that will trigger the async computation.
          * @return a new task that will execute the given builder function.
@@ -323,7 +323,7 @@ public actual abstract class Task<out T>: Serializable {
          * work for cancelling the connecting computation. As such, the user
          * should provide an explicit [Cancellable] token that can be used.
          *
-         * @param run is the [Callable] that will create the [CancellableFuture]
+         * @param run is the [DelayedFun] that will create the [CancellableFuture]
          * value. It's a builder because [Task] values are cold values (lazy,
          * not executed yet).
          *
@@ -522,7 +522,7 @@ private class ProtectedCompletionCallback<T> private constructor(
             this.outcome = outcome
             // Trampolined execution is needed because, with chained tasks,
             // we might end up with a stack overflow
-            ThreadPools.TRAMPOLINE.execute(this)
+            TaskExecutors.trampoline.execute(this)
         } else if (outcome is Outcome.Failed) {
             UncaughtExceptionHandler.logOrRethrow(outcome.exception)
         }

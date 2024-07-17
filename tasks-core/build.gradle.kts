@@ -44,7 +44,14 @@ kotlin {
                 implementation(libs.kotlin.test)
             }
         }
-//        val jsTest by getting
+
+        val jsTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.kotlinx.coroutines.test)
+            }
+        }
     }
 }
 

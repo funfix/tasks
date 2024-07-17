@@ -17,12 +17,23 @@ import kotlin.concurrent.getOrSet
  * Provides utilities for working with [Executor] instances, optimized
  * for common use-cases.
  */
-public actual object ThreadPools {
-    @Volatile
-    private var sharedVirtualIORef: Executor? = null
+public actual object TaskExecutors {
+    // Creating 2 reusable references that look the same , but are not.
+    // The returned value of `VirtualThreads.areVirtualThreadsSupported`
+    // can be disabled and re-enabled for testing purposes, and we need
+    // to make sure that the references are different.
 
-    @Volatile
-    private var sharedPlatformIORef: Executor? = null
+    private val sharedVirtualIORef by lazy {
+        if (!VirtualThreads.areVirtualThreadsSupported())
+            throw IllegalStateException("Virtual threads are not supported")
+        unlimitedThreadPoolForIO("tasks-io")
+    }
+
+    private val sharedPlatformIORef by lazy {
+        if (VirtualThreads.areVirtualThreadsSupported())
+            throw IllegalStateException("Virtual threads should be supported")
+        unlimitedThreadPoolForIO("tasks-io")
+    }
 
     /**
      * Returns a shared [Executor] meant for blocking I/O tasks.
@@ -33,35 +44,12 @@ public actual object ThreadPools {
      * [Executors.newCachedThreadPool] on older JVM versions.
      */
     @JvmStatic
-    public fun sharedIO(): Executor =
-        if (VirtualThreads.areVirtualThreadsSupported())
-            sharedVirtualIO()
+    public actual val global: Executor
+        @JvmName("global")
+        get() = if (VirtualThreads.areVirtualThreadsSupported())
+            sharedVirtualIORef
         else
-            sharedPlatformIO()
-
-    private fun sharedPlatformIO(): Executor {
-        // Using double-checked locking to avoid synchronization
-        if (sharedPlatformIORef == null) {
-            synchronized(ThreadPools::class.java) {
-                if (sharedPlatformIORef == null) {
-                    sharedPlatformIORef = unlimitedThreadPoolForIO("common-io")
-                }
-            }
-        }
-        return sharedPlatformIORef!!
-    }
-
-    private fun sharedVirtualIO(): Executor {
-        // Using double-checked locking to avoid synchronization
-        if (sharedVirtualIORef == null) {
-            synchronized(ThreadPools::class.java) {
-                if (sharedVirtualIORef == null) {
-                    sharedVirtualIORef = unlimitedThreadPoolForIO("common-io")
-                }
-            }
-        }
-        return sharedVirtualIORef!!
-    }
+            sharedPlatformIORef
 
     /**
      * Creates an [Executor] meant for blocking I/O tasks, with an
@@ -85,8 +73,10 @@ public actual object ThreadPools {
      * an internal [Trampoline](https://en.wikipedia.org/wiki/Trampoline_(computing))
      * to avoid stack overflows.
      */
-    @JvmField
-    public actual val TRAMPOLINE: @NonBlockingExecutor Executor = Trampoline
+    @JvmStatic
+    public actual val trampoline: @NonBlockingExecutor Executor
+        @JvmName("trampoline")
+        get() = Trampoline
 
     private fun platformThreadFactory(prefix: String): ThreadFactory =
         ThreadFactory { r ->
@@ -171,7 +161,7 @@ public object VirtualThreads {
      * as it uses reflection to access the `Executors.newVirtualThreadPerTaskExecutor`.
      *
      * @param prefix the prefix to use for the names of the virtual threads. The
-     *              default prefix is `common-io-virtual-`.
+     *              default prefix is `tasks-io-virtual-`.
      *
      * @throws NotSupportedException if the current JVM does not support virtual threads.
      *
@@ -205,7 +195,7 @@ public object VirtualThreads {
      * of `Thread.ofVirtual`.
      *
      * @param prefix the prefix to use for the names of the virtual threads. If
-     *               not specified, the default prefix is `common-io-virtual-`.
+     *               not specified, the default prefix is `tasks-io-virtual-`.
      *
      * @throws NotSupportedException if the current JVM does not support virtual
      * threads, or if support is turned off via the `funfix.tasks.virtual-threads`
@@ -291,5 +281,5 @@ public object VirtualThreads {
     }
 
     private const val DEFAULT_VIRTUAL_THREAD_NAME_PREFIX =
-        "common-io-virtual-"
+        "tasks-io-virtual-"
 }

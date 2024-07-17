@@ -17,8 +17,17 @@ public expect abstract class Task<out T>: Serializable {
      * @return a [Cancellable] that can be used to cancel a running task
      */
     @NonBlocking
-    public fun executeAsync(
-        executor: FiberExecutor,
-        callback: CompletionCallback<T>
-    ): Cancellable
+    public fun executeAsync(executor: FiberExecutor, callback: CompletionCallback<T>): Cancellable
+
+    @NonBlocking
+    public fun executeAsync(callback: CompletionCallback<T>): Cancellable
+
+    @NonBlocking
+    public fun executeFiber(executor: FiberExecutor): TaskFiber<T>
+
+    /**
+     * Overload of [executeFiber] that uses [FiberExecutor.global] as the executor.
+     */
+    @NonBlocking
+    public fun executeFiber(): TaskFiber<T>
 }

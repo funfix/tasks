@@ -57,7 +57,7 @@ class SuspensionToTaskTest {
             }
         }
 
-        val fiber = task.executeConcurrently()
+        val fiber = task.executeFiber()
         awaitLatchWithExpectation(wasStarted, "wasStarted")
         fiber.cancel()
         awaitFiberJoin(fiber)
@@ -71,7 +71,7 @@ class SuspensionToTaskTest {
         }
 
         val name = awaitBlockingTask(task)
-        assertStartsWith("common-io-", name)
+        assertStartsWith("tasks-io-", name)
     }
 
     @Test
@@ -82,6 +82,6 @@ class SuspensionToTaskTest {
         }
 
         val name = awaitBlockingTask(task)
-        assertStartsWith("common-io-", name)
+        assertStartsWith("tasks-io-", name)
     }
 }

@@ -103,7 +103,7 @@ public class TaskExecuteTest {
             }
         });
 
-        final var fiber = task.executeConcurrently();
+        final var fiber = task.executeFiber();
         TimedAwait.latchAndExpectCompletion(started, "started");
 
         fiber.cancel();

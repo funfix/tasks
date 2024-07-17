@@ -14,7 +14,7 @@ public class LoomTest {
     public void commonPoolInJava21() throws InterruptedException {
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
 
-        final var commonPool = ThreadPools.unlimitedThreadPoolForIO("common-io");
+        final var commonPool = TaskExecutors.unlimitedThreadPoolForIO("tasks-io");
         try {
             final var latch = new CountDownLatch(1);
             final var isVirtual = new AtomicBoolean(false);
@@ -29,8 +29,8 @@ public class LoomTest {
             TimedAwait.latchAndExpectCompletion(latch);
             assertTrue(isVirtual.get(), "isVirtual");
             assertTrue(
-                    name.get().matches("common-io-virtual-\\d+"),
-                    "name.matches(\"common-io-virtual-\\\\d+\")"
+                    name.get().matches("tasks-io-virtual-\\d+"),
+                    "name.matches(\"tasks-io-virtual-\\\\d+\")"
             );
         } finally {
             commonPool.shutdown();
@@ -94,12 +94,12 @@ public class LoomTest {
         final var r = SysProp.withVirtualThreads(false);
         try {
             try {
-                VirtualThreads.factory("common-io");
+                VirtualThreads.factory("tasks-io");
                 fail("Should throw");
             } catch (final VirtualThreads.NotSupportedException ignored) {
             }
             try {
-                VirtualThreads.executorService("common-io").shutdown();
+                VirtualThreads.executorService("tasks-io").shutdown();
                 fail("Should throw");
             } catch (final VirtualThreads.NotSupportedException ignored) {
             }
@@ -111,7 +111,7 @@ public class LoomTest {
     @Test
     public void commonPoolInOlderJava() throws InterruptedException {
         final var r = SysProp.withVirtualThreads(false);
-        final var commonPool = ThreadPools.unlimitedThreadPoolForIO("common-io");
+        final var commonPool = TaskExecutors.unlimitedThreadPoolForIO("tasks-io");
         try {
             assertFalse(VirtualThreads.areVirtualThreadsSupported(), "areVirtualThreadsSupported");
             assertNotNull(commonPool, "commonPool");
@@ -129,8 +129,8 @@ public class LoomTest {
             TimedAwait.latchAndExpectCompletion(latch);
             assertFalse(isVirtual.get(), "isVirtual");
             assertTrue(
-                    name.get().matches("^common-io-platform-\\d+$"),
-                    "name.matches(\"^common-io-platform-\\\\d+$\")"
+                    name.get().matches("^tasks-io-platform-\\d+$"),
+                    "name.matches(\"^tasks-io-platform-\\\\d+$\")"
             );
         } finally {
             r.close();
