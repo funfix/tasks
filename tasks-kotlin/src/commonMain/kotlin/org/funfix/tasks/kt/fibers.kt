@@ -3,6 +3,7 @@
 
 package org.funfix.tasks.kt
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.funfix.tasks.Fiber
 import org.funfix.tasks.Outcome
@@ -24,7 +25,14 @@ public suspend fun <T> Fiber<T>.joinSuspended() {
     }
 }
 
-public suspend fun <T> Fiber<T>.awaitOutcomeSuspended(): Outcome<T> {
+public suspend fun <T> Fiber<T>.awaitSuspended(): T {
     joinSuspended()
-    return outcome!!
+    return when (val o = outcome!!) {
+        is Outcome.Succeeded ->
+            o.value
+        is Outcome.Failed ->
+            throw o.exception
+        is Outcome.Cancelled ->
+            throw CancellationException("Fiber was cancelled")
+    }
 }

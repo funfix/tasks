@@ -7,10 +7,6 @@ import kotlinx.coroutines.*
 import org.funfix.tasks.*
 import org.funfix.tasks.support.Executor
 import org.funfix.tasks.support.InterruptedException
-import org.funfix.tasks.support.Runnable
-import kotlin.coroutines.ContinuationInterceptor
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resumeWithException
 
 /**
@@ -18,24 +14,22 @@ import kotlin.coroutines.resumeWithException
  * to be executed in the context of [kotlinx.coroutines].
  *
  * NOTES:
- * - The [kotlinx.coroutines.CoroutineDispatcher], made available via the
- *   "coroutine context", is used to execute the task, being passed to the
- *   task's implementation as an `Executor`.
+ * - Where supported (e.g., the JVM), the [CoroutineDispatcher],
+ *   made available via the "coroutine context", is used to execute the task,
+ *   being passed to the task's implementation as an `Executor`.
  * - The coroutine's cancellation protocol cooperates with that of [Task],
  *   so cancelling the coroutine will also cancel the task (including the
  *   possibility for back-pressuring on the fiber's completion after
  *   cancellation).
+ *
+ * @param executor is an override of the `Executor` to be used for executing
+ *       the task. If `null`, the `Executor` will be derived from the
+ *       `CoroutineDispatcher`, where supported, otherwise `TaskExecutors.global`
+ *       is used.
  */
-public suspend fun <T> Task<T>.executeSuspended(): T = run {
+public suspend fun <T> Task<T>.executeSuspended(executor: Executor? = null): T = run {
     val dispatcher = currentDispatcher()
-    val executor = object : Executor {
-        override fun execute(command: Runnable) {
-            dispatcher.dispatch(
-                EmptyCoroutineContext,
-                kotlinx.coroutines.Runnable { command.run() }
-            )
-        }
-    }
+    val executorNonNull = executor ?: coroutineDispatcherAsExecutor(dispatcher)
     suspendCancellableCoroutine { cont ->
         val callback = CompletionCallback<T> { outcome ->
             when (outcome) {
@@ -50,12 +44,12 @@ public suspend fun <T> Task<T>.executeSuspended(): T = run {
             }
         }
         try {
-            val token = this.executeAsync(executor, callback)
+            val token = this.executeAsync(executorNonNull, callback)
             cont.invokeOnCancellation {
                 token.cancel()
             }
-        } catch (e: Exception) {
-            cont.resumeWithException(e)
+        } catch (e: Throwable) {
+            UncaughtExceptionHandler.logOrRethrow(e)
         }
     }
 }
@@ -75,7 +69,7 @@ public suspend fun <T> Task<T>.executeSuspended(): T = run {
 @OptIn(DelicateCoroutinesApi::class)
 public fun <T> Task.Companion.fromSuspended(block: suspend () -> T): Task<T> =
     create { executor, callback ->
-        val context = coroutineDispatcherAsExecutor(executor)
+        val context = executorAsCoroutineDispatcher(executor)
         val job = GlobalScope.launch(context) {
             try {
                 val r = block()
@@ -96,10 +90,4 @@ public fun <T> Task.Companion.fromSuspended(block: suspend () -> T): Task<T> =
             job.cancel()
         }
     }
-
-internal suspend fun currentDispatcher(): CoroutineDispatcher {
-    // Access the coroutineContext to get the ContinuationInterceptor
-    val continuationInterceptor = coroutineContext[ContinuationInterceptor]
-    return continuationInterceptor as? CoroutineDispatcher ?: Dispatchers.Default
-}
 
