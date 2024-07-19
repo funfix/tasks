@@ -37,7 +37,7 @@ public suspend fun <T> Task<T>.executeSuspended(executor: Executor? = null): T =
             }
         } catch (e: Throwable) {
             UncaughtExceptionHandler.rethrowIfFatal(e)
-            contCallback.complete(Outcome.failed(e))
+            contCallback.onFailure(e)
         }
     }
 }
@@ -61,16 +61,16 @@ public fun <T> Task.Companion.fromSuspended(block: suspend () -> T): Task<T> =
         val job = GlobalScope.launch(context) {
             try {
                 val r = block()
-                callback.complete(Outcome.succeeded(r))
+                callback.onSuccess(r)
             } catch (e: Throwable) {
                 UncaughtExceptionHandler.rethrowIfFatal(e)
                 when (e) {
                     is CancellationException,
                         is TaskCancellationException,
                         is InterruptedException ->
-                        callback.complete(Outcome.cancelled())
+                            callback.onCancellation()
                     else ->
-                        callback.complete(Outcome.failed(e))
+                        callback.onFailure(e)
                 }
             }
         }

@@ -109,7 +109,7 @@ public actual interface Fiber<out T> : Cancellable {
                 fiber.registerCancel(token)
             } catch (e: Throwable) {
                 UncaughtExceptionHandler.rethrowIfFatal(e)
-                fiber.onComplete.complete(Outcome.failed(e))
+                fiber.onComplete.onFailure(e)
             }
             return fiber
         }
@@ -160,26 +160,26 @@ private class ExecutedFiber<T> : Fiber<T> {
     }
 
     val onComplete: CompletionCallback<T> =
-        CompletionCallback { outcome ->
+        CompletionCallback.OutcomeBased { outcome ->
             while (true) {
                 when (val current = stateRef.get())  {
                     is State.Active ->
                         if (stateRef.compareAndSet(current, State.Completed(outcome))) {
                             current.triggerListeners()
-                            return@CompletionCallback
+                            return@OutcomeBased
                         }
                     is State.Cancelled -> {
-                        val update = State.Completed<T>(Outcome.cancelled())
+                        val update = State.Completed<T>(Outcome.cancellation())
                         if (stateRef.compareAndSet(current, update)) {
                             current.triggerListeners()
-                            return@CompletionCallback
+                            return@OutcomeBased
                         }
                     }
                     is State.Completed -> {
-                        if (outcome is Outcome.Failed) {
+                        if (outcome is Outcome.Failure) {
                             UncaughtExceptionHandler.logOrRethrow(outcome.exception)
                         }
-                        return@CompletionCallback
+                        return@OutcomeBased
                     }
                 }
             }

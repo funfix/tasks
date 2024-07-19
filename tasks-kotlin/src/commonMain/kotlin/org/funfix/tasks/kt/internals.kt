@@ -29,5 +29,8 @@ internal suspend fun currentDispatcher(): CoroutineDispatcher {
 internal expect class CoroutineAsCompletionCallback<T>(
     cont: CancellableContinuation<T>
 ) : CompletionCallback<T> {
-    override fun complete(outcome: Outcome<T>)
+    override fun onSuccess(value: T)
+    override fun onFailure(e: Throwable)
+    override fun onCancellation()
+    override fun onOutcome(outcome: Outcome<T>)
 }

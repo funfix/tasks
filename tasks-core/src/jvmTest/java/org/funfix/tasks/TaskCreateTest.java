@@ -36,9 +36,9 @@ abstract class BaseTaskCreateTest {
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
         final Task<String> task = createTask((executor, cb) -> {
-            cb.complete(Outcome.succeeded("Hello, world!"));
+            cb.onSuccess("Hello, world!");
             // callback is idempotent
-            cb.complete(Outcome.succeeded("Hello, world! (2)"));
+            cb.onSuccess("Hello, world! (2)");
             noErrors.countDown();
             return Cancellable.EMPTY;
         });
@@ -55,9 +55,9 @@ abstract class BaseTaskCreateTest {
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
         final Task<String> task = createTask((executor, cb) -> {
             Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
-            cb.complete(Outcome.failed(new RuntimeException("Sample exception")));
+            cb.onFailure(new RuntimeException("Sample exception"));
             // callback is idempotent
-            cb.complete(Outcome.failed(new RuntimeException("Sample exception (2)")));
+            cb.onFailure(new RuntimeException("Sample exception (2)"));
             noErrors.countDown();
             return Cancellable.EMPTY;
         });
@@ -84,9 +84,9 @@ abstract class BaseTaskCreateTest {
 
         final Task<String> task = createTask((executor, cb) -> () -> {
             Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
-            cb.complete(Outcome.cancelled());
+            cb.onCancellation();
             // callback is idempotent
-            cb.complete(Outcome.cancelled());
+            cb.onCancellation();
             noErrors.countDown();
         });
 
@@ -145,7 +145,7 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
 
         final Task<String> task = createTask((executor, cb) -> {
-            cb.complete(Outcome.succeeded(Thread.currentThread().getName()));
+            cb.onSuccess(Thread.currentThread().getName());
             return Cancellable.EMPTY;
         });
 
@@ -164,7 +164,7 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
         assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires older Java versions");
 
         final Task<String> task = createTask((executor, cb) -> {
-            cb.complete(Outcome.succeeded(Thread.currentThread().getName()));
+            cb.onSuccess(Thread.currentThread().getName());
             return Cancellable.EMPTY;
         });
 

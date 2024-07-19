@@ -15,10 +15,10 @@ public sealed interface Outcome<out T> {
     /**
      * Returns the value of the task if it was successful, or throws an exception.
      *
-     * @return the successful value (in case the outcome is [Succeeded])
+     * @return the successful value (in case the outcome is [Success])
      *
-     * @throws ExecutionException if the task failed with an exception ([Failed])
-     * @throws TaskCancellationException if the task was cancelled ([Cancelled])
+     * @throws ExecutionException if the task failed with an exception ([Failure])
+     * @throws TaskCancellationException if the task was cancelled ([Cancellation])
      */
     @Throws(ExecutionException::class, TaskCancellationException::class)
     public fun getOrThrow(): T
@@ -26,21 +26,21 @@ public sealed interface Outcome<out T> {
     /**
      * Value signalling the concurrent job completed successfully with a result.
      *
-     * To get an instance of this class, use [Outcome.succeeded]:
+     * To get an instance of this class, use [Outcome.success]:
      * ```java
-     * Outcome<String> outcome = Outcome.succeeded("Hello");
+     * Outcome<String> outcome = Outcome.success("Hello");
      * // ... alternatively:
-     * Outcome<String> outcome = Outcome.Succeeded.instance("Hello");
+     * Outcome<String> outcome = Outcome.Success.instance("Hello");
      * ```
      *
      * Starting with Java 16 this can be used in pattern-matching:
      * ```java
-     * if (outcome instanceof Outcome.Succeeded<String> succeeded) {
-     *   System.out.println("Value is: " + succeeded.value());
+     * if (outcome instanceof Outcome.Success<String> success) {
+     *   System.out.println("Value is: " + success.value());
      * }
      * ```
      */
-    public data class Succeeded<out T> private constructor(
+    public data class Success<out T> private constructor(
         private val _value: T
     ) : Outcome<T> {
         val value: T
@@ -55,14 +55,14 @@ public sealed interface Outcome<out T> {
             @JvmStatic
             @JvmName("instance")
             public operator fun <T> invoke(value: T): Outcome<T> =
-                Succeeded(value)
+                Success(value)
         }
     }
 
     /**
      * Value signaling that the concurrent job failed with an `exception`.
      *
-     * To get an instance of this class, use [Outcome.failed]:
+     * To get an instance of this class, use [Outcome.failure]:
      * ```java
      * Outcome<String> outcome = Outcome.failed(new RuntimeException("Boom!"));
      * // ... alternatively:
@@ -76,7 +76,7 @@ public sealed interface Outcome<out T> {
      * }
      * ```
      */
-    public data class Failed private constructor(
+    public data class Failure private constructor(
         private val _exception: Throwable
     ) : Outcome<Nothing> {
         val exception: Throwable
@@ -92,14 +92,14 @@ public sealed interface Outcome<out T> {
             @JvmStatic
             @JvmName("instance")
             public operator fun <T> invoke(exception: Throwable): Outcome<T> =
-                Failed(exception)
+                Failure(exception)
         }
     }
 
     /**
      * Value signalling that the concurrent job was cancelled.
      *
-     * To get an instance of this class, in Java, use [Outcome.cancelled]:
+     * To get an instance of this class, in Java, use [Outcome.cancellation]:
      * ```java
      * Outcome<String> outcome = Outcome.cancelled()
      * // ... alternatively:
@@ -113,7 +113,7 @@ public sealed interface Outcome<out T> {
      * }
      * ```
      */
-    public data object Cancelled: Outcome<Nothing> {
+    public data object Cancellation: Outcome<Nothing> {
         @Throws(TaskCancellationException::class)
         override fun getOrThrow(): Nothing {
             throw TaskCancellationException()
@@ -122,20 +122,20 @@ public sealed interface Outcome<out T> {
         @JvmStatic
         @JvmName("instance")
         public operator fun <T> invoke(): Outcome<T> =
-            Cancelled
+            Cancellation
     }
 
     public companion object {
         @JvmStatic
-        public fun <T> succeeded(value: T): Outcome<T> =
-            Succeeded(value)
+        public fun <T> success(value: T): Outcome<T> =
+            Success(value)
 
         @JvmStatic
-        public fun <T> failed(exception: Throwable): Outcome<T> =
-            Failed(exception)
+        public fun <T> failure(exception: Throwable): Outcome<T> =
+            Failure(exception)
 
         @JvmStatic
-        public fun <T> cancelled(): Outcome<T> =
-            Cancelled()
+        public fun <T> cancellation(): Outcome<T> =
+            Cancellation()
     }
 }

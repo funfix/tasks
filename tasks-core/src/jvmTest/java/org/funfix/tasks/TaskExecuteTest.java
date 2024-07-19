@@ -7,7 +7,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TaskExecuteTest {
@@ -19,13 +18,13 @@ public class TaskExecuteTest {
                 new AtomicReference<@Nullable Outcome<? extends String>>(null);
 
         final var task = Task.fromBlockingIO(() -> "Hello!");
-        task.executeAsync(ref -> {
+        task.executeAsync((CompletionCallback.OutcomeBased<String>) ref -> {
             outcome.set(ref);
             latch.countDown();
         });
 
         TimedAwait.latchAndExpectCompletion(latch, "latch");
-        assertInstanceOf(Outcome.Succeeded.class, outcome.get());
+        assertInstanceOf(Outcome.Success.class, outcome.get());
         assertEquals("Hello!", Objects.requireNonNull(outcome.get()).getOrThrow());
     }
 
@@ -39,13 +38,13 @@ public class TaskExecuteTest {
                 new RuntimeException("Error");
 
         final var task = Task.<String>fromBlockingIO(() -> { throw expectedError; });
-        task.executeAsync(outcome -> {
+        task.executeAsync((CompletionCallback.OutcomeBased<String>) outcome -> {
             outcomeRef.set(outcome);
             latch.countDown();
         });
 
         TimedAwait.latchAndExpectCompletion(latch, "latch");
-        assertInstanceOf(Outcome.Failed.class, outcomeRef.get(), "outcome.get");
+        assertInstanceOf(Outcome.Failure.class, outcomeRef.get(), "outcome.get");
         try {
             Objects.requireNonNull(outcomeRef.get()).getOrThrow();
             fail("Should have thrown an exception");
@@ -67,14 +66,15 @@ public class TaskExecuteTest {
             nonTermination.await();
             return "Nooo";
         });
-        final var token = task.executeAsync(outcome -> {
-            outcomeRef.set(outcome);
-            latch.countDown();
-        });
+        final var token =
+                task.executeAsync((CompletionCallback.OutcomeBased<String>) outcome -> {
+                    outcomeRef.set(outcome);
+                    latch.countDown();
+                });
 
         token.cancel();
         TimedAwait.latchAndExpectCompletion(latch, "latch");
-        assertInstanceOf(Outcome.Cancelled.class, outcomeRef.get());
+        assertInstanceOf(Outcome.Cancellation.class, outcomeRef.get());
     }
 
     @Test
@@ -109,7 +109,7 @@ public class TaskExecuteTest {
         fiber.cancel();
         fiber.joinBlocking();
 
-        assertInstanceOf(Outcome.Cancelled.class, fiber.getOutcome());
+        assertInstanceOf(Outcome.Cancellation.class, fiber.getOutcome());
         assertEquals(3, interruptedHits.get(), "interruptedHits.get");
     }
 }

@@ -4,7 +4,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import org.funfix.tasks.Cancellable
-import org.funfix.tasks.Outcome
 import org.funfix.tasks.Task
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -15,7 +14,7 @@ class AsyncTests {
     fun createAsync() = runTest {
         val task = Task.create { executor, callback ->
             executor.execute {
-                callback.complete(Outcome.succeeded(1 + 1))
+                callback.onSuccess(1 + 1)
             }
             Cancellable.EMPTY
         }

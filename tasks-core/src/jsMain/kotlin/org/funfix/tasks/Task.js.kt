@@ -30,7 +30,7 @@ public actual abstract class Task<out T> : Serializable {
             unsafeExecuteAsync(executor, protected)
         } catch (e: Throwable) {
             UncaughtExceptionHandler.rethrowIfFatal(e)
-            protected.complete(Outcome.failed(e))
+            protected.onFailure(e)
             Cancellable.EMPTY
         }
     }
@@ -55,13 +55,11 @@ public actual abstract class Task<out T> : Serializable {
     public fun executePromise(executor: Executor): CancellablePromise<T> {
         val cancel = MutableCancellable()
         val promise = Promise { resolve, reject ->
-            val token = executeAsync(executor) { outcome ->
-                when (outcome) {
-                    is Outcome.Succeeded -> resolve(outcome.value)
-                    is Outcome.Failed -> reject(outcome.exception)
-                    is Outcome.Cancelled -> reject(TaskCancellationException())
-                }
-            }
+            val token = executeAsync(executor, CompletionCallback(
+                onSuccess = { value -> resolve(value) },
+                onFailure = { e -> reject(e) },
+                onCancellation = { reject(TaskCancellationException()) }
+            ))
             cancel.set {
                 try {
                     token.cancel()
@@ -92,7 +90,7 @@ public actual abstract class Task<out T> : Serializable {
                         cancel.set(run.invoke(executor, callback))
                     } catch (e: Throwable) {
                         UncaughtExceptionHandler.rethrowIfFatal(e)
-                        callback.complete(Outcome.failed(e))
+                        callback.onFailure(e)
                     }
                 }
                 cancel
@@ -121,17 +119,13 @@ public actual abstract class Task<out T> : Serializable {
                         val promise = run()
                         cancel.set(promise.cancellable)
                         promise.promise.then(
-                            onFulfilled = { value ->
-                                callback.complete(Outcome.succeeded(value))
-                            },
-                            onRejected = { e ->
-                                callback.complete(Outcome.failed(e))
-                            }
+                            onFulfilled = callback::onSuccess,
+                            onRejected = callback::onFailure
                         )
                         Cancellable { promise.cancellable.cancel() }
                     } catch (e: Throwable) {
                         UncaughtExceptionHandler.rethrowIfFatal(e)
-                        callback.complete(Outcome.failed(e))
+                        callback.onFailure(e)
                         Cancellable.EMPTY
                     }
                 }
@@ -148,27 +142,56 @@ private class ProtectedCompletionCallback<T> private constructor(
     private var listener: CompletionCallback<T>?
 ) : CompletionCallback<T>, Runnable {
     private var isWaiting = true
+
     private var outcome: Outcome<T>? = null
+    private var successful: T? = null
+    private var failure: Throwable? = null
+    private var isCancelled = false
 
     override fun run() {
         val listener = this.listener
         if (listener != null) {
-            listener.complete(outcome!!)
+            @Suppress("UNCHECKED_CAST")
+            when {
+                outcome != null -> listener.onOutcome(outcome!!)
+                isCancelled -> listener.onCancellation()
+                failure != null -> listener.onFailure(failure!!)
+                else -> listener.onSuccess(successful as T)
+            }
             // GC purposes
             this.outcome = null
             this.listener = null
         }
     }
 
-    override fun complete(outcome: Outcome<T>) {
+    private inline fun completeWith(crossinline block: () -> Unit): Boolean {
         if (isWaiting) {
-            this.isWaiting = false
-            this.outcome = outcome
-            // Trampolined execution is needed because, with chained tasks,
-            // we might end up with a stack overflow
+            isWaiting = false
+            block()
             TaskExecutors.trampoline.execute(this)
-        } else if (outcome is Outcome.Failed) {
-            UncaughtExceptionHandler.logOrRethrow(outcome.exception)
+            return true
+        }
+        return false
+    }
+
+    override fun onSuccess(value: T) {
+        completeWith { this.successful = value }
+    }
+
+    override fun onFailure(e: Throwable) {
+        if (!completeWith { this.failure = e }) {
+            UncaughtExceptionHandler.logOrRethrow(e)
+        }
+    }
+
+    override fun onCancellation() {
+        completeWith { this.isCancelled = true }
+    }
+
+    override fun onOutcome(outcome: Outcome<T>) {
+        if (!completeWith { this.outcome = outcome }) {
+            if (outcome is Outcome.Failure)
+                UncaughtExceptionHandler.logOrRethrow(outcome.exception)
         }
     }
 

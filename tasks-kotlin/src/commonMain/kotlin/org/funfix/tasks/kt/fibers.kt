@@ -28,11 +28,11 @@ public suspend fun <T> Fiber<T>.joinSuspended() {
 public suspend fun <T> Fiber<T>.awaitSuspended(): T {
     joinSuspended()
     return when (val o = outcome!!) {
-        is Outcome.Succeeded ->
+        is Outcome.Success ->
             o.value
-        is Outcome.Failed ->
+        is Outcome.Failure ->
             throw o.exception
-        is Outcome.Cancelled ->
+        is Outcome.Cancellation ->
             throw CancellationException("Fiber was cancelled")
     }
 }

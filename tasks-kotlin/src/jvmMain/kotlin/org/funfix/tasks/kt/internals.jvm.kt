@@ -9,7 +9,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.asExecutor
 import org.funfix.tasks.CompletionCallback
-import org.funfix.tasks.Outcome
 import org.funfix.tasks.UncaughtExceptionHandler
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
@@ -26,21 +25,31 @@ internal actual class CoroutineAsCompletionCallback<T> actual constructor(
 ) : CompletionCallback<T> {
     private val isActive = AtomicBoolean(true)
 
-    actual override fun complete(outcome: Outcome<T>) {
+    private inline fun completeWith(crossinline block: () -> Unit): Boolean =
         if (isActive.getAndSet(false)) {
-            when (outcome) {
-                is Outcome.Succeeded ->
-                    cont.resume(outcome.value) { _, _, _ ->
-                        // on cancellation?
-                    }
-                is Outcome.Failed ->
-                    cont.resumeWithException(outcome.exception)
-
-                is Outcome.Cancelled ->
-                    cont.cancel()
-            }
-        } else if (outcome is Outcome.Failed) {
-            UncaughtExceptionHandler.logOrRethrow(outcome.exception)
+            block()
+            true
+        } else {
+            false
         }
+
+    actual override fun onSuccess(value: T) {
+        completeWith {
+            cont.resume(value) { _, _, _ ->
+                // on cancellation?
+            }
+        }
+    }
+
+    actual override fun onFailure(e: Throwable) {
+        if (!completeWith {
+            cont.resumeWithException(e)
+        }) {
+            UncaughtExceptionHandler.logOrRethrow(e)
+        }
+    }
+
+    actual override fun onCancellation() {
+        completeWith { cont.cancel() }
     }
 }

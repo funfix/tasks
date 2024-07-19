@@ -41,7 +41,7 @@ public actual abstract class Task<out T>: Serializable {
             unsafeExecuteAsync(executor, protected)
         } catch (e: Throwable) {
             UncaughtExceptionHandler.rethrowIfFatal(e)
-            protected.complete(Outcome.failed(e))
+            protected.onFailure(e)
             Cancellable.EMPTY
         }
     }
@@ -89,7 +89,7 @@ public actual abstract class Task<out T>: Serializable {
             try {
                 unsafeExecuteAsync(executor, h)
             } catch (e: Exception) {
-                h.complete(Outcome.failed(e))
+                h.onFailure(e)
                 Cancellable.EMPTY
             }
         return h.await(cancelToken)
@@ -127,7 +127,7 @@ public actual abstract class Task<out T>: Serializable {
             try {
                 unsafeExecuteAsync(executor, h)
             } catch (e: Exception) {
-                h.complete(Outcome.failed(e))
+                h.onFailure(e)
                 Cancellable.EMPTY
             }
         return h.await(cancelToken, timeoutMillis)
@@ -157,7 +157,7 @@ public actual abstract class Task<out T>: Serializable {
                         cancel.set(run.invoke(executor, callback))
                     } catch (e: Throwable) {
                         UncaughtExceptionHandler.rethrowIfFatal(e)
-                        callback.complete(Outcome.failed(e))
+                        callback.onFailure(e)
                     }
                 }
                 cancel
@@ -191,7 +191,7 @@ public actual abstract class Task<out T>: Serializable {
                         cancel.set(token)
                     } catch (e: Throwable) {
                         UncaughtExceptionHandler.rethrowIfFatal(e)
-                        callback.complete(Outcome.failed(e))
+                        callback.onFailure(e)
                     }
                 }
                 cancel
@@ -216,14 +216,14 @@ public actual abstract class Task<out T>: Serializable {
                         } finally {
                             cancelToken.set(Cancellable.EMPTY)
                         }
-                        callback.complete(Outcome.succeeded(result))
+                        callback.onSuccess(result)
                     } catch (_: InterruptedException) {
-                        callback.complete(Outcome.cancelled())
+                        callback.onCancellation()
                     } catch (_: TaskCancellationException) {
-                        callback.complete(Outcome.cancelled())
+                        callback.onCancellation()
                     } catch (e: Throwable) {
                         UncaughtExceptionHandler.rethrowIfFatal(e)
-                        callback.complete(Outcome.failed(e))
+                        callback.onFailure(e)
                     }
                 }
                 cancelToken
@@ -321,9 +321,8 @@ public actual abstract class Task<out T>: Serializable {
          */
         @JvmStatic
         public fun <T> successful(value: T): Task<T> {
-            val outcome = Outcome.succeeded(value)
             return Task { _, cb ->
-                cb.complete(outcome)
+                cb.onSuccess(value)
                 Cancellable.EMPTY
             }
         }
@@ -336,9 +335,8 @@ public actual abstract class Task<out T>: Serializable {
          */
         @JvmStatic
         public fun <T> failed(e: Throwable): Task<T> {
-            val outcome = Outcome.failed<T>(e)
             return Task { _, cb ->
-                cb.complete(outcome)
+                cb.onFailure(e)
                 Cancellable.EMPTY
             }
         }
@@ -351,7 +349,7 @@ public actual abstract class Task<out T>: Serializable {
         @JvmStatic
         public fun <T> cancelled(): Task<T> =
             Task { _, cb ->
-                cb.complete(Outcome.cancelled())
+                cb.onCancellation()
                 Cancellable.EMPTY
             }
     }
@@ -360,13 +358,39 @@ public actual abstract class Task<out T>: Serializable {
 private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(),
     CompletionCallback<T> {
     private val isDone = AtomicBoolean(false)
-    private var outcome: Outcome<T>? = null
-
-    override fun complete(outcome: Outcome<T>) {
+    
+    private var outcomeRef: Outcome<T>? = null
+    private var successful: T? = null
+    private var failure: Throwable? = null
+    private var isCancelled = false
+    
+    private inline fun completeWith(crossinline block: () -> Unit): Boolean {
         if (!isDone.getAndSet(true)) {
-            this.outcome = outcome
+            block()
             releaseShared(1)
-        } else if (outcome is Outcome.Failed) {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    override fun onSuccess(value: T) {
+        completeWith { successful = value }
+    }
+
+    override fun onFailure(e: Throwable) {
+        UncaughtExceptionHandler.rethrowIfFatal(e)
+        if (!completeWith { failure = e }) {
+            UncaughtExceptionHandler.logOrRethrow(e)
+        }
+    }
+
+    override fun onCancellation() {
+        completeWith { isCancelled = true }
+    }
+
+    override fun onOutcome(outcome: Outcome<T>) {
+        if (!completeWith { this.outcomeRef = outcome } && outcome is Outcome.Failure) {
             UncaughtExceptionHandler.logOrRethrow(outcome.exception)
         }
     }
@@ -404,9 +428,17 @@ private class BlockingCompletionCallback<T>: AbstractQueuedSynchronizer(),
             Thread.interrupted()
         }
         if (timedOut != null) throw timedOut
-        when  (outcome) {
-            is Outcome.Cancelled -> throw InterruptedException()
-            else -> return outcome!!.getOrThrow()
+        when  (val outcome = outcomeRef) {
+            null -> {
+                if (isCancelled) throw InterruptedException()
+                if (failure != null) throw ExecutionException(failure)
+                @Suppress("UNCHECKED_CAST")
+                return successful as T
+            }
+            is Outcome.Cancellation ->
+                throw InterruptedException()
+            else -> 
+                return outcome.getOrThrow()
         }
     }
 
@@ -448,7 +480,7 @@ private class TaskFromCancellableFuture<T>(
                 }
             } catch (e: Throwable) {
                 UncaughtExceptionHandler.rethrowIfFatal(e)
-                if (isUserError) callback.complete(Outcome.failed(e))
+                if (isUserError) callback.onFailure(e)
                 else UncaughtExceptionHandler.logOrRethrow(e)
             }
         }
@@ -464,14 +496,14 @@ private class TaskFromCancellableFuture<T>(
             future.whenComplete { value, error ->
                 when (error) {
                     is InterruptedException, is TaskCancellationException ->
-                        callback.complete(Outcome.cancelled())
+                        callback.onCancellation()
                     is ExecutionException ->
-                        callback.complete(Outcome.failed(error.cause ?: error))
+                        callback.onFailure(error.cause ?: error)
                     is CompletionException ->
-                        callback.complete(Outcome.failed(error.cause ?: error))
+                        callback.onFailure(error.cause ?: error)
                     else -> {
-                        if (error != null) callback.complete(Outcome.failed(error))
-                        else callback.complete(Outcome.succeeded(value))
+                        if (error != null) callback.onFailure(error)
+                        else callback.onSuccess(value)
                     }
                 }
             }
@@ -484,26 +516,57 @@ private class ProtectedCompletionCallback<T> private constructor(
     private var listener: CompletionCallback<T>?
 ) : CompletionCallback<T>, Runnable {
     private val isWaiting: AtomicBoolean = AtomicBoolean(true)
+
     private var outcome: Outcome<T>? = null
+    private var successful: T? = null
+    private var failure: Throwable? = null
+    private var isCancelled = false
 
     override fun run() {
         val listener = this.listener
         if (listener != null) {
-            listener.complete(outcome!!)
+            @Suppress("UNCHECKED_CAST")
+            when {
+                outcome != null -> listener.onOutcome(outcome!!)
+                isCancelled -> listener.onCancellation()
+                failure != null -> listener.onFailure(failure!!)
+                else -> listener.onSuccess(successful as T)
+            }
             // GC purposes
             this.outcome = null
+            this.successful = null
+            this.failure = null
             this.listener = null
         }
     }
 
-    override fun complete(outcome: Outcome<T>) {
+    private inline fun completeWith(crossinline block: () -> Unit): Boolean {
         if (isWaiting.getAndSet(false)) {
-            this.outcome = outcome
-            // Trampolined execution is needed because, with chained tasks,
-            // we might end up with a stack overflow
+            block()
             TaskExecutors.trampoline.execute(this)
-        } else if (outcome is Outcome.Failed) {
-            UncaughtExceptionHandler.logOrRethrow(outcome.exception)
+            return true
+        }
+        return false
+    }
+
+    override fun onSuccess(value: T) {
+        completeWith { this.successful = value }
+    }
+
+    override fun onFailure(e: Throwable) {
+        if (!completeWith { this.failure = e }) {
+            UncaughtExceptionHandler.logOrRethrow(e)
+        }
+    }
+
+    override fun onCancellation() {
+        completeWith { this.isCancelled = true }
+    }
+
+    override fun onOutcome(outcome: Outcome<T>) {
+        if (!completeWith { this.outcome = outcome }) {
+            if (outcome is Outcome.Failure)
+                UncaughtExceptionHandler.logOrRethrow(outcome.exception)
         }
     }
 
