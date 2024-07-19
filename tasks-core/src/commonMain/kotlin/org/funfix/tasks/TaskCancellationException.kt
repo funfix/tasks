@@ -1,3 +1,5 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package org.funfix.tasks
 
 /**
@@ -14,6 +16,6 @@ package org.funfix.tasks
  * the current thread being interrupted, and also, the current thread
  * might be interrupted without the concurrent job being cancelled.
  */
-public class TaskCancellationException(message: String?): Exception(message) {
-    public constructor() : this(null)
+public expect class TaskCancellationException(message: String?): Exception {
+    public constructor()
 }
