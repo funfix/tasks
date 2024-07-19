@@ -27,7 +27,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
       - name: Test
-        run: ./gradlew check --no-daemon
+        run: ./gradlew check -i --no-daemon
       - name: Upload Results
         uses: actions/upload-artifact@v3
         if: always() # This ensures that test results are uploaded even if the test step fails

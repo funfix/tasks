@@ -64,7 +64,7 @@ class TaskToSuspensionTest {
     }
 
     @Test
-    fun `can be cancelled (2)`() = runBlocking {
+    fun `can be cancelled (2)`() = runBlocking(Dispatchers.Unconfined) {
         coroutineScope {
             val wasStarted = CountDownLatch(1)
             val latch = CountDownLatch(1)

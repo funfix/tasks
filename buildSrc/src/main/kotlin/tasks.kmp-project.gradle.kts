@@ -134,13 +134,6 @@ kotlin {
         )
     }
 
-    tasks.register<Test>("testsOn21") {
-        javaLauncher =
-            javaToolchains.launcherFor {
-                languageVersion = JavaLanguageVersion.of(21)
-            }
-    }
-
     sourceSets {
         val commonMain by getting {
             compilerOptions {
