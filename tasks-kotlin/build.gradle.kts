@@ -17,7 +17,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(project(":tasks-core"))
+                implementation(project(":tasks"))
                 implementation(libs.kotlinx.coroutines.core)
             }
         }
@@ -31,7 +31,7 @@ kotlin {
 
         val jvmMain by getting {
             dependencies {
-                implementation(project(":tasks-core"))
+                implementation(project(":tasks"))
                 implementation(libs.kotlinx.coroutines.core)
             }
         }
@@ -40,7 +40,7 @@ kotlin {
 
         val jsMain by getting {
             dependencies {
-                implementation(project(":tasks-core"))
+                implementation(project(":tasks"))
                 implementation(libs.kotlinx.coroutines.core)
             }
         }

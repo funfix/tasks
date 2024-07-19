@@ -1,9 +1,9 @@
 rootProject.name = "tasks"
 
 include(
-    "tasks-jvm",
-    "tasks-core",
-    "tasks-kotlin"
+    "tasks-core-jvm",
+    "tasks",
+    "tasks-kotlin",
 )
 
 pluginManagement {
