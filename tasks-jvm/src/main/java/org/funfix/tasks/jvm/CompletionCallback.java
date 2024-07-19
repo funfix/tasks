@@ -22,25 +22,19 @@ public interface CompletionCallback<T> extends Serializable {
      *
      * @param value is the successful result of the task, to be signaled
      */
-    default void onSuccess(T value) {
-        onOutcome(Outcome.succeeded(value));
-    }
+    void onSuccess(T value);
 
     /**
      * Must be called when the task completes with an exception.
      *
      * @param e is the exception that the task failed with
      */
-    default void onFailure(Throwable e) {
-        onOutcome(Outcome.failed(e));
-    }
+    void onFailure(Throwable e);
 
     /**
      * Must be called when the task is cancelled.
      */
-    default void onCancellation() {
-        onOutcome(Outcome.cancelled());
-    }
+    void onCancellation();
 
     /**
      * Signals a final {@link Outcome} on the completion of a task.
