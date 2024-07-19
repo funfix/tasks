@@ -1,11 +1,9 @@
-@file:OptIn(DelicateCoroutinesApi::class)
 @file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 
 package org.funfix.tasks.kt
 
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import org.funfix.tasks.CompletionCallback
 import org.funfix.tasks.UncaughtExceptionHandler
@@ -70,6 +68,8 @@ internal actual class CoroutineAsCompletionCallback<T> actual constructor(
     }
 
     actual override fun onCancellation() {
-        completeWith { cont.cancel() }
+        completeWith {
+            cont.resumeWithException(kotlinx.coroutines.CancellationException())
+        }
     }
 }

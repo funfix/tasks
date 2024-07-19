@@ -1,3 +1,5 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package org.funfix.tasks
 
 import org.funfix.tasks.support.Blocking
@@ -8,8 +10,7 @@ import org.funfix.tasks.support.Blocking
  * These functions are allowed to trigger side effects, with
  * blocking I/O and to throw exceptions.
  */
-public fun interface DelayedFun<out T> {
+public expect fun interface DelayedFun<out T> {
     @Blocking
-    @Throws(Exception::class)
     public operator fun invoke(): T
 }

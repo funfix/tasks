@@ -115,6 +115,9 @@ kotlin {
     tasks.withType<JavaCompile> {
         sourceCompatibility = "11"
         targetCompatibility = "11"
+        jvmToolchain {
+            languageVersion.set(JavaLanguageVersion.of(11))
+        }
     }
 
     tasks.withType<KotlinCompile> {
@@ -124,19 +127,17 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
             freeCompilerArgs.add("-Xjvm-default=all")
         }
+        kotlinJavaToolchain.toolchain.use(
+            javaLauncher = javaToolchains.launcherFor {
+                languageVersion = JavaLanguageVersion.of(11)
+            }
+        )
     }
 
     tasks.register<Test>("testsOn21") {
         javaLauncher =
             javaToolchains.launcherFor {
                 languageVersion = JavaLanguageVersion.of(21)
-            }
-    }
-
-    tasks.register<Test>("testsOn11") {
-        javaLauncher =
-            javaToolchains.launcherFor {
-                languageVersion = JavaLanguageVersion.of(11)
             }
     }
 
@@ -166,6 +167,10 @@ kotlin {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    javaLauncher =
+        javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(11)
+        }
 }
 
 tasks.register("printInfo") {

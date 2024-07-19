@@ -1,7 +1,9 @@
 package org.funfix.tasks.kt
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import org.funfix.tasks.Cancellable
 import org.funfix.tasks.Task
@@ -9,7 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.fail
 
-class AsyncTests {
+class AsyncTests: AsyncTestUtils {
     @Test
     fun createAsync() = runTest {
         val task = Task.create { executor, callback ->
@@ -107,5 +109,33 @@ class AsyncTests {
 
         val r = task4.executeSuspended()
         assertEquals(5, r)
+    }
+
+    @Test
+    fun cancellation() = runTest {
+        val lock = Mutex()
+        val latch = CompletableDeferred<Unit>()
+        val wasCancelled = CompletableDeferred<Unit>()
+        lock.lock()
+
+        val job = async {
+            Task.fromSuspended {
+                yield()
+                latch.complete(Unit)
+                try {
+                    lock.lock()
+                } finally {
+                    wasCancelled.complete(Unit)
+                    lock.unlock()
+                }
+            }.executeSuspended()
+        }
+
+        withTimeout(5000) { latch.await() }
+        job.cancel()
+
+        withTimeout(5000) {
+            wasCancelled.await()
+        }
     }
 }

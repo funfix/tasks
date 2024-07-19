@@ -2,11 +2,10 @@ package org.funfix.tasks
 
 import kotlinx.coroutines.await
 import kotlin.test.Test
-import kotlinx.coroutines.test.runTest
 import kotlin.js.Promise
 import kotlin.test.assertEquals
 
-class ExecutorsTest {
+class ExecutorsTest: AsyncTestUtils {
     @Test
     fun sharedIOReferenceWorks() = runTest {
         val p = Promise { resolve, _ ->

@@ -1,5 +1,5 @@
 @file:kotlin.jvm.JvmName("CoroutinesKt")
-@file:kotlin.jvm.JvmMultifileClass
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 
 package org.funfix.tasks.kt
 
@@ -7,6 +7,9 @@ import kotlinx.coroutines.*
 import org.funfix.tasks.*
 import org.funfix.tasks.support.Executor
 import org.funfix.tasks.support.InterruptedException
+import kotlin.coroutines.ContinuationInterceptor
+import kotlin.coroutines.coroutineContext
+import kotlin.coroutines.resume
 
 /**
  * Similar with [Task.executeBlocking], however this is a "suspended" function,
@@ -66,9 +69,9 @@ public fun <T> Task.Companion.fromSuspended(block: suspend () -> T): Task<T> =
                 UncaughtExceptionHandler.rethrowIfFatal(e)
                 when (e) {
                     is CancellationException,
-                        is TaskCancellationException,
-                        is InterruptedException ->
-                            callback.onCancellation()
+                    is TaskCancellationException,
+                    is InterruptedException ->
+                        callback.onCancellation()
                     else ->
                         callback.onFailure(e)
                 }
@@ -79,3 +82,52 @@ public fun <T> Task.Companion.fromSuspended(block: suspend () -> T): Task<T> =
         }
     }
 
+public suspend fun <T> Fiber<T>.cancelAndJoinSuspended() {
+    cancel()
+    joinSuspended()
+}
+
+public suspend fun <T> Fiber<T>.joinSuspended() {
+    suspendCancellableCoroutine { cont ->
+        val token = joinAsync {
+            cont.resume(Unit)
+        }
+        cont.invokeOnCancellation {
+            token.cancel()
+        }
+    }
+}
+
+public suspend fun <T> Fiber<T>.awaitSuspended(): T {
+    joinSuspended()
+    return when (val o = outcome!!) {
+        is Outcome.Success ->
+            o.value
+        is Outcome.Failure ->
+            throw o.exception
+        is Outcome.Cancellation ->
+            throw CancellationException("Fiber was cancelled")
+    }
+}
+
+internal expect fun buildExecutor(dispatcher: CoroutineDispatcher): Executor
+
+internal expect fun buildCoroutineDispatcher(executor: Executor): CoroutineDispatcher
+
+internal suspend fun currentDispatcher(): CoroutineDispatcher {
+    // Access the coroutineContext to get the ContinuationInterceptor
+    val continuationInterceptor = coroutineContext[ContinuationInterceptor]
+    return continuationInterceptor as? CoroutineDispatcher ?: Dispatchers.Default
+}
+
+/**
+ * Internal API: wraps a [CancellableContinuation] into a [CompletionCallback].
+ */
+internal expect class CoroutineAsCompletionCallback<T>(
+    cont: CancellableContinuation<T>
+) : CompletionCallback<T> {
+    override fun onSuccess(value: T)
+    override fun onFailure(e: Throwable)
+    override fun onCancellation()
+    override fun onOutcome(outcome: Outcome<T>)
+}

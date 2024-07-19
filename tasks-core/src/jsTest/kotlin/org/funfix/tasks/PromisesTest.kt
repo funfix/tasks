@@ -6,7 +6,7 @@ import kotlin.js.Promise
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class PromisesTest {
+class PromisesTest: AsyncTestUtils {
     @Test
     fun fromUncancellablePromise() = runTest {
         val task = Task.fromUncancellablePromise {
