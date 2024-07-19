@@ -78,6 +78,7 @@ public actual object TaskExecutors {
         @JvmName("trampoline")
         get() = Trampoline
 
+    @Suppress("DEPRECATION")
     private fun platformThreadFactory(prefix: String): ThreadFactory =
         ThreadFactory { r ->
             Thread(r).apply {
