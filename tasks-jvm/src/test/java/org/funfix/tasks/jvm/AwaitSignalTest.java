@@ -2,8 +2,8 @@ package org.funfix.tasks.jvm;
 
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -17,12 +17,12 @@ public class AwaitSignalTest {
         for (int i = 0; i < repeat; i++) {
             final var latch = new AwaitSignal();
             latch.signal();
-            latch.await(Duration.ofSeconds(5));
+            latch.await(TimeUnit.SECONDS.toMillis(5));
         }
     }
 
     @Test
-    void multiThreaded() throws InterruptedException, TimeoutException {
+    void multiThreaded() throws InterruptedException {
         for (int i = 0; i < repeat; i++) {
             final var wasStarted = new CountDownLatch(1);
             final var latch = new AwaitSignal();
@@ -30,7 +30,7 @@ public class AwaitSignalTest {
             final var t = new Thread(() -> {
                 try {
                     wasStarted.countDown();
-                    latch.await(Duration.ofSeconds(5));
+                    latch.await(TimeUnit.SECONDS.toMillis(5));
                 } catch (InterruptedException | TimeoutException e) {
                     hasError.set(true);
                     throw new RuntimeException(e);

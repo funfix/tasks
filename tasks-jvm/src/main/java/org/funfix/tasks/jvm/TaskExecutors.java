@@ -14,7 +14,7 @@ import java.util.concurrent.*;
  * for common use-cases.
  */
 @NullMarked
-final class ThreadPools {
+public final class TaskExecutors {
     private static volatile @Nullable Executor sharedVirtualIORef = null;
     private static volatile @Nullable Executor sharedPlatformIORef = null;
 
@@ -26,7 +26,7 @@ final class ThreadPools {
      * which will use virtual threads on Java 21+, or a plain
      * {@code Executors.newCachedThreadPool()} on older JVM versions.
      */
-    public static Executor sharedIO() {
+    public static Executor global() {
         if (VirtualThreads.areVirtualThreadsSupported()) {
             return sharedVirtualIO();
         } else {
@@ -37,9 +37,9 @@ final class ThreadPools {
     private static Executor sharedPlatformIO() {
         // Using double-checked locking to avoid synchronization
         if (sharedPlatformIORef == null) {
-            synchronized (ThreadPools.class) {
+            synchronized (TaskExecutors.class) {
                 if (sharedPlatformIORef == null) {
-                    sharedPlatformIORef = unlimitedThreadPoolForIO("common-io");
+                    sharedPlatformIORef = unlimitedThreadPoolForIO("tasks-io");
                 }
             }
         }
@@ -49,9 +49,9 @@ final class ThreadPools {
     private static Executor sharedVirtualIO() {
         // Using double-checked locking to avoid synchronization
         if (sharedVirtualIORef == null) {
-            synchronized (ThreadPools.class) {
+            synchronized (TaskExecutors.class) {
                 if (sharedVirtualIORef == null) {
-                    sharedVirtualIORef = unlimitedThreadPoolForIO("common-io");
+                    sharedVirtualIORef = unlimitedThreadPoolForIO("tasks-io");
                 }
             }
         }
@@ -83,6 +83,7 @@ final class ThreadPools {
  * Internal utilities — not exposed yet, because lacking Loom support is only
  * temporary.
  */
+@SuppressWarnings("JavaLangInvokeHandleSignature")
 @NullMarked
 final class VirtualThreads {
     private static final @Nullable MethodHandle newThreadPerTaskExecutorMethodHandle;
@@ -201,5 +202,6 @@ final class VirtualThreads {
         return !disableFeature && isVirtualMethodHandle != null && newThreadPerTaskExecutorMethodHandle != null;
     }
 
-    public static final String VIRTUAL_THREAD_NAME_PREFIX = "common-io-virtual-";
+    public static final String VIRTUAL_THREAD_NAME_PREFIX =
+            "tasks-io-virtual-";
 }

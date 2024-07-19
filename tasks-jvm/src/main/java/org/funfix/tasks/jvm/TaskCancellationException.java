@@ -18,12 +18,12 @@ import org.jspecify.annotations.Nullable;
  * might be interrupted without the concurrent job being cancelled.</p>
  */
 @NullMarked
-public class CancellationException extends Exception {
-    public CancellationException() {
+public class TaskCancellationException extends Exception {
+    public TaskCancellationException() {
         super();
     }
 
-    public CancellationException(@Nullable String message) {
+    public TaskCancellationException(@Nullable String message) {
         super(message);
     }
 }

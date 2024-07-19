@@ -1,5 +1,7 @@
 package org.funfix.tasks.jvm;
 
+import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 
 import java.util.Objects;
@@ -15,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
  * can do the job.
  */
 @NullMarked
-public record CancellableFuture<T>(
+public record CancellableFuture<T  extends @Nullable Object>(
         CompletableFuture<? extends T> future,
         Cancellable cancellable
 ) {

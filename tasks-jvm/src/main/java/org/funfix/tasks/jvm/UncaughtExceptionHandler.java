@@ -15,7 +15,7 @@ final class UncaughtExceptionHandler {
         }
     }
 
-    public static void logOrRethrowException(final Throwable e) {
+    public static void logOrRethrow(final Throwable e) {
         rethrowIfFatal(e);
         final var thread = Thread.currentThread();
         var logger = thread.getUncaughtExceptionHandler();

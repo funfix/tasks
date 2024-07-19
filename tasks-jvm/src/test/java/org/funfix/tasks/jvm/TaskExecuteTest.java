@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @NullMarked
 public class TaskExecuteTest {
     @Test
-    void executeAsyncWorksForSuccess() throws InterruptedException, CancellationException, ExecutionException {
+    void executeAsyncWorksForSuccess() throws InterruptedException, TaskCancellationException, ExecutionException {
         final var latch =
             new CountDownLatch(1);
         final var outcomeRef =
@@ -33,7 +33,7 @@ public class TaskExecuteTest {
     }
 
     @Test
-    void executeAsyncWorksForFailure() throws InterruptedException, CancellationException {
+    void executeAsyncWorksForFailure() throws InterruptedException, TaskCancellationException {
         final var latch =
             new CountDownLatch(1);
         final var outcomeRef =
@@ -48,7 +48,7 @@ public class TaskExecuteTest {
         });
 
         TimedAwait.latchAndExpectCompletion(latch, "latch");
-        assertInstanceOf(Outcome.Failed.class, outcomeRef.get());
+        assertInstanceOf(Outcome.Failure.class, outcomeRef.get());
         try {
             Objects.requireNonNull(outcomeRef.get()).getOrThrow();
             fail("Should have thrown an exception");
@@ -78,7 +78,7 @@ public class TaskExecuteTest {
 
         token.cancel();
         TimedAwait.latchAndExpectCompletion(latch, "latch");
-        assertInstanceOf(Outcome.Cancelled.class, outcomeRef.get());
+        assertInstanceOf(Outcome.Cancellation.class, outcomeRef.get());
     }
 
     @Test
@@ -99,6 +99,7 @@ public class TaskExecuteTest {
                 }
             });
             try {
+                //noinspection DataFlowIssue
                 return innerTask.executeBlocking();
             } catch (final InterruptedException e) {
                 interruptedHits.incrementAndGet();
@@ -106,13 +107,13 @@ public class TaskExecuteTest {
             }
         });
 
-        final var fiber = task.executeConcurrently();
+        final var fiber = task.executeFiber();
         TimedAwait.latchAndExpectCompletion(started, "started");
 
         fiber.cancel();
         fiber.joinBlocking();
 
-        assertInstanceOf(Outcome.Cancelled.class, fiber.outcome());
+        assertInstanceOf(Outcome.Cancellation.class, fiber.outcome());
         assertEquals(2, interruptedHits.get(), "interruptedHits.get");
     }
 }

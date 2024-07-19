@@ -12,7 +12,7 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  * Represents a function that can be executed asynchronously.
  */
 @NullMarked
-public final class Task<T> {
+public final class Task<T extends @Nullable Object> {
     private final AsyncFun<T> asyncFun;
 
     private Task(final AsyncFun<T> asyncFun) {
@@ -23,13 +23,13 @@ public final class Task<T> {
      * Executes the task asynchronously.
      *
      * @param callback will be invoked when the task completes
-     * @param executor is the {@link FiberExecutor} that may be used to run the task
+     * @param executor is the {@link Executor} that may be used to run the task
      *
      * @return a {@link Cancellable} that can be used to cancel a running task
      */
     public Cancellable executeAsync(
-            final CompletionCallback<? super T> callback,
-            final FiberExecutor executor
+            final Executor executor,
+            final CompletionCallback<? super T> callback
     ) {
         final var cb = ProtectedCompletionCallback.protect(callback);
         try {
@@ -42,56 +42,46 @@ public final class Task<T> {
     }
 
     /**
-     * Overload of {@link #executeAsync(CompletionCallback, FiberExecutor)} that
-     * uses {@link FiberExecutor#shared()} as the executor.
+     * Overload of {@link #executeAsync(Executor, CompletionCallback)} that
+     * uses {@link TaskExecutors#global()} as the executor.
      *
      * @param callback will be invoked when the task completes
      *
      * @return a {@link Cancellable} that can be used to cancel a running task
      */
     public Cancellable executeAsync(final CompletionCallback<? super T> callback) {
-        return executeAsync(callback, FiberExecutor.shared());
+        return executeAsync(TaskExecutors.global(), callback);
     }
 
     /**
      * Executes the task concurrently and returns a [Fiber] that can be
      * used to wait for the result or cancel the task.
      *
-     * @param executor is the {@link FiberExecutor} that may be used to run the task
+     * @param executor is the {@link Fiber} that may be used to run the task
      *
-     * @return a {@link TaskFiber} that can be used to wait for the outcome,
+     * @return a {@link Fiber} that can be used to wait for the outcome,
      * or to cancel the running fiber.
      */
-    public TaskFiber<T> executeConcurrently(final @Nullable FiberExecutor executor) {
-        final var fiber = new TaskFiberDefault<T>();
-        try {
-            final var token = asyncFun.invoke(
-                    executor == null ? FiberExecutor.shared() : executor, fiber.onComplete
-            );
-            fiber.registerCancel(token);
-        } catch (final Throwable e) {
-            UncaughtExceptionHandler.rethrowIfFatal(e);
-            fiber.onComplete.onFailure(e);
-        }
-        return fiber;
+    public Fiber<T> executeFiber(final Executor executor) {
+        return ExecutedFiber.start(executor, asyncFun);
     }
 
     /**
-     * Overload of {@link #executeConcurrently(FiberExecutor)} that
-     * uses {@link FiberExecutor#shared()} as the executor.
+     * Overload of {@link #executeFiber(Executor)} that
+     * uses {@link TaskExecutors#global()} as the executor.
      *
-     * @return a {@link TaskFiber} that can be used to wait for the outcome,
+     * @return a {@link Fiber} that can be used to wait for the outcome,
      * or to cancel the running fiber.
      */
-    public TaskFiber<T> executeConcurrently() {
-        return executeConcurrently(null);
+    public Fiber<T> executeFiber() {
+        return executeFiber(TaskExecutors.global());
     }
 
     /**
      * Executes the task and blocks until it completes, or the current
      * thread gets interrupted (in which case the task is also cancelled).
      *
-     * @param executor is the {@link FiberExecutor} that may be used to run the task
+     * @param executor is the {@link Executor} that may be used to run the task
      *
      * @throws ExecutionException if the task fails with an exception
      *
@@ -102,22 +92,20 @@ public final class Task<T> {
      *
      * @return the successful result of the task
      */
-    public T executeBlocking(@Nullable final FiberExecutor executor)
+    public T executeBlocking(final Executor executor)
             throws ExecutionException, InterruptedException {
 
         final var blockingCallback = new BlockingCompletionCallback<T>();
-        final var cancelToken = asyncFun.invoke(
-                executor == null ? FiberExecutor.shared() : executor, blockingCallback
-        );
+        final var cancelToken = asyncFun.invoke(executor, blockingCallback);
         return blockingCallback.await(cancelToken);
     }
 
     /**
-     * Overload of {@link #executeBlocking(FiberExecutor)} that uses
-     * {@link FiberExecutor#shared()} as the executor.
+     * Overload of {@link #executeBlocking(Executor)} that uses
+     * {@link TaskExecutors#global()} as the executor.
      */
     public T executeBlocking() throws ExecutionException, InterruptedException {
-        return executeBlocking(null);
+        return executeBlocking(TaskExecutors.global());
     }
 
     /**
@@ -127,7 +115,7 @@ public final class Task<T> {
      * @param timeout is the maximum time to wait for the task to complete
      *                before throwing a {@link TimeoutException}
      *
-     * @param executor is the {@link FiberExecutor} that may be used to run
+     * @param executor is the {@link Executor} that may be used to run
      *                 the task
      *
      * @throws ExecutionException if the task fails with an exception
@@ -143,19 +131,17 @@ public final class Task<T> {
      * @return the successful result of the task
      */
     public T executeBlockingTimed(
-            final Duration timeout,
-            @Nullable final FiberExecutor executor
+            final Executor executor,
+            final Duration timeout
     ) throws ExecutionException, InterruptedException, TimeoutException {
         final var blockingCallback = new BlockingCompletionCallback<T>();
-        final var cancelToken = asyncFun.invoke(
-                executor == null ? FiberExecutor.shared() : executor, blockingCallback
-        );
+        final var cancelToken = asyncFun.invoke(executor, blockingCallback);
         return blockingCallback.await(cancelToken, timeout);
     }
 
     /**
-     * Overload of {@link #executeBlockingTimed(Duration, FiberExecutor)} that
-     * uses {@link FiberExecutor#shared()} as the executor.
+     * Overload of {@link #executeBlockingTimed(Executor, Duration)} that
+     * uses {@link TaskExecutors#global()} as the executor.
      *
      * @param timeout is the maximum time to wait for the task to complete
      *
@@ -173,7 +159,7 @@ public final class Task<T> {
      */
     public T executeBlockingTimed(final Duration timeout)
             throws ExecutionException, InterruptedException, TimeoutException {
-        return executeBlockingTimed(timeout, null);
+        return executeBlockingTimed(TaskExecutors.global(), timeout);
     }
 
     /**
@@ -223,16 +209,15 @@ public final class Task<T> {
      * This is a variant of {@link #create(AsyncFun)}, which executes the given
      * builder function on the same thread.
      * <p>
-     * NOTE: the thread is created via the injected {@link FiberExecutor} in the
-     * "execute" methods (e.g., {@link #executeAsync(CompletionCallback, FiberExecutor)}).
-     * Even when using on of the overloads, then {@link FiberExecutor#shared()}
+     * NOTE: the thread is created via the injected {@link Executor} in the
+     * "execute" methods (e.g., {@link #executeAsync(Executor, CompletionCallback)}).
+     * Even when using on of the overloads, then {@link TaskExecutors#global()}
      * is assumed.
      *
      * @param fun is the function that will trigger the async computation
      * @return a new task that will execute the given builder function
      *
      * @see #create(AsyncFun)
-     * @see FiberExecutor
      */
     public static <T> Task<T> createAsync(final AsyncFun<? extends T> fun) {
         return new Task<>((executor, callback) -> {
@@ -254,28 +239,32 @@ public final class Task<T> {
     }
 
     /**
-     * Creates a task from a {@link Callable} executing blocking IO.
+     * Creates a task from a {@link DelayedFun} executing blocking IO.
      */
-    public static <T> Task<T> fromBlockingIO(final Callable<? extends T> callable) {
-        return new Task<>((executor, callback) -> executor.executeCancellable(
-            () -> {
+    public static <T> Task<T> fromBlockingIO(final DelayedFun<? extends T> run) {
+        return new Task<>((executor, callback) -> {
+            final MutableCancellable cancelToken = new MutableCancellable();
+            executor.execute(() -> {
+                Thread th = Thread.currentThread();
+                cancelToken.set(th::interrupt);
                 try {
-                    final var result = callable.call();
+                    T result;
+                    try {
+                        result = run.invoke();
+                    } finally {
+                        cancelToken.set(Cancellable.EMPTY);
+                    }
                     callback.onSuccess(result);
-                } catch (final InterruptedException | CancellationException e) {
+                } catch (final InterruptedException | TaskCancellationException e) {
                     callback.onCancellation();
-                } catch (final Throwable e) {
+                } catch (Throwable e) {
                     UncaughtExceptionHandler.rethrowIfFatal(e);
                     callback.onFailure(e);
                 }
-            },
-            () -> {
-                // This is a concurrent call that wouldn't be very safe
-                // with a naive implementation of the CompletionCallback
-                // (thankfully we protect the injected callback)
-                // noinspection Convert2MethodRef
-                callback.onCancellation();
-            }));
+            });
+            return cancelToken;
+
+        });
     }
 
     /**
@@ -284,23 +273,23 @@ public final class Task<T> {
      * This is compatible with Java's interruption protocol and
      * {@link Future#cancel(boolean)}, with the resulting task being cancellable.
      * <p>
-     * <strong>NOTE:</strong> Use {@link #fromCompletionStage(Callable)} for directly
+     * <strong>NOTE:</strong> Use {@link #fromCompletionStage(DelayedFun)} for directly
      * converting {@link CompletableFuture} builders, because it is not possible to cancel
      * such values, and the logic needs to reflect it. Better yet, use
-     * {@link #fromCancellableFuture(Callable)} for working with {@link CompletionStage}
+     * {@link #fromCancellableFuture(DelayedFun)} for working with {@link CompletionStage}
      * values that can be cancelled.
      *
-     * @param builder is the {@link Callable} that will create the {@link Future} upon
+     * @param builder is the {@link DelayedFun} that will create the {@link Future} upon
      *                this task's execution.
      * @return a new task that will complete with the result of the created {@code Future}
      *        upon execution
      *
-     * @see #fromCompletionStage(Callable)
-     * @see #fromCancellableFuture(Callable)
+     * @see #fromCompletionStage(DelayedFun)
+     * @see #fromCancellableFuture(DelayedFun)
      */
-    public static <T> Task<T> fromBlockingFuture(final Callable<Future<? extends T>> builder) {
+    public static <T> Task<T> fromBlockingFuture(final DelayedFun<Future<? extends T>> builder) {
         return fromBlockingIO(() -> {
-            final var f = builder.call();
+            final var f = builder.invoke();
             try {
                 return f.get();
             } catch (final ExecutionException e) {
@@ -329,22 +318,22 @@ public final class Task<T> {
      * resulting task should reflect this (i.e., on cancellation, the listener should not
      * receive an `onCancel` signal until the `CompletionStage` actually completes).
      * <p>
-     * Prefer using {@link #fromCancellableFuture(Callable)} for working with
+     * Prefer using {@link #fromCancellableFuture(DelayedFun)} for working with
      * {@link CompletionStage} values that can be cancelled.
      *
-     * @see #fromCancellableFuture(Callable)
+     * @see #fromCancellableFuture(DelayedFun)
      *
-     * @param builder is the {@link Callable} that will create the {@link CompletionStage}
+     * @param builder is the {@link DelayedFun} that will create the {@link CompletionStage}
      *                value. It's a builder because {@link Task} values are cold values
      *                (lazy, not executed yet).
      *
      * @return a new task that upon execution will complete with the result of
      * the created {@code CancellableCompletionStage}
      */
-    public static <T> Task<T> fromCompletionStage(final Callable<CompletionStage<? extends T>> builder) {
+    public static <T> Task<T> fromCompletionStage(final DelayedFun<CompletionStage<? extends T>> builder) {
         return fromCancellableFuture(
             () -> new CancellableFuture<T>(
-                builder.call().toCompletableFuture(), 
+                builder.invoke().toCompletableFuture(),
                 Cancellable.EMPTY
             )
         );
@@ -358,20 +347,22 @@ public final class Task<T> {
      * for cancelling the connecting computation. As such, the user should provide
      * an explicit {@link Cancellable} token that can be used.
      *
-     * @param builder is the {@link Callable} that will create the {@link CancellableFuture}
+     * @param builder is the {@link DelayedFun} that will create the {@link CancellableFuture}
      *                value. It's a builder because {@link Task} values are cold values
      *                (lazy, not executed yet).
      *
      * @return a new task that upon execution will complete with the result of
      * the created {@code CancellableCompletionStage}
      */
-    public static <T> Task<T> fromCancellableFuture(final Callable<CancellableFuture<? extends T>> builder) {
+    public static <T> Task<T> fromCancellableFuture(final DelayedFun<CancellableFuture<? extends T>> builder) {
         return new Task<>(new TaskFromCancellableFuture<>(builder));
     }
 }
 
 @NullMarked
-final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer implements CompletionCallback<T> {
+final class BlockingCompletionCallback<T extends @Nullable Object>
+        extends AbstractQueuedSynchronizer implements CompletionCallback<T> {
+    
     private final AtomicBoolean isDone = new AtomicBoolean(false);
     @Nullable
     private Outcome<T> outcome = null;
@@ -387,8 +378,8 @@ final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer imp
         if (!isDone.getAndSet(true)) {
             this.outcome = outcome;
             releaseShared(1);
-        } else if (outcome instanceof Outcome.Failed<?> failed) {
-            UncaughtExceptionHandler.logOrRethrowException(failed.exception());
+        } else if (outcome instanceof Outcome.Failure<?> failure) {
+            UncaughtExceptionHandler.logOrRethrow(failure.exception());
         }
     }
 
@@ -407,7 +398,7 @@ final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer imp
             error = e;
             releaseShared(1);
         } else {
-            UncaughtExceptionHandler.logOrRethrowException(e);
+            UncaughtExceptionHandler.logOrRethrow(e);
         }
     }
 
@@ -462,12 +453,11 @@ final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer imp
         if (outcome != null)
             try {
                 outcome.getOrThrow();
-            } catch (CancellationException e) {
+            } catch (TaskCancellationException e) {
                 throw interrupted != null ? interrupted : new InterruptedException();
             }
         if (interrupted != null) throw interrupted;
         if (error != null) throw new ExecutionException(error);
-        // noinspection DataFlowIssue
         return result;
     }
 
@@ -497,54 +487,54 @@ final class BlockingCompletionCallback<T> extends AbstractQueuedSynchronizer imp
 }
 
 @NullMarked
-final class TaskFromCancellableFuture<T> implements AsyncFun<T> {
-    private final Callable<? extends CancellableFuture<? extends T>> builder;
+class TaskFromCancellableFuture<T extends @Nullable Object> implements AsyncFun<T> {
+    private final DelayedFun<CancellableFuture<? extends T>> builder;
 
-    public TaskFromCancellableFuture(final Callable<? extends CancellableFuture<? extends T>> builder) {
+    public TaskFromCancellableFuture(DelayedFun<CancellableFuture<? extends T>> builder) {
         this.builder = builder;
     }
 
     @Override
-    public Cancellable invoke(
-            final FiberExecutor executor, final CompletionCallback<? super T> callback
-    ) {
-        final var cancel = new MutableCancellable();
+    public Cancellable invoke(Executor executor, CompletionCallback<? super T> callback) {
+        MutableCancellable cancel = new MutableCancellable();
         executor.execute(() -> {
-            var isUserError = true;
+            boolean isUserError = true;
             try {
-                final var cancellableFuture = builder.call();
+                final var cancellableFuture = builder.invoke();
                 isUserError = false;
-                final var future = getCompletableFuture(cancellableFuture, callback);
-                final var cancellable = cancellableFuture.cancellable();
+                CompletableFuture<? extends T> future = getCompletableFuture(cancellableFuture, callback);
+                Cancellable cancellable = cancellableFuture.cancellable();
                 cancel.set(() -> {
-                    try { cancellable.cancel(); }
-                    finally { future.cancel(true); }
+                    try {
+                        cancellable.cancel();
+                    } finally {
+                        future.cancel(true);
+                    }
                 });
-            } catch (final Throwable e) {
+            } catch (Throwable e) {
                 UncaughtExceptionHandler.rethrowIfFatal(e);
                 if (isUserError) callback.onFailure(e);
-                else UncaughtExceptionHandler.logOrRethrowException(e);
+                else UncaughtExceptionHandler.logOrRethrow(e);
             }
         });
         return cancel;
     }
 
     private static <T> CompletableFuture<? extends T> getCompletableFuture(
-        final CancellableFuture<? extends T> cancellableFuture,
-        final CompletionCallback<? super T> callback
+            CancellableFuture<? extends T> cancellableFuture, 
+            CompletionCallback<? super T> callback
     ) {
-        final var future = cancellableFuture.future();
+        CompletableFuture<? extends T> future = cancellableFuture.future();
         future.whenComplete((value, error) -> {
-            if (error instanceof InterruptedException || error instanceof CancellationException) {
+            if (error instanceof InterruptedException || error instanceof TaskCancellationException) {
                 callback.onCancellation();
-            } else if (error instanceof final ExecutionException e && e.getCause() != null) {
-                callback.onFailure(e.getCause());
-            } else if (error instanceof final CompletionException e && e.getCause() != null) {
-                callback.onFailure(error.getCause());
-            } else if (error != null) {
-                callback.onFailure(error);
+            } else if (error instanceof ExecutionException) {
+                callback.onFailure(error.getCause() != null ? error.getCause() : error);
+            } else if (error instanceof CompletionException) {
+                callback.onFailure(error.getCause() != null ? error.getCause() : error);
             } else {
-                callback.onSuccess(value);
+                if (error != null) callback.onFailure(error);
+                else callback.onSuccess(value);
             }
         });
         return future;

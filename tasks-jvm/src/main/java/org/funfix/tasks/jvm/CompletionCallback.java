@@ -1,8 +1,10 @@
 package org.funfix.tasks.jvm;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -16,7 +18,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @param <T> is the type of the value that the task will complete with
  */
 @NullMarked
-public interface CompletionCallback<T> extends Serializable {
+public interface CompletionCallback<T extends @Nullable Object>
+        extends Serializable {
+
     /**
      * Must be called when the task completes successfully.
      *
@@ -42,8 +46,8 @@ public interface CompletionCallback<T> extends Serializable {
     default void onOutcome(final Outcome<T> outcome) {
         if (outcome instanceof Outcome.Success<T> success) {
             onSuccess(success.value());
-        } else if (outcome instanceof Outcome.Failed<T> failed) {
-            onFailure(failed.exception());
+        } else if (outcome instanceof Outcome.Failure<T> failure) {
+            onFailure(failure.exception());
         } else {
             onCancellation();
         }
@@ -54,30 +58,30 @@ public interface CompletionCallback<T> extends Serializable {
      * on the [onOutcome] method.
      */
     @FunctionalInterface
-    interface OutcomeBased<T> extends CompletionCallback<T> {
+    interface OutcomeBased<T extends @Nullable Object> extends CompletionCallback<T> {
         @Override
         void onOutcome(Outcome<T> outcome);
 
         @Override
-        default void onSuccess(T value) {
-            onOutcome(Outcome.succeeded(value));
+        default void onSuccess(final T value) {
+            onOutcome(Outcome.success(value));
         }
 
         @Override
-        default void onFailure(Throwable e) {
-            onOutcome(Outcome.failed(e));
+        default void onFailure(final Throwable e) {
+            onOutcome(Outcome.failure(e));
         }
 
         @Override
         default void onCancellation() {
-            onOutcome(Outcome.cancelled());
+            onOutcome(Outcome.cancellation());
         }
     }
 
     /**
      * @return a {@code CompletionListener} that does nothing.
      */
-    static <T> CompletionCallback<T> empty() {
+    static <T extends @Nullable Object> CompletionCallback<T> empty() {
         return new CompletionCallback<>() {
             @Override
             public void onSuccess(final T value) {}
@@ -87,13 +91,13 @@ public interface CompletionCallback<T> extends Serializable {
 
             @Override
             public void onFailure(final Throwable e) {
-                UncaughtExceptionHandler.logOrRethrowException(e);
+                UncaughtExceptionHandler.logOrRethrow(e);
             }
 
             @Override
-            public void onOutcome(Outcome<T> outcome) {
-                if (outcome instanceof Outcome.Failed<?> failed) {
-                    onFailure(failed.exception());
+            public void onOutcome(final Outcome<T> outcome) {
+                if (outcome instanceof Outcome.Failure<?> failure) {
+                    onFailure(failure.exception());
                 }
             }
         };
@@ -109,7 +113,9 @@ public interface CompletionCallback<T> extends Serializable {
 }
 
 @NullMarked
-final class ProtectedCompletionCallback<T> implements CompletionCallback<T>, Runnable {
+final class ProtectedCompletionCallback<T extends @Nullable Object>
+        implements CompletionCallback<T>, Runnable {
+
     private final AtomicBoolean isWaiting = new AtomicBoolean(true);
     private final CompletionCallback<T> listener;
 
@@ -122,7 +128,6 @@ final class ProtectedCompletionCallback<T> implements CompletionCallback<T>, Run
         this.listener = listener;
     }
 
-    @SuppressWarnings("DataFlowIssue")
     @Override
     public void run() {
         if (this.outcome != null) {
@@ -153,14 +158,15 @@ final class ProtectedCompletionCallback<T> implements CompletionCallback<T>, Run
 
     @Override
     public void onFailure(final Throwable e) {
-        UncaughtExceptionHandler.logOrRethrowException(e);
+        Objects.requireNonNull(e, "e");
+        UncaughtExceptionHandler.logOrRethrow(e);
         if (isWaiting.getAndSet(false)) {
             this.failureCause = e;
             // Trampolined execution is needed because, with chained tasks,
             // we might end up with a stack overflow
             Trampoline.execute(this);
         } else {
-            UncaughtExceptionHandler.logOrRethrowException(e);
+            UncaughtExceptionHandler.logOrRethrow(e);
         }
     }
 
@@ -175,18 +181,20 @@ final class ProtectedCompletionCallback<T> implements CompletionCallback<T>, Run
     }
 
     @Override
-    public void onOutcome(Outcome<T> outcome) {
+    public void onOutcome(final Outcome<T> outcome) {
+        Objects.requireNonNull(outcome, "outcome");
         if (isWaiting.getAndSet(false)) {
             this.outcome = outcome;
             // Trampolined execution is needed because, with chained tasks,
             // we might end up with a stack overflow
             Trampoline.execute(this);
-        } else if (outcome instanceof Outcome.Failed<?> failed) {
-            UncaughtExceptionHandler.logOrRethrowException(failed.exception());
+        } else if (outcome instanceof Outcome.Failure<?> failure) {
+            UncaughtExceptionHandler.logOrRethrow(failure.exception());
         }
     }
 
     public static <T> CompletionCallback<T> protect(final CompletionCallback<T> listener) {
+        Objects.requireNonNull(listener, "listener");
         return new ProtectedCompletionCallback<>(listener);
     }
 }

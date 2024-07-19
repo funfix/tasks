@@ -13,7 +13,7 @@ public class OutcomeTest {
     @Test
     void outcomeBuildSuccess() {
         final var outcome1 = new Outcome.Success<>("value");
-        final Outcome<String> outcome2 = Outcome.succeeded("value");
+        final Outcome<String> outcome2 = Outcome.success("value");
         assertEquals(outcome1, outcome2);
 
         if (outcome2 instanceof Outcome.Success<String> success) {
@@ -31,36 +31,36 @@ public class OutcomeTest {
     }
 
     @Test
-    void outcomeBuildCancelled() throws ExecutionException {
-        final var outcome1 = new Outcome.Cancelled<>();
-        final Outcome<String> outcome2 = Outcome.cancelled();
+    void outcomeBuildCancellation() throws ExecutionException {
+        final var outcome1 = new Outcome.Cancellation<>();
+        final Outcome<String> outcome2 = Outcome.cancellation();
         assertEquals(outcome1, outcome2);
 
-        if (!(outcome2 instanceof Outcome.Cancelled<String>)) {
+        if (!(outcome2 instanceof Outcome.Cancellation<String>)) {
             fail("Expected Canceled");
         }
 
         try {
             outcome1.getOrThrow();
             fail("Expected CancellationException");
-        } catch (CancellationException ignored) {
+        } catch (TaskCancellationException ignored) {
         }
         try {
             outcome2.getOrThrow();
             fail("Expected CancellationException");
-        } catch (CancellationException ignored) {
+        } catch (TaskCancellationException ignored) {
         } 
     }
 
     @Test
     void outcomeBuildRuntimeFailure() {
         final var e = new RuntimeException("error");
-        final var outcome1 = new Outcome.Failed<>(e);
-        final Outcome<String> outcome2 = Outcome.failed(e);
+        final var outcome1 = new Outcome.Failure<>(e);
+        final Outcome<String> outcome2 = Outcome.failure(e);
         assertEquals(outcome1, outcome2);
 
-        if (outcome2 instanceof Outcome.Failed<?> failed) {
-            assertEquals("error", failed.exception().getMessage());
+        if (outcome2 instanceof Outcome.Failure<?> failure) {
+            assertEquals("error", failure.exception().getMessage());
         } else {
             fail("Expected Failure");
         }
@@ -76,7 +76,7 @@ public class OutcomeTest {
             fail("Expected RuntimeException");
         } catch (ExecutionException received) {
             assertEquals(received.getCause(), e);
-        } catch (CancellationException ex) {
+        } catch (TaskCancellationException ex) {
             throw new RuntimeException(ex);
         }
     }

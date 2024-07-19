@@ -1,7 +1,7 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.NonBlocking;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 
 import java.util.Objects;
@@ -36,7 +36,6 @@ public interface Cancellable {
     /**
      * A {@code Cancellable} instance that does nothing.
      */
-    @NotNull
     Cancellable EMPTY = () -> { };
 }
 

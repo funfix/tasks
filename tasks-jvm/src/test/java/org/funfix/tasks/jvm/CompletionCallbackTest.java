@@ -32,25 +32,26 @@ public class CompletionCallbackTest {
     @Test
     void protectedCallbackForSuccess() {
         final var called = new AtomicInteger(0);
-        final var outcomeRef = new AtomicReference<@Nullable Outcome<String>>(null);
+        final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.protect(
-                CompletionCallback.<String>of(outcome -> {
+                (CompletionCallback.OutcomeBased<String>) outcome -> {
                     called.incrementAndGet();
                     outcomeRef.set(outcome);
-                }));
+                }
+        );
 
-        cb.onOutcome(Outcome.succeeded("Hello, world!"));
+        cb.onSuccess("Hello, world!");
         cb.onSuccess("Hello, world! (2)");
         cb.onSuccess("Hello, world! (3)");
 
         assertEquals(1, called.get());
-        assertEquals(Outcome.succeeded("Hello, world!"), outcomeRef.get());
+        assertEquals(Outcome.success("Hello, world!"), outcomeRef.get());
     }
 
     @Test
     void protectedCallbackForRuntimeFailure() throws InterruptedException {
         final var called = new AtomicInteger(0);
-        final var outcomeRef = new AtomicReference<@Nullable Outcome<String>>(null);
+        final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.protect(
                 (CompletionCallback.OutcomeBased<String>) outcome -> {
                     called.incrementAndGet();
@@ -59,10 +60,10 @@ public class CompletionCallbackTest {
         );
 
         final var e = new RuntimeException("Boom!");
-        cb.onOutcome(Outcome.failed(e));
+        cb.onFailure(e);
 
         assertEquals(1, called.get());
-        assertEquals(Outcome.failed(e), outcomeRef.get());
+        assertEquals(Outcome.failure(e), outcomeRef.get());
 
         final var logged = new AtomicReference<@Nullable Throwable>(null);
         final var th = new Thread(() -> cb.onFailure(e));
@@ -78,7 +79,7 @@ public class CompletionCallbackTest {
     @Test
     void protectedCallbackForCancellation() {
         final var called = new AtomicInteger(0);
-        final var outcomeRef = new AtomicReference<@Nullable Outcome<String>>(null);
+        final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.protect(
                 (CompletionCallback.OutcomeBased<String>) outcome -> {
                     called.incrementAndGet();
@@ -86,11 +87,11 @@ public class CompletionCallbackTest {
                 }
         );
 
-        cb.onOutcome(Outcome.cancelled());
+        cb.onCancellation();
         cb.onCancellation();
         cb.onCancellation();
 
         assertEquals(1, called.get());
-        assertEquals(Outcome.cancelled(), outcomeRef.get());
+        assertEquals(Outcome.cancellation(), outcomeRef.get());
     }
 }
