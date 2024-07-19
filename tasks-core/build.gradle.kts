@@ -1,6 +1,9 @@
 import org.jetbrains.dokka.gradle.DokkaTask
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
+    id("com.android.library")
     id("tasks.kmp-project")
 }
 
@@ -16,6 +19,14 @@ publishing {
 }
 
 kotlin {
+    androidTarget {
+        publishLibraryVariants("release")
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_1_8)
+        }
+    }
+
     sourceSets {
         val commonMain by getting {
         }
@@ -52,6 +63,18 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
             }
         }
+    }
+}
+
+android {
+    namespace = "org.jetbrains.kotlinx.multiplatform.library.template"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    defaultConfig {
+        minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 }
 

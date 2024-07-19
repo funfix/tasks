@@ -8,6 +8,7 @@ plugins {
 repositories {
     mavenCentral()
     gradlePluginPortal()
+    google()
 }
 
 val props = run {
@@ -25,4 +26,5 @@ dependencies {
     implementation(libs.kover.gradle.plugin)
     implementation(libs.dokka.gradle.plugin)
     implementation(libs.gradle.versions.plugin)
+    implementation(libs.android.library.plugin)
 }
