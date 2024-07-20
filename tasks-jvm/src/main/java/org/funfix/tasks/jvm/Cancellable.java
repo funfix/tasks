@@ -1,5 +1,7 @@
 package org.funfix.tasks.jvm;
 
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.jetbrains.annotations.NonBlocking;
 import org.jspecify.annotations.NullMarked;
 
@@ -45,8 +47,9 @@ final class MutableCancellable implements Cancellable {
 
     @Override
     public void cancel() {
-        if (ref.getAndSet(State.CANCELLED) instanceof State.Active active) {
-            active.token.cancel();
+        final var prev = ref.getAndSet(State.Cancelled.INSTANCE);
+        if (prev instanceof State.Active) {
+            ((State.Active) prev).token.cancel();
         }
     }
 
@@ -54,7 +57,8 @@ final class MutableCancellable implements Cancellable {
         Objects.requireNonNull(token, "token");
         while (true) {
             final var current = ref.get();
-            if (current instanceof State.Active active) {
+            if (current instanceof State.Active) {
+                final var active = (State.Active) current;
                 final var update = new State.Active(token, active.order + 1);
                 if (ref.compareAndSet(current, update)) { return; }
             } else if (current instanceof State.Cancelled) {
@@ -70,7 +74,8 @@ final class MutableCancellable implements Cancellable {
         Objects.requireNonNull(token, "token");
         while (true) {
             final var current = ref.get();
-            if (current instanceof State.Active active) {
+            if (current instanceof State.Active) {
+                final var active = (State.Active) current;
                 if (active.order < order) {
                     final var update = new State.Active(token, order);
                     if (ref.compareAndSet(current, update)) { return; }
@@ -86,9 +91,18 @@ final class MutableCancellable implements Cancellable {
         }
     }
 
-    sealed interface State permits State.Active, State.Cancelled {
-        record Active(Cancellable token, int order) implements State {}
-        record Cancelled() implements State {}
-        Cancelled CANCELLED = new Cancelled();
+    static abstract class State {
+        @Data
+        @EqualsAndHashCode(callSuper = false)
+        static final class Active extends State {
+            private final Cancellable token;
+            private final int order;
+        }
+
+        @Data
+        @EqualsAndHashCode(callSuper = false)
+        static final class Cancelled extends State {
+            static Cancelled INSTANCE = new Cancelled();
+        }
     }
 }

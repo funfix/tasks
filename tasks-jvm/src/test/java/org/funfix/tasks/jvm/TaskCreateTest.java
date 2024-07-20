@@ -81,7 +81,7 @@ abstract class BaseTaskCreateTest {
     }
 
     @Test
-    void cancelled() throws InterruptedException, ExecutionException {
+    void cancelled() throws InterruptedException, ExecutionException, Fiber.NotCompletedException {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
@@ -102,7 +102,8 @@ abstract class BaseTaskCreateTest {
             // call is idempotent
             fiber.cancel();
             fiber.joinBlocking();
-            Objects.requireNonNull(fiber.outcome()).getOrThrow();
+            fiber.getResultOrThrow();
+            fail("Should have thrown a TaskCancellationException");
         } catch (final TaskCancellationException ex) {
             // Expected
         }

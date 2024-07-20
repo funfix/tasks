@@ -1,9 +1,8 @@
 package org.funfix.tasks.jvm;
 
+import lombok.Data;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NullMarked;
-
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -16,12 +15,8 @@ import java.util.concurrent.CompletableFuture;
  * can do the job.
  */
 @NullMarked
-public record CancellableFuture<T  extends @Nullable Object>(
-        CompletableFuture<? extends T> future,
-        Cancellable cancellable
-) {
-    public CancellableFuture {
-        Objects.requireNonNull(future, "future");
-        Objects.requireNonNull(cancellable, "cancellable");
-    }
+@Data
+public class CancellableFuture<T extends @Nullable Object> {
+    public final CompletableFuture<? extends T> future;
+    public final Cancellable cancellable;
 }

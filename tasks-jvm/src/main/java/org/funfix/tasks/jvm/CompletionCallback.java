@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 @NullMarked
 public interface CompletionCallback<T extends @Nullable Object>
-        extends Serializable {
+    extends Serializable {
 
     /**
      * Must be called when the task completes successfully.
@@ -41,85 +41,33 @@ public interface CompletionCallback<T extends @Nullable Object>
     void onCancellation();
 
     /**
-     * Signals a final {@link Outcome} on the completion of a task.
-     */
-    default void onOutcome(final Outcome<T> outcome) {
-        if (outcome instanceof Outcome.Success<T> success) {
-            onSuccess(success.value());
-        } else if (outcome instanceof Outcome.Failure<T> failure) {
-            onFailure(failure.exception());
-        } else {
-            onCancellation();
-        }
-    }
-
-    /**
-     * Helper for creating [CompletionCallback] instances based just
-     * on the [onOutcome] method.
-     */
-    @FunctionalInterface
-    interface OutcomeBased<T extends @Nullable Object> extends CompletionCallback<T> {
-        @Override
-        void onOutcome(Outcome<T> outcome);
-
-        @Override
-        default void onSuccess(final T value) {
-            onOutcome(Outcome.success(value));
-        }
-
-        @Override
-        default void onFailure(final Throwable e) {
-            onOutcome(Outcome.failure(e));
-        }
-
-        @Override
-        default void onCancellation() {
-            onOutcome(Outcome.cancellation());
-        }
-    }
-
-    /**
      * @return a {@code CompletionListener} that does nothing.
      */
     static <T extends @Nullable Object> CompletionCallback<T> empty() {
         return new CompletionCallback<>() {
             @Override
-            public void onSuccess(final T value) {}
+            public void onSuccess(final T value) {
+            }
 
             @Override
-            public void onCancellation() {}
+            public void onCancellation() {
+            }
 
             @Override
             public void onFailure(final Throwable e) {
                 UncaughtExceptionHandler.logOrRethrow(e);
             }
-
-            @Override
-            public void onOutcome(final Outcome<T> outcome) {
-                if (outcome instanceof Outcome.Failure<?> failure) {
-                    onFailure(failure.exception());
-                }
-            }
         };
-    }
-
-    /**
-     * Just a helper for quickly building a {@code CompletionCallback}
-     * based on a lambda expression.
-     */
-    static <T> CompletionCallback<T> of(OutcomeBased<T> lambda) {
-        return lambda;
     }
 }
 
 @NullMarked
 final class ProtectedCompletionCallback<T extends @Nullable Object>
-        implements CompletionCallback<T>, Runnable {
+    implements CompletionCallback<T>, Runnable {
 
     private final AtomicBoolean isWaiting = new AtomicBoolean(true);
     private final CompletionCallback<T> listener;
 
-    private @Nullable Outcome<T> outcome;
     private @Nullable T successValue;
     private @Nullable Throwable failureCause;
     private boolean isCancelled = false;
@@ -130,9 +78,7 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
 
     @Override
     public void run() {
-        if (this.outcome != null) {
-            listener.onOutcome(this.outcome);
-        } else if (this.failureCause != null) {
+        if (this.failureCause != null) {
             listener.onFailure(this.failureCause);
         } else if (this.isCancelled) {
             listener.onCancellation();
@@ -140,7 +86,6 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
             listener.onSuccess(this.successValue);
         }
         // For GC purposes; but it doesn't really matter if we nullify these or not
-        this.outcome = null;
         this.successValue = null;
         this.failureCause = null;
         this.isCancelled = false;
@@ -177,19 +122,6 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
             // Trampolined execution is needed because, with chained tasks,
             // we might end up with a stack overflow
             Trampoline.execute(this);
-        }
-    }
-
-    @Override
-    public void onOutcome(final Outcome<T> outcome) {
-        Objects.requireNonNull(outcome, "outcome");
-        if (isWaiting.getAndSet(false)) {
-            this.outcome = outcome;
-            // Trampolined execution is needed because, with chained tasks,
-            // we might end up with a stack overflow
-            Trampoline.execute(this);
-        } else if (outcome instanceof Outcome.Failure<?> failure) {
-            UncaughtExceptionHandler.logOrRethrow(failure.exception());
         }
     }
 

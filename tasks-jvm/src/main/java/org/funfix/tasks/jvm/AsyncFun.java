@@ -15,7 +15,7 @@ import java.util.concurrent.Executor;
 @NonBlocking
 public interface AsyncFun<T extends @Nullable Object> extends Serializable {
     Cancellable invoke(
-            Executor executor,
-            CompletionCallback<? super T> callback
+        Executor executor,
+        CompletionCallback<? super T> callback
     );
 }

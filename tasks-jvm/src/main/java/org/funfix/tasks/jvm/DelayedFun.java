@@ -1,6 +1,7 @@
 package org.funfix.tasks.jvm;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a delayed computation (a thunk).
@@ -10,6 +11,6 @@ import org.jspecify.annotations.NullMarked;
  */
 @NullMarked
 @FunctionalInterface
-public interface DelayedFun<T> {
+public interface DelayedFun<T extends @Nullable Object> {
     T invoke() throws Exception;
 }

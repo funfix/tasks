@@ -1,10 +1,12 @@
 package org.funfix.tasks.jvm;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,12 +48,20 @@ abstract class BaseFiberTest {
         });
 
         final var fiber = startFiber(task);
-        assertNull(fiber.outcome(), "fiber.outcome()");
+        try {
+            fiber.getResultOrThrow();
+            fail("Should have thrown a NotCompletedException");
+        } catch (Fiber.NotCompletedException ignored) {
+        }
 
         latch.countDown();
         fiber.joinBlocking();
-        final var outcome = Objects.requireNonNull(fiber.outcome());
-        assertEquals("Hello, world!", outcome.getOrThrow());
+        try {
+            final var result = fiber.getResultOrThrow();
+            assertEquals("Hello, world!", result);
+        } catch (Fiber.NotCompletedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
@@ -60,11 +70,11 @@ abstract class BaseFiberTest {
         final var fiberGo = new CountDownLatch(1);
         final var awaitConsumers = new CountDownLatch(3);
         final var fiber = startFiber(
-                Task.fromBlockingIO(() -> {
-                    fiberStarted.countDown();
-                    fiberGo.await();
-                    return "Hello, world!";
-                })
+            Task.fromBlockingIO(() -> {
+                fiberStarted.countDown();
+                fiberGo.await();
+                return "Hello, world!";
+            })
         );
 
         TimedAwait.latchAndExpectCompletion(fiberStarted, "fiberStarted");
@@ -74,21 +84,25 @@ abstract class BaseFiberTest {
         }
         fiberGo.countDown();
         TimedAwait.latchAndExpectCompletion(awaitConsumers, "awaitConsumers");
-        final var outcome = Objects.requireNonNull(fiber.outcome());
-        assertEquals("Hello, world!", outcome.getOrThrow());
+        try {
+            final var outcome = fiber.getResultOrThrow();
+            assertEquals("Hello, world!", outcome);
+        } catch (Fiber.NotCompletedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
-    public void canFail() throws InterruptedException, TaskCancellationException {
+    public void canFail() throws InterruptedException, TaskCancellationException, Fiber.NotCompletedException {
         final Fiber<?> fiber = startFiber(
-                Task.fromBlockingIO(() -> {
-                    throw new RuntimeException("My Error");
-                })
+            Task.fromBlockingIO(() -> {
+                throw new RuntimeException("My Error");
+            })
         );
 
         fiber.joinBlocking();
         try {
-            Objects.requireNonNull(fiber.outcome()).getOrThrow();
+            fiber.getResultOrThrow();
             fail("Should have thrown an exception");
         } catch (final ExecutionException ex) {
             assertEquals("My Error", ex.getCause().getMessage());
@@ -96,57 +110,59 @@ abstract class BaseFiberTest {
     }
 
     @Test
-    public void resultIsMemoized() throws InterruptedException, TaskCancellationException, ExecutionException {
-        final var fiber = startFiber(
-                Task.fromBlockingIO(() -> ThreadLocalRandom.current().nextInt())
+    public void resultIsMemoized() throws InterruptedException, TaskCancellationException, ExecutionException, Fiber.NotCompletedException {
+        final Fiber<@NonNull Integer> fiber = startFiber(
+            Task.fromBlockingIO(() -> ThreadLocalRandom.current().nextInt())
         );
 
         fiber.joinBlocking();
-        final int result = Objects.requireNonNull(fiber.outcome()).getOrThrow();
+        final int result = fiber.getResultOrThrow();
 
         fiber.joinBlocking();
-        final int result2 = Objects.requireNonNull(fiber.outcome()).getOrThrow();
+        final int result2 = fiber.getResultOrThrow();
 
         assertEquals(result, result2);
     }
 
     @Test
-    public void joinCanBeInterrupted() throws InterruptedException, ExecutionException, TaskCancellationException {
+    public void joinCanBeInterrupted() throws InterruptedException, ExecutionException, TaskCancellationException, Fiber.NotCompletedException {
         final var latch = new CountDownLatch(1);
         final var started = new CountDownLatch(1);
-        final var fiber = startFiber(
-                Task.fromBlockingIO(() ->
-                        TimedAwait.latchNoExpectations(latch)
-                )
-        );
+        final Fiber<@NonNull Boolean> fiber = startFiber(
+            Task.fromBlockingIO(() -> {
+                TimedAwait.latchNoExpectations(latch);
+                return true;
+            }));
+
         final var fiber2 = startFiber(
-                Task.fromBlockingIO(() -> {
-                    started.countDown();
-                    fiber.joinBlocking();
-                    return Objects.requireNonNull(fiber.outcome()).getOrThrow();
-                })
+            Task.fromBlockingIO(() -> {
+                started.countDown();
+                fiber.joinBlocking();
+                return fiber.getResultOrThrow();
+            })
         );
 
         TimedAwait.latchAndExpectCompletion(started, "started");
         fiber2.cancel();
         fiber2.joinBlocking();
         try {
-            Objects.requireNonNull(fiber2.outcome()).getOrThrow();
+            fiber2.getResultOrThrow();
             fail("Should have thrown a CancellationException");
-        } catch (final TaskCancellationException ignored) {}
+        } catch (final TaskCancellationException ignored) {
+        }
 
         latch.countDown();
         fiber.joinBlocking();
-        assertTrue(Objects.requireNonNull(fiber.outcome()).getOrThrow());
+        assertTrue(fiber.getResultOrThrow());
     }
 
     @Test
     void concurrencyHappyPathExecuteThenJoinAsync() throws InterruptedException {
         for (int i = 0; i < repeatCount; i++) {
             final var latch = new CountDownLatch(1);
-            final boolean[] wasExecuted = { false };
+            final boolean[] wasExecuted = {false};
             final var fiber = startFiber(
-                    Task.fromBlockingIO(() -> wasExecuted[0] = true)
+                Task.fromBlockingIO(() -> wasExecuted[0] = true)
             );
             fiber.joinAsync(latch::countDown);
             TimedAwait.latchAndExpectCompletion(latch);
@@ -157,7 +173,7 @@ abstract class BaseFiberTest {
     @Test
     void happyPathExecuteThenJoinBlockingTimed() throws InterruptedException, TimeoutException {
         for (int i = 0; i < repeatCount; i++) {
-            final boolean[] wasExecuted = { false };
+            final boolean[] wasExecuted = {false};
             final var fiber = startFiber(Task.fromBlockingIO(() -> wasExecuted[0] = true));
             fiber.joinBlockingTimed(TimedAwait.TIMEOUT.toMillis());
             assertTrue(wasExecuted[0], "wasExecuted");
@@ -167,7 +183,7 @@ abstract class BaseFiberTest {
     @Test
     void concurrencyHappyPathExecuteThenJoin() throws InterruptedException {
         for (int i = 0; i < repeatCount; i++) {
-            final boolean[] wasExecuted = { false };
+            final boolean[] wasExecuted = {false};
             final var fiber = startFiber(() -> wasExecuted[0] = true);
             fiber.joinBlocking();
             assertTrue(wasExecuted[0], "wasExecuted");
@@ -177,9 +193,9 @@ abstract class BaseFiberTest {
     @Test
     void happyPathExecuteThenJoinFuture() throws InterruptedException, TimeoutException {
         for (int i = 0; i < repeatCount; i++) {
-            final boolean[] wasExecuted = { false };
+            final boolean[] wasExecuted = {false};
             final var fiber = startFiber(() -> wasExecuted[0] = true);
-            TimedAwait.future(fiber.joinAsync().future());
+            TimedAwait.future(fiber.joinAsync().getFuture());
             assertTrue(wasExecuted[0], "wasExecuted");
         }
     }
@@ -214,7 +230,8 @@ abstract class BaseFiberTest {
             final var fiber = startFiber(() -> {
                 try {
                     TimedAwait.latchNoExpectations(awaitCancellation);
-                } catch (InterruptedException ignored) {}
+                } catch (InterruptedException ignored) {
+                }
                 return 0;
             });
 
@@ -238,7 +255,8 @@ abstract class BaseFiberTest {
             final var fiber = startFiber(() -> {
                 try {
                     TimedAwait.latchNoExpectations(awaitCancellation);
-                } catch (InterruptedException ignored) {}
+                } catch (InterruptedException ignored) {
+                }
                 return 0;
             });
 
@@ -247,11 +265,12 @@ abstract class BaseFiberTest {
             fiber.joinAsync(onComplete::countDown);
             fiber.joinAsync(onComplete::countDown);
 
-            token.cancellable().cancel();
+            token.getCancellable().cancel();
             try {
-                token.future().get(TimedAwait.TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                token.getFuture().get(TimedAwait.TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
                 fail("Should have been interrupted");
-            } catch (java.util.concurrent.CancellationException ignored) {}
+            } catch (java.util.concurrent.CancellationException ignored) {
+            }
 
             fiber.cancel();
             TimedAwait.latchAndExpectCompletion(onComplete, "onComplete");
@@ -272,7 +291,8 @@ abstract class BaseFiberTest {
 }
 
 @NullMarked
-class FiberWithDefaultExecutorTest extends BaseFiberTest {}
+class FiberWithDefaultExecutorTest extends BaseFiberTest {
+}
 
 @NullMarked
 class FiberWithVirtualThreadsTest extends BaseFiberTest {
@@ -286,10 +306,10 @@ class FiberWithVirtualThreadsTest extends BaseFiberTest {
     @Test
     void testVirtualThreads() throws ExecutionException, InterruptedException {
         final var task =
-                Task.fromBlockingIO(() -> Thread.currentThread().getName());
+            Task.fromBlockingIO(() -> Thread.currentThread().getName());
         assertTrue(
-                Objects.requireNonNull(task.executeBlocking()).matches("tasks-io-virtual-\\d+"),
-                "currentThread.name.matches(\"tasks-io-virtual-\\\\d+\")"
+            Objects.requireNonNull(task.executeBlocking()).matches("tasks-io-virtual-\\d+"),
+            "currentThread.name.matches(\"tasks-io-virtual-\\\\d+\")"
         );
     }
 }
@@ -306,10 +326,10 @@ class FiberWithPlatformThreadsTest extends BaseFiberTest {
     @Test
     void testPlatformThreads() throws ExecutionException, InterruptedException {
         final var task =
-                Task.fromBlockingIO(() -> Thread.currentThread().getName());
+            Task.fromBlockingIO(() -> Thread.currentThread().getName());
         assertTrue(
-                Objects.requireNonNull(task.executeBlocking()).matches("tasks-io-platform-\\d+"),
-                "currentThread.name.matches(\"tasks-io-platform-\\\\d+\")"
+            Objects.requireNonNull(task.executeBlocking()).matches("tasks-io-platform-\\d+"),
+            "currentThread.name.matches(\"tasks-io-platform-\\\\d+\")"
         );
     }
 }

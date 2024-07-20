@@ -52,10 +52,10 @@ abstract class TaskFromBlockingIOTestBase {
     }
 
     @Test
-    public void isCancellable() throws InterruptedException, ExecutionException {
+    public void isCancellable() throws InterruptedException, ExecutionException, Fiber.NotCompletedException {
         Objects.requireNonNull(executor);
         final var latch = new CountDownLatch(1);
-        final Task<@Nullable Void> task = Task.fromBlockingIO(() -> {
+        final var task = Task.fromBlockingIO(() -> {
             latch.countDown();
             Thread.sleep(30000);
             return null;
@@ -66,7 +66,7 @@ abstract class TaskFromBlockingIOTestBase {
         fiber.cancel();
         fiber.joinBlocking();
         try {
-            Objects.requireNonNull(fiber.outcome()).getOrThrow();
+            fiber.getResultOrThrow();
             fail("Should have thrown a CancellationException");
         } catch (final TaskCancellationException ignored) {}
     }

@@ -16,7 +16,8 @@ public class OutcomeTest {
         final Outcome<String> outcome2 = Outcome.success("value");
         assertEquals(outcome1, outcome2);
 
-        if (outcome2 instanceof Outcome.Success<String> success) {
+        if (outcome2 instanceof Outcome.Success) {
+            final var success = (Outcome.Success<String>) outcome2;
             assertEquals("value", success.value());
         } else {
             fail("Expected Success");
@@ -36,7 +37,7 @@ public class OutcomeTest {
         final Outcome<String> outcome2 = Outcome.cancellation();
         assertEquals(outcome1, outcome2);
 
-        if (!(outcome2 instanceof Outcome.Cancellation<String>)) {
+        if (!(outcome2 instanceof Outcome.Cancellation)) {
             fail("Expected Canceled");
         }
 
@@ -59,7 +60,8 @@ public class OutcomeTest {
         final Outcome<String> outcome2 = Outcome.failure(e);
         assertEquals(outcome1, outcome2);
 
-        if (outcome2 instanceof Outcome.Failure<?> failure) {
+        if (outcome2 instanceof Outcome.Failure) {
+            final var failure = (Outcome.Failure<String>) outcome2;
             assertEquals("error", failure.exception().getMessage());
         } else {
             fail("Expected Failure");

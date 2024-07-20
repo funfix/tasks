@@ -34,10 +34,28 @@ public class CompletionCallbackTest {
         final var called = new AtomicInteger(0);
         final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.protect(
-                (CompletionCallback.OutcomeBased<String>) outcome -> {
-                    called.incrementAndGet();
-                    outcomeRef.set(outcome);
+            new CompletionCallback<String>() {
+                @Override
+                @SuppressWarnings("NullableProblems")
+                public void onSuccess(String value) {
+                    onOutcome(Outcome.success(value));
                 }
+
+                @Override
+                public void onFailure(Throwable e) {
+                    onOutcome(Outcome.failure(e));
+                }
+
+                @Override
+                public void onCancellation() {
+                    onOutcome(Outcome.cancellation());
+                }
+
+                private void onOutcome(Outcome<String> outcome) {
+                    outcomeRef.set(outcome);
+                    called.incrementAndGet();
+                }
+            }
         );
 
         cb.onSuccess("Hello, world!");
@@ -53,10 +71,28 @@ public class CompletionCallbackTest {
         final var called = new AtomicInteger(0);
         final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.protect(
-                (CompletionCallback.OutcomeBased<String>) outcome -> {
-                    called.incrementAndGet();
-                    outcomeRef.set(outcome);
+            new CompletionCallback<String>() {
+                @Override
+                @SuppressWarnings("NullableProblems")
+                public void onSuccess(String value) {
+                    onOutcome(Outcome.success(value));
                 }
+
+                @Override
+                public void onFailure(Throwable e) {
+                    onOutcome(Outcome.failure(e));
+                }
+
+                @Override
+                public void onCancellation() {
+                    onOutcome(Outcome.cancellation());
+                }
+
+                private void onOutcome(Outcome<String> outcome) {
+                    outcomeRef.set(outcome);
+                    called.incrementAndGet();
+                }
+            }
         );
 
         final var e = new RuntimeException("Boom!");
@@ -81,10 +117,28 @@ public class CompletionCallbackTest {
         final var called = new AtomicInteger(0);
         final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.protect(
-                (CompletionCallback.OutcomeBased<String>) outcome -> {
-                    called.incrementAndGet();
-                    outcomeRef.set(outcome);
+            new CompletionCallback<String>() {
+                @Override
+                @SuppressWarnings("NullableProblems")
+                public void onSuccess(String value) {
+                    onOutcome(Outcome.success(value));
                 }
+
+                @Override
+                public void onFailure(Throwable e) {
+                    onOutcome(Outcome.failure(e));
+                }
+
+                @Override
+                public void onCancellation() {
+                    onOutcome(Outcome.cancellation());
+                }
+
+                private void onOutcome(Outcome<String> outcome) {
+                    outcomeRef.set(outcome);
+                    called.incrementAndGet();
+                }
+            }
         );
 
         cb.onCancellation();

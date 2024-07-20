@@ -24,12 +24,11 @@ public final class Task<T extends @Nullable Object> {
      *
      * @param callback will be invoked when the task completes
      * @param executor is the {@link Executor} that may be used to run the task
-     *
      * @return a {@link Cancellable} that can be used to cancel a running task
      */
     public Cancellable executeAsync(
-            final Executor executor,
-            final CompletionCallback<? super T> callback
+        final Executor executor,
+        final CompletionCallback<? super T> callback
     ) {
         final var cb = ProtectedCompletionCallback.protect(callback);
         try {
@@ -46,7 +45,6 @@ public final class Task<T extends @Nullable Object> {
      * uses {@link TaskExecutors#global()} as the executor.
      *
      * @param callback will be invoked when the task completes
-     *
      * @return a {@link Cancellable} that can be used to cancel a running task
      */
     public Cancellable executeAsync(final CompletionCallback<? super T> callback) {
@@ -58,7 +56,6 @@ public final class Task<T extends @Nullable Object> {
      * used to wait for the result or cancel the task.
      *
      * @param executor is the {@link Fiber} that may be used to run the task
-     *
      * @return a {@link Fiber} that can be used to wait for the outcome,
      * or to cancel the running fiber.
      */
@@ -82,18 +79,15 @@ public final class Task<T extends @Nullable Object> {
      * thread gets interrupted (in which case the task is also cancelled).
      *
      * @param executor is the {@link Executor} that may be used to run the task
-     *
-     * @throws ExecutionException if the task fails with an exception
-     *
-     * @throws InterruptedException if the current thread is interrupted,
-     *         which also cancels the running task. Note that on interruption,
-     *         the running concurrent task must also be interrupted, as this method
-     *         always blocks for its interruption or completion.
-     *
      * @return the successful result of the task
+     * @throws ExecutionException   if the task fails with an exception
+     * @throws InterruptedException if the current thread is interrupted,
+     *                              which also cancels the running task. Note that on interruption,
+     *                              the running concurrent task must also be interrupted, as this method
+     *                              always blocks for its interruption or completion.
      */
     public T executeBlocking(final Executor executor)
-            throws ExecutionException, InterruptedException {
+        throws ExecutionException, InterruptedException {
 
         final var blockingCallback = new BlockingCompletionCallback<T>();
         final var cancelToken = asyncFun.invoke(executor, blockingCallback);
@@ -112,27 +106,22 @@ public final class Task<T extends @Nullable Object> {
      * Executes the task and blocks until it completes, or the timeout is reached,
      * or the current thread is interrupted.
      *
-     * @param timeout is the maximum time to wait for the task to complete
-     *                before throwing a {@link TimeoutException}
-     *
+     * @param timeout  is the maximum time to wait for the task to complete
+     *                 before throwing a {@link TimeoutException}
      * @param executor is the {@link Executor} that may be used to run
      *                 the task
-     *
-     * @throws ExecutionException if the task fails with an exception
-     *
-     * @throws InterruptedException if the current thread is interrupted.
-     *         The running task is also cancelled, and this method does not
-     *         return until `onCancel` is signaled.
-     *
-     * @throws TimeoutException if the task doesn't complete within the
-     *         specified timeout. The running task is also cancelled on timeout,
-     *         and this method does not returning until `onCancel` is signaled.
-     *
      * @return the successful result of the task
+     * @throws ExecutionException   if the task fails with an exception
+     * @throws InterruptedException if the current thread is interrupted.
+     *                              The running task is also cancelled, and this method does not
+     *                              return until `onCancel` is signaled.
+     * @throws TimeoutException     if the task doesn't complete within the
+     *                              specified timeout. The running task is also cancelled on timeout,
+     *                              and this method does not returning until `onCancel` is signaled.
      */
     public T executeBlockingTimed(
-            final Executor executor,
-            final Duration timeout
+        final Executor executor,
+        final Duration timeout
     ) throws ExecutionException, InterruptedException, TimeoutException {
         final var blockingCallback = new BlockingCompletionCallback<T>();
         final var cancelToken = asyncFun.invoke(executor, blockingCallback);
@@ -144,21 +133,17 @@ public final class Task<T extends @Nullable Object> {
      * uses {@link TaskExecutors#global()} as the executor.
      *
      * @param timeout is the maximum time to wait for the task to complete
-     *
-     * @throws ExecutionException if the task fails with an exception
-     *
-     * @throws InterruptedException if the current thread is interrupted.
-     *         The running task is also cancelled, and this method does not
-     *         return until `onCancel` is signaled.
-     *
-     * @throws TimeoutException if the task doesn't complete within the
-     *         specified timeout. The running task is also cancelled on timeout,
-     *         and this method does not returning until `onCancel` is signaled.
-     *
      * @return the successful result of the task
+     * @throws ExecutionException   if the task fails with an exception
+     * @throws InterruptedException if the current thread is interrupted.
+     *                              The running task is also cancelled, and this method does not
+     *                              return until `onCancel` is signaled.
+     * @throws TimeoutException     if the task doesn't complete within the
+     *                              specified timeout. The running task is also cancelled on timeout,
+     *                              and this method does not returning until `onCancel` is signaled.
      */
     public T executeBlockingTimed(final Duration timeout)
-            throws ExecutionException, InterruptedException, TimeoutException {
+        throws ExecutionException, InterruptedException, TimeoutException {
         return executeBlockingTimed(TaskExecutors.global(), timeout);
     }
 
@@ -182,9 +167,7 @@ public final class Task<T extends @Nullable Object> {
      * @param fun is the function that will trigger the async computation,
      *            injecting a callback that will be used to signal the result,
      *            and an executor that can be used for creating additional threads.
-     *
      * @return a new task that will execute the given builder function upon execution
-     *
      * @see #createAsync(AsyncFun)
      */
     public static <T> Task<T> create(final AsyncFun<? extends T> fun) {
@@ -216,7 +199,6 @@ public final class Task<T extends @Nullable Object> {
      *
      * @param fun is the function that will trigger the async computation
      * @return a new task that will execute the given builder function
-     *
      * @see #create(AsyncFun)
      */
     public static <T> Task<T> createAsync(final AsyncFun<? extends T> fun) {
@@ -282,8 +264,7 @@ public final class Task<T extends @Nullable Object> {
      * @param builder is the {@link DelayedFun} that will create the {@link Future} upon
      *                this task's execution.
      * @return a new task that will complete with the result of the created {@code Future}
-     *        upon execution
-     *
+     * upon execution
      * @see #fromCompletionStage(DelayedFun)
      * @see #fromCancellableFuture(DelayedFun)
      */
@@ -293,7 +274,8 @@ public final class Task<T extends @Nullable Object> {
             try {
                 return f.get();
             } catch (final ExecutionException e) {
-                if (e.getCause() instanceof final RuntimeException re) throw re;
+                if (e.getCause() instanceof RuntimeException)
+                    throw (RuntimeException) e.getCause();
                 throw e;
             } catch (final InterruptedException e) {
                 f.cancel(true);
@@ -303,8 +285,10 @@ public final class Task<T extends @Nullable Object> {
                     // Ignore further interruption signals
                     //noinspection ResultOfMethodCallIgnored
                     Thread.interrupted();
-                    try { f.get(); }
-                    catch (final Exception ignored) {}
+                    try {
+                        f.get();
+                    } catch (final Exception ignored) {
+                    }
                 }
                 throw e;
             }
@@ -321,14 +305,12 @@ public final class Task<T extends @Nullable Object> {
      * Prefer using {@link #fromCancellableFuture(DelayedFun)} for working with
      * {@link CompletionStage} values that can be cancelled.
      *
-     * @see #fromCancellableFuture(DelayedFun)
-     *
      * @param builder is the {@link DelayedFun} that will create the {@link CompletionStage}
      *                value. It's a builder because {@link Task} values are cold values
      *                (lazy, not executed yet).
-     *
      * @return a new task that upon execution will complete with the result of
      * the created {@code CancellableCompletionStage}
+     * @see #fromCancellableFuture(DelayedFun)
      */
     public static <T> Task<T> fromCompletionStage(final DelayedFun<CompletionStage<? extends T>> builder) {
         return fromCancellableFuture(
@@ -350,7 +332,6 @@ public final class Task<T extends @Nullable Object> {
      * @param builder is the {@link DelayedFun} that will create the {@link CancellableFuture}
      *                value. It's a builder because {@link Task} values are cold values
      *                (lazy, not executed yet).
-     *
      * @return a new task that upon execution will complete with the result of
      * the created {@code CancellableCompletionStage}
      */
@@ -361,27 +342,15 @@ public final class Task<T extends @Nullable Object> {
 
 @NullMarked
 final class BlockingCompletionCallback<T extends @Nullable Object>
-        extends AbstractQueuedSynchronizer implements CompletionCallback<T> {
-    
+    extends AbstractQueuedSynchronizer implements CompletionCallback<T> {
+
     private final AtomicBoolean isDone = new AtomicBoolean(false);
-    @Nullable
-    private Outcome<T> outcome = null;
     @Nullable
     private T result = null;
     @Nullable
     private Throwable error = null;
     @Nullable
     private InterruptedException interrupted = null;
-
-    @Override
-    public void onOutcome(Outcome<T> outcome) {
-        if (!isDone.getAndSet(true)) {
-            this.outcome = outcome;
-            releaseShared(1);
-        } else if (outcome instanceof Outcome.Failure<?> failure) {
-            UncaughtExceptionHandler.logOrRethrow(failure.exception());
-        }
-    }
 
     @Override
     public void onSuccess(final T value) {
@@ -427,7 +396,7 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
     }
 
     private T awaitInline(final Cancellable cancelToken, final AwaitFunction await)
-            throws InterruptedException, ExecutionException, TimeoutException {
+        throws InterruptedException, ExecutionException, TimeoutException {
 
         var isCancelled = false;
         TimeoutException timedOut = null;
@@ -438,7 +407,8 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
             } catch (final TimeoutException | InterruptedException e) {
                 if (!isCancelled) {
                     isCancelled = true;
-                    if (e instanceof final TimeoutException te) timedOut = te;
+                    if (e instanceof TimeoutException)
+                        timedOut = (TimeoutException) e;
                     cancelToken.cancel();
                 }
             }
@@ -450,12 +420,6 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
             Thread.interrupted();
         }
         if (timedOut != null) throw timedOut;
-        if (outcome != null)
-            try {
-                outcome.getOrThrow();
-            } catch (TaskCancellationException e) {
-                throw interrupted != null ? interrupted : new InterruptedException();
-            }
         if (interrupted != null) throw interrupted;
         if (error != null) throw new ExecutionException(error);
         return result;
@@ -470,7 +434,7 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
     }
 
     public T await(final Cancellable cancelToken, final Duration timeout)
-            throws ExecutionException, InterruptedException, TimeoutException {
+        throws ExecutionException, InterruptedException, TimeoutException {
 
         return awaitInline(cancelToken, isCancelled -> {
             if (!isCancelled) {
@@ -503,7 +467,7 @@ class TaskFromCancellableFuture<T extends @Nullable Object> implements AsyncFun<
                 final var cancellableFuture = builder.invoke();
                 isUserError = false;
                 CompletableFuture<? extends T> future = getCompletableFuture(cancellableFuture, callback);
-                Cancellable cancellable = cancellableFuture.cancellable();
+                Cancellable cancellable = cancellableFuture.getCancellable();
                 cancel.set(() -> {
                     try {
                         cancellable.cancel();
@@ -521,10 +485,10 @@ class TaskFromCancellableFuture<T extends @Nullable Object> implements AsyncFun<
     }
 
     private static <T> CompletableFuture<? extends T> getCompletableFuture(
-            CancellableFuture<? extends T> cancellableFuture, 
-            CompletionCallback<? super T> callback
+        CancellableFuture<? extends T> cancellableFuture,
+        CompletionCallback<? super T> callback
     ) {
-        CompletableFuture<? extends T> future = cancellableFuture.future();
+        CompletableFuture<? extends T> future = cancellableFuture.getFuture();
         future.whenComplete((value, error) -> {
             if (error instanceof InterruptedException || error instanceof TaskCancellationException) {
                 callback.onCancellation();

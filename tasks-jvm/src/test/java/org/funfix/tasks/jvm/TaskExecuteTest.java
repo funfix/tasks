@@ -22,9 +22,24 @@ public class TaskExecuteTest {
             new AtomicReference<@Nullable Outcome<String>>(null);
 
         final var task = Task.fromBlockingIO(() -> "Hello!");
-        task.executeAsync((CompletionCallback.OutcomeBased<String>) outcome -> {
-            outcomeRef.set(outcome);
-            latch.countDown();
+        task.executeAsync(new CompletionCallback<>() {
+            @Override
+            public void onSuccess(String value) {
+                outcomeRef.set(Outcome.success(value));
+                latch.countDown();
+            }
+
+            @Override
+            public void onFailure(Throwable e) {
+                outcomeRef.set(Outcome.failure(e));
+                latch.countDown();
+            }
+
+            @Override
+            public void onCancellation() {
+                outcomeRef.set(Outcome.cancellation());
+                latch.countDown();
+            }
         });
 
         TimedAwait.latchAndExpectCompletion(latch, "latch");
@@ -41,10 +56,27 @@ public class TaskExecuteTest {
         final var expectedError =
             new RuntimeException("Error");
 
-        final var task = Task.<String>fromBlockingIO(() -> { throw expectedError; });
-        task.executeAsync((CompletionCallback.OutcomeBased<String>) outcome -> {
-            outcomeRef.set(outcome);
-            latch.countDown();
+        final var task = Task.<String>fromBlockingIO(() -> {
+            throw expectedError;
+        });
+        task.executeAsync(new CompletionCallback<>() {
+            @Override
+            public void onSuccess(String value) {
+                outcomeRef.set(Outcome.success(value));
+                latch.countDown();
+            }
+
+            @Override
+            public void onFailure(Throwable e) {
+                outcomeRef.set(Outcome.failure(e));
+                latch.countDown();
+            }
+
+            @Override
+            public void onCancellation() {
+                outcomeRef.set(Outcome.cancellation());
+                latch.countDown();
+            }
         });
 
         TimedAwait.latchAndExpectCompletion(latch, "latch");
@@ -71,10 +103,25 @@ public class TaskExecuteTest {
             return "Nooo";
         });
         final var token = task.executeAsync(
-                (CompletionCallback.OutcomeBased<String>) outcome -> {
-                    outcomeRef.set(outcome);
+            new CompletionCallback<>() {
+                @Override
+                public void onSuccess(String value) {
+                    outcomeRef.set(Outcome.success(value));
                     latch.countDown();
-                });
+                }
+
+                @Override
+                public void onFailure(Throwable e) {
+                    outcomeRef.set(Outcome.failure(e));
+                    latch.countDown();
+                }
+
+                @Override
+                public void onCancellation() {
+                    outcomeRef.set(Outcome.cancellation());
+                    latch.countDown();
+                }
+            });
 
         token.cancel();
         TimedAwait.latchAndExpectCompletion(latch, "latch");
@@ -82,7 +129,7 @@ public class TaskExecuteTest {
     }
 
     @Test
-    void executeBlockingStackedIsCancellable() throws InterruptedException {
+    void executeBlockingStackedIsCancellable() throws InterruptedException, ExecutionException, Fiber.NotCompletedException {
         final var started = new CountDownLatch(1);
         final var latch = new CountDownLatch(1);
         final var interruptedHits = new AtomicInteger(0);
@@ -99,7 +146,6 @@ public class TaskExecuteTest {
                 }
             });
             try {
-                //noinspection DataFlowIssue
                 return innerTask.executeBlocking();
             } catch (final InterruptedException e) {
                 interruptedHits.incrementAndGet();
@@ -113,7 +159,11 @@ public class TaskExecuteTest {
         fiber.cancel();
         fiber.joinBlocking();
 
-        assertInstanceOf(Outcome.Cancellation.class, fiber.outcome());
+        try {
+            fiber.getResultOrThrow();
+            fail("Should have thrown a CancellationException");
+        } catch (TaskCancellationException ignored) {
+        }
         assertEquals(2, interruptedHits.get(), "interruptedHits.get");
     }
 }

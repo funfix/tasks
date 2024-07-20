@@ -1,6 +1,5 @@
 plugins {
-    java
-    `maven-publish`
+    `java-library`
     jacoco
 }
 
@@ -9,8 +8,11 @@ repositories {
 }
 
 dependencies {
+    api(libs.jspecify)
     compileOnly(libs.jetbrains.annotations)
-    implementation(libs.jspecify)
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
+
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -26,8 +28,8 @@ tasks.jacocoTestReport {
 }
 
 tasks.withType<JavaCompile> {
-    sourceCompatibility = JavaVersion.VERSION_17.majorVersion
-    targetCompatibility = JavaVersion.VERSION_17.majorVersion
+    sourceCompatibility = JavaVersion.VERSION_11.majorVersion
+    targetCompatibility = JavaVersion.VERSION_11.majorVersion
 }
 
 tasks.register<Test>("testsOn21") {
@@ -37,46 +39,9 @@ tasks.register<Test>("testsOn21") {
     }
 }
 
-tasks.register<Test>("testsOn17") {
+tasks.register<Test>("testsOn11") {
     useJUnitPlatform()
     javaLauncher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
-
-publishing {
-    publications {
-        create<MavenPublication>("gpr") {
-            pom {
-                name = "Tasks (core, JVM)"
-                description = "Cross-language utilities for working with concurrent tasks"
-                url = "https://github.com/funfix/tasks"
-                licenses {
-                    license {
-                        name = "The Apache License, Version 2.0"
-                        url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
-                    }
-                }
-
-                developers {
-                    developer {
-                        id = "alexandru"
-                        name = "Alexandru Nedelcu"
-                        email = "noreply@alexn.org"
-                    }
-                }
-
-                scm {
-                    connection = "scm:git:git://github.com/funfix/tasks.git"
-                    developerConnection = "scm:git:ssh://github.com/funfix/tasks.git"
-                    url = "https://github.com/funfix/tasks"
-                }
-
-                issueManagement {
-                    system = "GitHub"
-                    url = "https://github.com/funfix/tasks/issues"
-                }
-            }
-        }
+        languageVersion = JavaLanguageVersion.of(11)
     }
 }

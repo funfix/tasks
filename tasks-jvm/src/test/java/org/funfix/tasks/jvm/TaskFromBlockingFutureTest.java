@@ -10,8 +10,7 @@ import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @NullMarked
@@ -93,7 +92,7 @@ public class TaskFromBlockingFutureTest {
 
     @SuppressWarnings("ReturnOfNull")
     @Test
-    void builderCanBeCancelled() throws InterruptedException, ExecutionException, TimeoutException {
+    void builderCanBeCancelled() throws InterruptedException, ExecutionException, TimeoutException, Fiber.NotCompletedException {
         Objects.requireNonNull(es);
 
         final var wasStarted = new CountDownLatch(1);
@@ -117,14 +116,15 @@ public class TaskFromBlockingFutureTest {
         fiber.joinBlockingTimed(TimedAwait.TIMEOUT.toMillis());
 
         try {
-            Objects.requireNonNull(fiber.outcome()).getOrThrow();
+            fiber.getResultOrThrow();
+            fail("Should have thrown a TaskCancellationException");
         } catch (final TaskCancellationException ignored) {
         }
         TimedAwait.latchAndExpectCompletion(latch, "latch");
     }
 
     @Test
-    void futureCanBeCancelled() throws InterruptedException, ExecutionException, TimeoutException {
+    void futureCanBeCancelled() throws InterruptedException, ExecutionException, TimeoutException, Fiber.NotCompletedException {
         Objects.requireNonNull(es);
 
         final var latch = new CountDownLatch(1);
@@ -145,7 +145,8 @@ public class TaskFromBlockingFutureTest {
         fiber.joinBlockingTimed(TimedAwait.TIMEOUT.toMillis());
 
         try {
-            Objects.requireNonNull(fiber.outcome()).getOrThrow();
+            fiber.getResultOrThrow();
+            fail("Should have thrown a TaskCancellationException");
         } catch (final TaskCancellationException ignored) {
         }
         TimedAwait.latchAndExpectCompletion(latch, "latch");

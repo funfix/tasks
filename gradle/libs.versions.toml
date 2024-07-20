@@ -7,6 +7,7 @@ kotlinx-coroutines = "1.9.0-RC"
 jetbrains-annotations = "24.1.0"
 junit-jupiter = "5.10.3"
 jspecify = "1.0.0"
+lombok = "1.18.34"
 
 [libraries]
 # Plugins specified in buildSrc/build.gradle.kts
@@ -22,3 +23,4 @@ junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.re
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
