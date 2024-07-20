@@ -175,7 +175,7 @@ abstract class BaseFiberTest {
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = {false};
             final var fiber = startFiber(Task.fromBlockingIO(() -> wasExecuted[0] = true));
-            fiber.joinBlockingTimed(TimedAwait.TIMEOUT.toMillis());
+            fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
             assertTrue(wasExecuted[0], "wasExecuted");
         }
     }

@@ -17,6 +17,6 @@ import java.util.concurrent.CompletableFuture;
 @NullMarked
 @Data
 public class CancellableFuture<T extends @Nullable Object> {
-    public final CompletableFuture<? extends T> future;
-    public final Cancellable cancellable;
+    final CompletableFuture<? extends T> future;
+    final Cancellable cancellable;
 }

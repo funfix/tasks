@@ -103,7 +103,6 @@ public class TaskFromBlockingFutureTest {
                     wasStarted.countDown();
                     try {
                         Thread.sleep(10000);
-                        //noinspection DataFlowIssue
                         return null;
                     } catch (final InterruptedException e) {
                         latch.countDown();
@@ -113,7 +112,7 @@ public class TaskFromBlockingFutureTest {
 
         TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");
         fiber.cancel();
-        fiber.joinBlockingTimed(TimedAwait.TIMEOUT.toMillis());
+        fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
 
         try {
             fiber.getResultOrThrow();
@@ -142,7 +141,7 @@ public class TaskFromBlockingFutureTest {
 
         wasStarted.await();
         fiber.cancel();
-        fiber.joinBlockingTimed(TimedAwait.TIMEOUT.toMillis());
+        fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
 
         try {
             fiber.getResultOrThrow();

@@ -17,6 +17,20 @@ import java.util.stream.Stream;
 
 @NullMarked
 public interface Fiber<T extends @Nullable Object> extends Cancellable {
+    /**
+     * Returns the result of the completed fiber.
+     * <p>
+     * This method does not block for the result. In case the fiber is not
+     * completed, it throws {@link NotCompletedException}. Therefore, by contract,
+     * it should be called only after the fiber was "joined".
+     *
+     * @return the result of the concurrent task, if successful.
+     * @throws ExecutionException        if the task failed with an exception.
+     * @throws TaskCancellationException if the task was cancelled concurrently,
+     *                                   thus being completed via cancellation.
+     * @throws NotCompletedException     if the fiber is not completed yet.
+     */
+    @NonBlocking
     T getResultOrThrow() throws ExecutionException, TaskCancellationException, NotCompletedException;
 
     /**
@@ -34,6 +48,35 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
     Cancellable joinAsync(Runnable onComplete);
 
     /**
+     * Waits until the fiber completes, and then runs the given callback
+     * to signal its completion.
+     * <p>
+     * This method can be executed as many times as necessary, with the
+     * result of the {@code Fiber} being memoized. It can also be executed
+     * after the fiber has completed, in which case the callback will be
+     * executed immediately.
+     *
+     * @param callback will be called when the fiber completes
+     * @return a {@link Cancellable} that can be used to unregister the callback,
+     * in case the caller is no longer interested in the result.
+     */
+    default Cancellable awaitAsync(CompletionCallback<T> callback) {
+        return joinAsync(() -> {
+            try {
+                final var result = getResultOrThrow();
+                callback.onSuccess(result);
+            } catch (final ExecutionException e) {
+                callback.onFailure(e.getCause());
+            } catch (final TaskCancellationException e) {
+                callback.onCancellation();
+            } catch (final Throwable e) {
+                UncaughtExceptionHandler.rethrowIfFatal(e);
+                callback.onFailure(e);
+            }
+        });
+    }
+
+    /**
      * Blocks the current thread until the fiber completes, or until
      * the timeout is reached.
      * <p>
@@ -47,13 +90,13 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
      *                              completes.
      */
     @Blocking
-    default void joinBlockingTimed(final long timeoutMillis)
+    default void joinBlockingTimed(final Duration timeout)
         throws InterruptedException, TimeoutException {
 
         final var latch = new AwaitSignal();
         final var token = joinAsync(latch::signal);
         try {
-            latch.await(timeoutMillis);
+            latch.await(timeout.toMillis());
         } catch (final InterruptedException | TimeoutException e) {
             token.cancel();
             throw e;
@@ -61,13 +104,29 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
     }
 
     /**
-     * Overload of {@link #joinBlockingTimed(long)} that takes a standard Java
-     * {@link Duration} as the timeout.
+     * Blocks the current thread until the fiber completes, then returns
+     * the result of the fiber.
+     *
+     * @param timeout is the maximum time to wait for the fiber to complete,
+     *                before throwing a {@link TimeoutException}.
+     * @return the result of the fiber, if successful.
+     * @throws InterruptedException      if the current thread is interrupted, which
+     *                                   will just stop waiting for the fiber, but will not
+     *                                   cancel the running task.
+     * @throws TimeoutException          if the timeout is reached before the fiber completes.
+     * @throws TaskCancellationException if the fiber was cancelled concurrently.
+     * @throws ExecutionException        if the task failed with an exception.
      */
     @Blocking
-    default void joinBlockingTimed(final Duration timeout)
-        throws InterruptedException, TimeoutException {
-        joinBlockingTimed(timeout.toMillis());
+    default T awaitBlockingTimed(final Duration timeout)
+        throws InterruptedException, TimeoutException, TaskCancellationException, ExecutionException {
+
+        joinBlockingTimed(timeout);
+        try {
+            return getResultOrThrow();
+        } catch (NotCompletedException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /**
@@ -92,6 +151,36 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
     }
 
     /**
+     * Blocks the current thread until the fiber completes, then returns the
+     * result of the fiber.
+     *
+     * @throws InterruptedException      if the current thread is interrupted, which
+     *                                   will just stop waiting for the fiber, but will not
+     *                                   cancel the running task.
+     * @throws TaskCancellationException if the fiber was cancelled concurrently.
+     * @throws ExecutionException        if the task failed with an exception.
+     */
+    @Blocking
+    default T awaitBlocking() throws InterruptedException, TaskCancellationException, ExecutionException {
+        joinBlocking();
+        try {
+            return getResultOrThrow();
+        } catch (NotCompletedException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * Cancels the fiber, which will eventually stop the running fiber (if
+     * it's still running), completing it via "cancellation".
+     * <p>
+     * This manifests either in a {@link TaskCancellationException} being
+     * thrown by {@link #getResultOrThrow()}, or in the
+     * {@link CompletionCallback#onCancellation()} callback being triggered.
+     */
+    @Override void cancel();
+
+    /**
      * Returns a {@link CancellableFuture} that can be used to join the fiber
      * asynchronously, or to cancel it.
      */
@@ -106,6 +195,23 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
             }
         };
         return new CancellableFuture<>(future, cRef);
+    }
+
+    default CancellableFuture<T> awaitAsync() {
+        final var f = joinAsync();
+        return new CancellableFuture<>(
+            f.future.thenApply(v -> {
+                try {
+                    return getResultOrThrow();
+                } catch (final ExecutionException e) {
+                    throw new CompletionException(e.getCause());
+                } catch (final Throwable e) {
+                    UncaughtExceptionHandler.rethrowIfFatal(e);
+                    throw new CompletionException(e);
+                }
+            }),
+            f.getCancellable()
+        );
     }
 
     /**
