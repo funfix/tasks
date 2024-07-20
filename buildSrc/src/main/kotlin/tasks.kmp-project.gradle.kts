@@ -141,20 +141,20 @@ kotlin {
     }
 
     sourceSets {
-        val commonMain by getting {
-            compilerOptions {
-                explicitApi = ExplicitApiMode.Strict
-                allWarningsAsErrors = true
-            }
-        }
-
-        val jsMain by getting {
-            compilerOptions {
-                explicitApi = ExplicitApiMode.Strict
-                allWarningsAsErrors = true
-            }
-        }
-
+//        val commonMain by getting {
+//            compilerOptions {
+//                explicitApi = ExplicitApiMode.Strict
+//                allWarningsAsErrors = true
+//            }
+//        }
+//
+//        val jsMain by getting {
+//            compilerOptions {
+//                explicitApi = ExplicitApiMode.Strict
+//                allWarningsAsErrors = true
+//            }
+//        }
+//
         val jvmMain by getting {
             compilerOptions {
                 explicitApi = ExplicitApiMode.Strict

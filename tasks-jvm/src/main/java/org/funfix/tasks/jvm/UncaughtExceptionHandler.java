@@ -3,7 +3,7 @@ package org.funfix.tasks.jvm;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-final class UncaughtExceptionHandler {
+public final class UncaughtExceptionHandler {
     public static void rethrowIfFatal(final Throwable e) {
         if (e instanceof StackOverflowError) {
             // Stack-overflows should be reported as-is, instead of crashing
