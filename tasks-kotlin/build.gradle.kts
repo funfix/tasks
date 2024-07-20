@@ -2,14 +2,10 @@ plugins {
     id("tasks.kmp-project")
 }
 
-publishing {
-    publications {
-        named<MavenPublication>("kotlinMultiplatform") {
-            pom {
-                name = "Tasks-Kotlin"
-                description = "Integration with Kotlin's Coroutines"
-            }
-        }
+mavenPublishing {
+    pom {
+        name = "Tasks / Kotlin"
+        description = "Integration with Kotlin's Coroutines"
     }
 }
 

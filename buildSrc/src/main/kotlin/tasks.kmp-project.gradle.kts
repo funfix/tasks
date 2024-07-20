@@ -1,5 +1,6 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
+import com.vanniktech.maven.publish.SonatypeHost
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.ExplicitApiMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -9,8 +10,9 @@ plugins {
     id("org.jetbrains.kotlin.multiplatform")
     id("org.jetbrains.kotlinx.kover")
     id("org.jetbrains.dokka")
-    id("maven-publish")
-    id("signing")
+//    id("maven-publish")
+//    id("signing")
+    id("com.vanniktech.maven.publish")
 }
 
 repositories {
@@ -27,53 +29,88 @@ version = projectVersion.let { version ->
         version
 }
 
-publishing {
-    repositories {
-        mavenLocal()
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
 
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/funfix/tasks")
-            credentials {
-                username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
-                password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+    pom {
+        inceptionYear.set("2024")
+        url = "https://github.com/funfix/tasks"
+        licenses {
+            license {
+                name = "The Apache License, Version 2.0"
+                url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
             }
         }
-    }
 
-    publications {
-        named<MavenPublication>("kotlinMultiplatform") {
-            pom {
-                url = "https://github.com/funfix/tasks"
-                licenses {
-                    license {
-                        name = "The Apache License, Version 2.0"
-                        url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
-                    }
-                }
-
-                developers {
-                    developer {
-                        id = "alexandru"
-                        name = "Alexandru Nedelcu"
-                        email = "noreply@alexn.org"
-                    }
-                }
-
-                scm {
-                    connection = "scm:git:git://github.com/funfix/tasks.git"
-                    developerConnection = "scm:git:ssh://github.com/funfix/tasks.git"
-                    url = "https://github.com/funfix/tasks"
-                }
-
-                issueManagement {
-                    system = "GitHub"
-                    url = "https://github.com/funfix/tasks/issues"
-                }
+        developers {
+            developer {
+                id = "alexandru"
+                name = "Alexandru Nedelcu"
+                email = "noreply@alexn.org"
             }
+        }
+
+        scm {
+            connection = "scm:git:git://github.com/funfix/tasks.git"
+            developerConnection = "scm:git:ssh://github.com/funfix/tasks.git"
+            url = "https://github.com/funfix/tasks"
+        }
+
+        issueManagement {
+            system = "GitHub"
+            url = "https://github.com/funfix/tasks/issues"
         }
     }
 }
+
+//publishing {
+//    repositories {
+//        mavenLocal()
+//
+//        maven {
+//            name = "GitHubPackages"
+//            url = uri("https://maven.pkg.github.com/funfix/tasks")
+//            credentials {
+//                username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
+//                password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+//            }
+//        }
+//    }
+//
+//    publications {
+//        named<MavenPublication>("kotlinMultiplatform") {
+//            pom {
+//                url = "https://github.com/funfix/tasks"
+//                licenses {
+//                    license {
+//                        name = "The Apache License, Version 2.0"
+//                        url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+//                    }
+//                }
+//
+//                developers {
+//                    developer {
+//                        id = "alexandru"
+//                        name = "Alexandru Nedelcu"
+//                        email = "noreply@alexn.org"
+//                    }
+//                }
+//
+//                scm {
+//                    connection = "scm:git:git://github.com/funfix/tasks.git"
+//                    developerConnection = "scm:git:ssh://github.com/funfix/tasks.git"
+//                    url = "https://github.com/funfix/tasks"
+//                }
+//
+//                issueManagement {
+//                    system = "GitHub"
+//                    url = "https://github.com/funfix/tasks/issues"
+//                }
+//            }
+//        }
+//    }
+//}
 
 val dokkaOutputDir = layout.buildDirectory.dir("dokka").get().asFile
 

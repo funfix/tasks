@@ -4,14 +4,10 @@ plugins {
     id("tasks.kmp-project")
 }
 
-publishing {
-    publications {
-        named<MavenPublication>("kotlinMultiplatform") {
-            pom {
-                name = "Tasks Core"
-                description = "Cross-language utilities for working with concurrent tasks"
-            }
-        }
+mavenPublishing {
+    pom {
+        name = "Tasks / Core"
+        description = "Cross-language utilities for working with concurrent tasks"
     }
 }
 
