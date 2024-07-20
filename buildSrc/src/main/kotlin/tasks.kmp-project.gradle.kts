@@ -93,8 +93,8 @@ val javadocJar = tasks.create<Jar>("javadocJar") {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 kotlin {
@@ -113,15 +113,15 @@ kotlin {
     }
 
     tasks.withType<JavaCompile> {
-        sourceCompatibility = "11"
-        targetCompatibility = "11"
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
     }
 
     tasks.withType<KotlinCompile> {
         compilerOptions {
             // explicitApiMode = ExplicitApiMode.Strict
             // allWarningsAsErrors = true
-            jvmTarget.set(JvmTarget.JVM_11)
+            jvmTarget.set(JvmTarget.JVM_17)
             freeCompilerArgs.add("-Xjvm-default=all")
         }
     }
@@ -133,10 +133,10 @@ kotlin {
             }
     }
 
-    tasks.register<Test>("testsOn11") {
+    tasks.register<Test>("testsOn17") {
         javaLauncher =
             javaToolchains.launcherFor {
-                languageVersion = JavaLanguageVersion.of(11)
+                languageVersion = JavaLanguageVersion.of(17)
             }
     }
 
