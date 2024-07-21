@@ -1,9 +1,12 @@
 package org.funfix.tasks.jvm;
 
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NullMarked;
+
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 /**
  * This is a wrapper around a [CompletableFuture] with a
@@ -15,8 +18,31 @@ import java.util.concurrent.CompletableFuture;
  * can do the job.
  */
 @NullMarked
-@Data
+@ToString
+@EqualsAndHashCode(callSuper = false)
 public class CancellableFuture<T extends @Nullable Object> {
-    final CompletableFuture<? extends T> future;
-    final Cancellable cancellable;
+    private final CompletableFuture<? extends T> future;
+    private final Cancellable cancellable;
+
+    public CancellableFuture(
+        CompletableFuture<? extends T> future,
+        Cancellable cancellable
+    ) {
+        this.future = future;
+        this.cancellable = cancellable;
+    }
+
+    public CompletableFuture<? extends T> future() {
+        return future;
+    }
+
+    public Cancellable cancellable() {
+        return cancellable;
+    }
+
+    public <U> CancellableFuture<U> transform(
+        Function<? super CompletableFuture<? extends T>, ? extends CompletableFuture<? extends U>> fn
+    ) {
+        return new CancellableFuture<>(fn.apply(future), cancellable);
+    }
 }

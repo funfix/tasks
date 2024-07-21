@@ -195,7 +195,7 @@ abstract class BaseFiberTest {
         for (int i = 0; i < repeatCount; i++) {
             final boolean[] wasExecuted = {false};
             final var fiber = startFiber(() -> wasExecuted[0] = true);
-            TimedAwait.future(fiber.joinAsync().getFuture());
+            TimedAwait.future(fiber.joinAsync().future());
             assertTrue(wasExecuted[0], "wasExecuted");
         }
     }
@@ -265,9 +265,9 @@ abstract class BaseFiberTest {
             fiber.joinAsync(onComplete::countDown);
             fiber.joinAsync(onComplete::countDown);
 
-            token.getCancellable().cancel();
+            token.cancellable().cancel();
             try {
-                token.getFuture().get(TimedAwait.TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                token.future().get(TimedAwait.TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
                 fail("Should have been interrupted");
             } catch (java.util.concurrent.CancellationException ignored) {
             }

@@ -35,15 +35,22 @@ public interface Cancellable {
     void cancel();
 
     /**
-     * A {@code Cancellable} instance that does nothing.
+     * Returns an empty token that does nothing when cancelled.
      */
-    Cancellable EMPTY = () -> { };
+    static Cancellable getEmpty() {
+        return CancellableUtils.EMPTY;
+    }
+}
+
+@NullMarked
+final class CancellableUtils {
+    static Cancellable EMPTY = () -> {};
 }
 
 @NullMarked
 final class MutableCancellable implements Cancellable {
     private final AtomicReference<State> ref =
-            new AtomicReference<>(new State.Active(Cancellable.EMPTY, 0));
+            new AtomicReference<>(new State.Active(Cancellable.getEmpty(), 0));
 
     @Override
     public void cancel() {
@@ -53,7 +60,7 @@ final class MutableCancellable implements Cancellable {
         }
     }
 
-    public void set(Cancellable token) {
+    public void register(Cancellable token) {
         Objects.requireNonNull(token, "token");
         while (true) {
             final var current = ref.get();
@@ -70,20 +77,34 @@ final class MutableCancellable implements Cancellable {
         }
     }
 
-    public void setOrdered(Cancellable token, int order) {
-        Objects.requireNonNull(token, "token");
+    public <E extends Exception> void registerOrdered(
+        final DelayedCheckedFun<Cancellable, E> thunk
+    ) throws E {
+        Objects.requireNonNull(thunk, "thunk");
+        Cancellable newToken = null;
+        var hasOrder = false;
+        var order = 0;
+
         while (true) {
             final var current = ref.get();
             if (current instanceof State.Active) {
                 final var active = (State.Active) current;
-                if (active.order < order) {
-                    final var update = new State.Active(token, order);
-                    if (ref.compareAndSet(current, update)) { return; }
-                } else {
+                if (!hasOrder) {
+                    order = active.order;
+                    hasOrder = true;
+                } else if (active.order != order) {
+                    // Was updated concurrently, someone else won the race
                     return;
                 }
+                if (newToken == null) {
+                    newToken = thunk.invoke();
+                }
+                final var update = new State.Active(newToken, order + 1);
+                if (ref.compareAndSet(current, update)) { return; }
             } else if (current instanceof State.Cancelled) {
-                token.cancel();
+                if (newToken != null) {
+                    newToken.cancel();
+                }
                 return;
             } else {
                 throw new IllegalStateException("Invalid state: " + current);

@@ -1,4 +1,4 @@
-@file:JvmName("Extensions")
+@file:JvmName("ExtensionsKt")
 
 package org.funfix.tasks.kotlin
 

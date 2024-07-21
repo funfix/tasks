@@ -4,15 +4,13 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
-import org.funfix.tasks.jvm.Cancellable
-import org.funfix.tasks.jvm.CompletionCallback
-import org.funfix.tasks.jvm.TaskCancellationException
-import org.funfix.tasks.jvm.UncaughtExceptionHandler
+import java.util.concurrent.CompletionStage
 import java.util.concurrent.Executor
+import java.util.concurrent.Future
 import kotlin.coroutines.cancellation.CancellationException
 
 @JvmInline
-public value class Task<out T>(
+public value class Task<out T> internal constructor(
     private val self: org.funfix.tasks.jvm.Task<out T>
 ) {
     public fun asJava(): JvmTask<out T> = self
@@ -21,8 +19,23 @@ public value class Task<out T>(
         self.executeCoroutine(executor)
 
     public companion object {
-        public fun <T> create(f: (Executor, CompletionCallback<in T>) -> Cancellable): Task<T> =
+        public fun <T> create(f: (Executor, Continuation<in T>) -> Unit): Task<T> =
             Task(org.funfix.tasks.jvm.Task.create(f))
+
+        public fun <T> createAsync(f: (Executor, CompletionCallback<in T>) -> Unit): Task<T> =
+            Task(org.funfix.tasks.jvm.Task.createAsync(f))
+
+        public fun <T> fromBlockingIO(block: () -> T): Task<T> =
+            Task(org.funfix.tasks.jvm.Task.fromBlockingIO(block))
+
+        public fun <T> fromBlockingFuture(block: () -> Future<out T>): Task<T> =
+            Task(org.funfix.tasks.jvm.Task.fromBlockingFuture(block))
+
+        public fun <T> fromCompletionStage(block: () -> CompletionStage<out T>): Task<T> =
+            Task(org.funfix.tasks.jvm.Task.fromCompletionStage(block))
+
+        public fun <T> fromCancellableFuture(block: () -> CancellableFuture<out T>): Task<T> =
+            Task(org.funfix.tasks.jvm.Task.fromCancellableFuture(block))
 
         /**
          * Converts a suspended function into a [Task].
