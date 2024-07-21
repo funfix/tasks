@@ -8,7 +8,7 @@ public interface Continuation<T extends @Nullable Object>
     extends CompletionCallback<T> {
 
     void registerCancellable(Cancellable cancellable);
-    <E extends Exception> void registerDelayedCancellable(DelayedCheckedFun<Cancellable, E> thunk) throws E;
+    CancellableForwardRef registerForwardCancellable();
 }
 
 @NullMarked
@@ -29,8 +29,8 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
-    public <E extends Exception> void registerDelayedCancellable(DelayedCheckedFun<Cancellable, E> thunk) throws E {
-        this.cancellable.registerOrdered(thunk);
+    public CancellableForwardRef registerForwardCancellable() {
+        return cancellable.newCancellableRef();
     }
 
     @Override

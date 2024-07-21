@@ -60,6 +60,22 @@ final class MutableCancellable implements Cancellable {
         }
     }
 
+    public CancellableForwardRef newCancellableRef() {
+        final var current = ref.get();
+        if (current instanceof State.Cancelled) {
+            return Cancellable::cancel;
+        } else if (current instanceof State.Active) {
+            final var active = (State.Active) current;
+            return cancellable -> registerOrdered(
+                active.order,
+                cancellable,
+                active
+            );
+        } else {
+            throw new IllegalStateException("Invalid state: " + current);
+        }
+    }
+
     public void register(Cancellable token) {
         Objects.requireNonNull(token, "token");
         while (true) {
@@ -77,34 +93,23 @@ final class MutableCancellable implements Cancellable {
         }
     }
 
-    public <E extends Exception> void registerOrdered(
-        final DelayedCheckedFun<Cancellable, E> thunk
-    ) throws E {
-        Objects.requireNonNull(thunk, "thunk");
-        Cancellable newToken = null;
-        var hasOrder = false;
-        var order = 0;
-
+    private <E extends Exception> void registerOrdered(
+        final long order,
+        final Cancellable newToken,
+        State current
+    ) {
         while (true) {
-            final var current = ref.get();
             if (current instanceof State.Active) {
+                // Double-check ordering
                 final var active = (State.Active) current;
-                if (!hasOrder) {
-                    order = active.order;
-                    hasOrder = true;
-                } else if (active.order != order) {
-                    // Was updated concurrently, someone else won the race
-                    return;
-                }
-                if (newToken == null) {
-                    newToken = thunk.invoke();
-                }
+                if (active.order != order) { return; }
+                // Try to update
                 final var update = new State.Active(newToken, order + 1);
                 if (ref.compareAndSet(current, update)) { return; }
+                // Retry
+                current = ref.get();
             } else if (current instanceof State.Cancelled) {
-                if (newToken != null) {
-                    newToken.cancel();
-                }
+                newToken.cancel();
                 return;
             } else {
                 throw new IllegalStateException("Invalid state: " + current);
@@ -117,7 +122,7 @@ final class MutableCancellable implements Cancellable {
         @EqualsAndHashCode(callSuper = false)
         static final class Active extends State {
             private final Cancellable token;
-            private final int order;
+            private final long order;
         }
 
         @Data

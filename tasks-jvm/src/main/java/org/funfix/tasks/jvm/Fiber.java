@@ -271,15 +271,17 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
 
     final Continuation<? super T> continuation = new Continuation<>() {
         @Override
-        public <E extends Exception> void registerDelayedCancellable(DelayedCheckedFun<Cancellable, E> thunk)
-            throws E {
-
+        public CancellableForwardRef registerForwardCancellable() {
             final var current = stateRef.get();
-            if (current instanceof State.Active) {
-                final var active = (State.Active<T>) current;
-                active.cancellable.registerOrdered(thunk);
+            if (current instanceof State.Completed) {
+                return (cancellable) -> {};
             } else if (current instanceof State.Cancelled) {
-                thunk.invoke().cancel();
+                return Cancellable::cancel;
+            } else if (current instanceof State.Active) {
+                final var active = (State.Active<T>) current;
+                return active.cancellable.newCancellableRef();
+            } else {
+                throw new IllegalStateException("Invalid state: " + current);
             }
         }
 

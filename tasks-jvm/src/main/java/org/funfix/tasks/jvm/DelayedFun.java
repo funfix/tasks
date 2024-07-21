@@ -11,8 +11,6 @@ import org.jspecify.annotations.Nullable;
  */
 @NullMarked
 @FunctionalInterface
-public interface DelayedFun<T extends @Nullable Object>
-    extends DelayedCheckedFun<T, Exception> {
-
+public interface DelayedFun<T extends @Nullable Object> {
     T invoke() throws Exception;
 }

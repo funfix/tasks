@@ -460,20 +460,20 @@ class TaskFromCancellableFuture<T extends @Nullable Object> implements AsyncFun<
     public void invoke(Executor executor, Continuation<? super T> continuation) {
         executor.execute(() -> {
             try {
-                continuation.registerDelayedCancellable(() -> {
-                    final var cancellableFuture =
-                        Objects.requireNonNull(builder.invoke());
-                    final CompletableFuture<? extends T> future =
-                        getCompletableFuture(cancellableFuture, continuation);
-                    final Cancellable cancellable =
-                        cancellableFuture.cancellable();
-                    return () -> {
-                        try {
-                            cancellable.cancel();
-                        } finally {
-                            future.cancel(true);
-                        }
-                    };
+                final var cancellableRef =
+                    continuation.registerForwardCancellable();
+                final var cancellableFuture =
+                    Objects.requireNonNull(builder.invoke());
+                final CompletableFuture<? extends T> future =
+                    getCompletableFuture(cancellableFuture, continuation);
+                final Cancellable cancellable =
+                    cancellableFuture.cancellable();
+                cancellableRef.set(() -> {
+                    try {
+                        cancellable.cancel();
+                    } finally {
+                        future.cancel(true);
+                    }
                 });
             } catch (Throwable e) {
                 UncaughtExceptionHandler.rethrowIfFatal(e);
