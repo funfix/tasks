@@ -9,6 +9,12 @@ public typealias CancellableFuture<T> = org.funfix.tasks.jvm.CancellableFuture<o
 
 public typealias CompletionCallback<T> = org.funfix.tasks.jvm.CompletionCallback<T>
 
-public typealias TaskCancellationException = org.funfix.tasks.jvm.TaskCancellationException
+public actual typealias TaskCancellationException = org.funfix.tasks.jvm.TaskCancellationException
 
 public typealias UncaughtExceptionHandler = org.funfix.tasks.jvm.UncaughtExceptionHandler
+
+public actual typealias Runnable = java.lang.Runnable
+
+public actual typealias Executor = java.util.concurrent.Executor
+
+public actual typealias PlatformTask<T> = org.funfix.tasks.jvm.Task<T>

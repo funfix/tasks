@@ -15,14 +15,11 @@ import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resumeWithException
 
-public typealias JvmTask<T> =
-    org.funfix.tasks.jvm.Task<T>
-
-public fun <T> JvmTask<T>.asKotlin(): Task<T> =
+public fun <T> PlatformTask<T>.asKotlin(): Task<T> =
     Task(this)
 
 /**
- * Similar with [JvmTask.executeBlocking], however this is a "suspended" function,
+ * Similar with `executeBlocking`, however this is a "suspended" function,
  * to be executed in the context of [kotlinx.coroutines].
  *
  * NOTES:
@@ -38,7 +35,7 @@ public fun <T> JvmTask<T>.asKotlin(): Task<T> =
  *       the task. If `null`, the `Executor` will be derived from the
  *       `CoroutineDispatcher`
  */
-public suspend fun <T> JvmTask<out T>.executeCoroutine(executor: Executor? = null): T = run {
+public suspend fun <T> PlatformTask<out T>.executeSuspended(executor: Executor? = null): T = run {
     val executorNonNull = executor ?: currentDispatcher().asExecutor()
     suspendCancellableCoroutine { cont ->
         val contCallback = CoroutineAsCompletionCallback(cont)

@@ -5,3 +5,7 @@ package org.funfix.tasks.kotlin
 public expect fun interface Cancellable {
     public fun cancel()
 }
+
+internal object EmptyCancellable : Cancellable {
+    override fun cancel() {}
+}
