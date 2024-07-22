@@ -3,6 +3,7 @@ package org.funfix.tasks.jvm;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Blocking;
 import org.jetbrains.annotations.NonBlocking;
 import org.jspecify.annotations.NullMarked;
@@ -223,9 +224,23 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
     }
 }
 
+/**
+ * INTERNAL API.
+ * <p>
+ * <strong>INTERNAL API:</strong> Internal apis are subject to change or removal
+ * without any notice. When code depends on internal APIs, it is subject to
+ * breakage between minor version updates.
+ */
+@ApiStatus.Internal
 @NullMarked
 final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
-    private final AtomicReference<State<T>> stateRef = new AtomicReference<>(State.start());
+    private final Executor executor;
+    private final AtomicReference<State<T>> stateRef =
+        new AtomicReference<>(State.start());
+
+    private ExecutedFiber(final Executor executor) {
+        this.executor = executor;
+    }
 
     @Override
     public T getResultOrThrow() throws ExecutionException, TaskCancellationException, NotCompletedException {
@@ -270,6 +285,11 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
     }
 
     final Continuation<? super T> continuation = new Continuation<>() {
+        @Override
+        public Executor getExecutor() {
+            return executor;
+        }
+
         @Override
         public CancellableForwardRef registerForwardCancellable() {
             final var current = stateRef.get();
@@ -450,13 +470,13 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         }
     }
 
-    public static <T extends @Nullable Object> Fiber<T> start(
+    static <T extends @Nullable Object> Fiber<T> start(
         final Executor executor,
-        final AsyncFun<T> asyncFun
+        final AsyncContinuationFun<T> createFun
     ) {
-        final var fiber = new ExecutedFiber<T>();
+        final var fiber = new ExecutedFiber<T>(executor);
         try {
-            asyncFun.invoke(executor, fiber.continuation);
+            createFun.invoke(fiber.continuation);
         } catch (final Throwable e) {
             UncaughtExceptionHandler.rethrowIfFatal(e);
             fiber.continuation.onFailure(e);
@@ -465,6 +485,14 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
     }
 }
 
+/**
+ * INTERNAL API.
+ * <p>
+ * <strong>INTERNAL API:</strong> Internal apis are subject to change or removal
+ * without any notice. When code depends on internal APIs, it is subject to
+ * breakage between minor version updates.
+ */
+@ApiStatus.Internal
 @NullMarked
 final class AwaitSignal extends AbstractQueuedSynchronizer {
     @Override

@@ -1,10 +1,4 @@
 import com.vanniktech.maven.publish.SonatypeHost
-import org.gradle.api.JavaVersion
-import org.gradle.api.tasks.testing.Test
-import org.gradle.jvm.toolchain.JavaLanguageVersion
-import org.gradle.kotlin.dsl.assign
-import org.gradle.kotlin.dsl.repositories
-import org.gradle.kotlin.dsl.withType
 
 plugins {
     id("com.vanniktech.maven.publish")

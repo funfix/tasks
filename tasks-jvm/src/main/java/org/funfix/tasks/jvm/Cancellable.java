@@ -2,6 +2,7 @@ package org.funfix.tasks.jvm;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NonBlocking;
 import org.jspecify.annotations.NullMarked;
 
@@ -42,11 +43,42 @@ public interface Cancellable {
     }
 }
 
+/**
+ * INTERNAL API.
+ * <p>
+ * <strong>INTERNAL API:</strong> Internal apis are subject to change or removal
+ * without any notice. When code depends on internal APIs, it is subject to
+ * breakage between minor version updates.
+ */
+@ApiStatus.Internal
 @NullMarked
 final class CancellableUtils {
     static Cancellable EMPTY = () -> {};
 }
 
+/**
+ * Represents a forward reference to a {@link Cancellable} that was already
+ * registered and needs to be filled in later.
+ * <p>
+ * <strong>INTERNAL API:</strong> Internal apis are subject to change or removal
+ * without any notice. When code depends on internal APIs, it is subject to
+ * breakage between minor version updates.
+ */
+@ApiStatus.Internal
+@NullMarked
+@FunctionalInterface
+interface CancellableForwardRef {
+    void set(Cancellable cancellable);
+}
+
+/**
+ * INTERNAL API.
+ * <p>
+ * <strong>WARN:</strong> Internal apis are subject to change or removal without
+ * any notice. When code depends on internal APIs, it is subject to breakage
+ * between minor version updates.
+ */
+@ApiStatus.Internal
 @NullMarked
 final class MutableCancellable implements Cancellable {
     private final AtomicReference<State> ref =

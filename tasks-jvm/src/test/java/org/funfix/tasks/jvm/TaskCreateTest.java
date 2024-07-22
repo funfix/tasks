@@ -43,6 +43,7 @@ abstract class BaseTaskCreateTest {
             // callback is idempotent
             cb.onSuccess("Hello, world! (2)");
             noErrors.countDown();
+            return Cancellable.getEmpty();
         });
 
         final String result = task.executeBlockingTimed(TimedAwait.TIMEOUT);
@@ -61,6 +62,7 @@ abstract class BaseTaskCreateTest {
             // callback is idempotent
             cb.onFailure(new RuntimeException("Sample exception (2)"));
             noErrors.countDown();
+            return Cancellable.getEmpty();
         });
         try {
             if (executor != null)
@@ -83,14 +85,13 @@ abstract class BaseTaskCreateTest {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
-        final Task<String> task = createTask((executor, cb) ->
-            cb.registerCancellable(() -> {
-                Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
-                cb.onCancellation();
-                // callback is idempotent
-                cb.onCancellation();
-                noErrors.countDown();
-            }));
+        final Task<String> task = createTask((executor, cb) -> () -> {
+            Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
+            cb.onCancellation();
+            // callback is idempotent
+            cb.onCancellation();
+            noErrors.countDown();
+        });
 
         final var fiber =
                 executor != null
@@ -152,6 +153,7 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
 
         final Task<String> task = createTask((executor, cb) -> {
             cb.onSuccess(Thread.currentThread().getName());
+            return Cancellable.getEmpty();
         });
 
         final var result =
@@ -170,6 +172,7 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
 
         final Task<String> task = createTask((executor, cb) -> {
             cb.onSuccess(Thread.currentThread().getName());
+            return Cancellable.getEmpty();
         });
 
         final var result =

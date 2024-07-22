@@ -1,5 +1,6 @@
 package org.funfix.tasks.jvm;
 
+import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -14,10 +15,10 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  */
 @NullMarked
 public final class Task<T extends @Nullable Object> {
-    private final AsyncFun<T> asyncFun;
+    private final AsyncContinuationFun<T> createFun;
 
-    private Task(final AsyncFun<T> asyncFun) {
-        this.asyncFun = asyncFun;
+    private Task(final AsyncContinuationFun<T> createFun) {
+        this.createFun = createFun;
     }
 
     /**
@@ -32,10 +33,11 @@ public final class Task<T extends @Nullable Object> {
         final CompletionCallback<? super T> callback
     ) {
         final var cont = new CancellableContinuation<>(
+            executor,
             ProtectedCompletionCallback.protect(callback)
         );
         try {
-            asyncFun.invoke(executor, cont);
+            createFun.invoke(cont);
             //noinspection FunctionalExpressionCanBeFolded
             return cont::cancel;
         } catch (final Throwable e) {
@@ -65,7 +67,7 @@ public final class Task<T extends @Nullable Object> {
      * or to cancel the running fiber.
      */
     public Fiber<T> executeFiber(final Executor executor) {
-        return ExecutedFiber.start(executor, asyncFun);
+        return ExecutedFiber.start(executor, createFun);
     }
 
     /**
@@ -95,8 +97,8 @@ public final class Task<T extends @Nullable Object> {
         throws ExecutionException, InterruptedException {
 
         final var blockingCallback = new BlockingCompletionCallback<T>();
-        final var cont = new CancellableContinuation<>(blockingCallback);
-        asyncFun.invoke(executor, cont);
+        final var cont = new CancellableContinuation<>(executor, blockingCallback);
+        createFun.invoke(cont);
         return blockingCallback.await(cont);
     }
 
@@ -130,8 +132,8 @@ public final class Task<T extends @Nullable Object> {
         final Duration timeout
     ) throws ExecutionException, InterruptedException, TimeoutException {
         final var blockingCallback = new BlockingCompletionCallback<T>();
-        final var cont = new CancellableContinuation<>(blockingCallback);
-        asyncFun.invoke(executor, cont);
+        final var cont = new CancellableContinuation<>(executor, blockingCallback);
+        createFun.invoke(cont);
         return blockingCallback.await(cont, timeout);
     }
 
@@ -178,10 +180,12 @@ public final class Task<T extends @Nullable Object> {
      * @see #createAsync(AsyncFun)
      */
     public static <T> Task<T> create(final AsyncFun<? extends T> fun) {
-        return new Task<>((executor, cont) ->
+        return new Task<>((cont) ->
             Trampoline.execute(() -> {
                 try {
-                    fun.invoke(executor, cont);
+                    cont.registerForwardCancellable().set(
+                        fun.invoke(cont.getExecutor(), cont)
+                    );
                 } catch (final Throwable e) {
                     UncaughtExceptionHandler.rethrowIfFatal(e);
                     cont.onFailure(e);
@@ -206,13 +210,15 @@ public final class Task<T extends @Nullable Object> {
      * @see #create(AsyncFun)
      */
     public static <T> Task<T> createAsync(final AsyncFun<? extends T> fun) {
-        return new Task<>((executor, cont) -> {
+        return new Task<>((cont) -> {
             // Starting the execution on another thread, to ensure concurrent
             // execution; NOTE: this execution is not cancellable, to simplify
             // the model (i.e., we are not using `executeCancellable` on purpose)
-            executor.execute(() -> {
+            cont.getExecutor().execute(() -> {
                 try {
-                    fun.invoke(executor, cont);
+                    cont.registerForwardCancellable().set(
+                        fun.invoke(cont.getExecutor(), cont)
+                    );
                 } catch (final Throwable e) {
                     UncaughtExceptionHandler.rethrowIfFatal(e);
                     cont.onFailure(e);
@@ -225,7 +231,7 @@ public final class Task<T extends @Nullable Object> {
      * Creates a task from a {@link DelayedFun} executing blocking IO.
      */
     public static <T> Task<T> fromBlockingIO(final DelayedFun<? extends T> run) {
-        return new Task<>((executor, cont) -> executor.execute(() -> {
+        return new Task<>((cont) -> cont.getExecutor().execute(() -> {
             Thread th = Thread.currentThread();
             cont.registerCancellable(th::interrupt);
             try {
@@ -333,11 +339,21 @@ public final class Task<T extends @Nullable Object> {
      * @return a new task that upon execution will complete with the result of
      * the created {@code CancellableCompletionStage}
      */
-    public static <T> Task<T> fromCancellableFuture(final DelayedFun<CancellableFuture<? extends T>> builder) {
+    public static <T> Task<T> fromCancellableFuture(
+        final DelayedFun<CancellableFuture<? extends T>> builder
+    ) {
         return new Task<>(new TaskFromCancellableFuture<>(builder));
     }
 }
 
+/**
+ * INTERNAL API.
+ * <p>
+ * <strong>INTERNAL API:</strong> Internal apis are subject to change or removal
+ * without any notice. When code depends on internal APIs, it is subject to
+ * breakage between minor version updates.
+ */
+@ApiStatus.Internal
 @NullMarked
 final class BlockingCompletionCallback<T extends @Nullable Object>
     extends AbstractQueuedSynchronizer implements CompletionCallback<T> {
@@ -448,8 +464,18 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
     }
 }
 
+/**
+ * INTERNAL API.
+ * <p>
+ * <strong>INTERNAL API:</strong> Internal apis are subject to change or removal
+ * without any notice. When code depends on internal APIs, it is subject to
+ * breakage between minor version updates.
+ */
+@ApiStatus.Internal
 @NullMarked
-class TaskFromCancellableFuture<T extends @Nullable Object> implements AsyncFun<T> {
+final class TaskFromCancellableFuture<T extends @Nullable Object>
+    implements AsyncContinuationFun<T> {
+
     private final DelayedFun<CancellableFuture<? extends T>> builder;
 
     public TaskFromCancellableFuture(DelayedFun<CancellableFuture<? extends T>> builder) {
@@ -457,8 +483,8 @@ class TaskFromCancellableFuture<T extends @Nullable Object> implements AsyncFun<
     }
 
     @Override
-    public void invoke(Executor executor, Continuation<? super T> continuation) {
-        executor.execute(() -> {
+    public void invoke(Continuation<? super T> continuation) {
+        continuation.getExecutor().execute(() -> {
             try {
                 final var cancellableRef =
                     continuation.registerForwardCancellable();

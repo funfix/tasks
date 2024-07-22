@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
+import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -11,9 +12,14 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * Represents the outcome of a finished task.
+ * <p>
+ * <strong>INTERNAL API:</strong> Internal apis are subject to change or removal
+ * without any notice. When code depends on internal APIs, it is subject to
+ * breakage between minor version updates.
  *
  * @param <T> is the type of the value that the task completed with
  */
+@ApiStatus.Internal
 @NullMarked
 abstract class Outcome<T extends @Nullable Object> {
     private Outcome() {

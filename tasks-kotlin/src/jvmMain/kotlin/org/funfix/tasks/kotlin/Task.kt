@@ -19,10 +19,10 @@ public value class Task<out T> internal constructor(
         self.executeCoroutine(executor)
 
     public companion object {
-        public fun <T> create(f: (Executor, Continuation<in T>) -> Unit): Task<T> =
+        public fun <T> create(f: (Executor, CompletionCallback<in T>) -> Cancellable): Task<T> =
             Task(org.funfix.tasks.jvm.Task.create(f))
 
-        public fun <T> createAsync(f: (Executor, CompletionCallback<in T>) -> Unit): Task<T> =
+        public fun <T> createAsync(f: (Executor, CompletionCallback<in T>) -> Cancellable): Task<T> =
             Task(org.funfix.tasks.jvm.Task.createAsync(f))
 
         public fun <T> fromBlockingIO(block: () -> T): Task<T> =

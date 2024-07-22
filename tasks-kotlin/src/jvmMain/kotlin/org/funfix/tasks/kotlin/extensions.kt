@@ -22,7 +22,7 @@ public fun <T> JvmTask<T>.asKotlin(): Task<T> =
     Task(this)
 
 /**
- * Similar with [Task.executeBlocking], however this is a "suspended" function,
+ * Similar with [JvmTask.executeBlocking], however this is a "suspended" function,
  * to be executed in the context of [kotlinx.coroutines].
  *
  * NOTES:
