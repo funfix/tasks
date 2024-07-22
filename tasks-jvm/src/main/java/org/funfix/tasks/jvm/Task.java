@@ -28,7 +28,7 @@ public final class Task<T extends @Nullable Object> {
      * @param executor is the {@link Executor} that may be used to run the task
      * @return a {@link Cancellable} that can be used to cancel a running task
      */
-    public Cancellable executeAsync(
+    public Cancellable runAsync(
         final Executor executor,
         final CompletionCallback<? super T> callback
     ) {
@@ -48,14 +48,14 @@ public final class Task<T extends @Nullable Object> {
     }
 
     /**
-     * Overload of {@link #executeAsync(Executor, CompletionCallback)} that
+     * Overload of {@link #runAsync(Executor, CompletionCallback)} that
      * uses {@link TaskExecutors#global()} as the executor.
      *
      * @param callback will be invoked when the task completes
      * @return a {@link Cancellable} that can be used to cancel a running task
      */
-    public Cancellable executeAsync(final CompletionCallback<? super T> callback) {
-        return executeAsync(TaskExecutors.global(), callback);
+    public Cancellable runAsync(final CompletionCallback<? super T> callback) {
+        return runAsync(TaskExecutors.global(), callback);
     }
 
     /**
@@ -66,19 +66,19 @@ public final class Task<T extends @Nullable Object> {
      * @return a {@link Fiber} that can be used to wait for the outcome,
      * or to cancel the running fiber.
      */
-    public Fiber<T> executeFiber(final Executor executor) {
+    public Fiber<T> runFiber(final Executor executor) {
         return ExecutedFiber.start(executor, createFun);
     }
 
     /**
-     * Overload of {@link #executeFiber(Executor)} that
+     * Overload of {@link #runFiber(Executor)} that
      * uses {@link TaskExecutors#global()} as the executor.
      *
      * @return a {@link Fiber} that can be used to wait for the outcome,
      * or to cancel the running fiber.
      */
-    public Fiber<T> executeFiber() {
-        return executeFiber(TaskExecutors.global());
+    public Fiber<T> runFiber() {
+        return runFiber(TaskExecutors.global());
     }
 
     /**
@@ -93,7 +93,7 @@ public final class Task<T extends @Nullable Object> {
      *                              the running concurrent task must also be interrupted, as this method
      *                              always blocks for its interruption or completion.
      */
-    public T executeBlocking(final Executor executor)
+    public T runBlocking(final Executor executor)
         throws ExecutionException, InterruptedException {
 
         final var blockingCallback = new BlockingCompletionCallback<T>();
@@ -103,11 +103,11 @@ public final class Task<T extends @Nullable Object> {
     }
 
     /**
-     * Overload of {@link #executeBlocking(Executor)} that uses
+     * Overload of {@link #runBlocking(Executor)} that uses
      * {@link TaskExecutors#global()} as the executor.
      */
-    public T executeBlocking() throws ExecutionException, InterruptedException {
-        return executeBlocking(TaskExecutors.global());
+    public T runBlocking() throws ExecutionException, InterruptedException {
+        return runBlocking(TaskExecutors.global());
     }
 
     /**
@@ -127,7 +127,7 @@ public final class Task<T extends @Nullable Object> {
      *                              specified timeout. The running task is also cancelled on timeout,
      *                              and this method does not returning until `onCancel` is signaled.
      */
-    public T executeBlockingTimed(
+    public T runBlockingTimed(
         final Executor executor,
         final Duration timeout
     ) throws ExecutionException, InterruptedException, TimeoutException {
@@ -138,7 +138,7 @@ public final class Task<T extends @Nullable Object> {
     }
 
     /**
-     * Overload of {@link #executeBlockingTimed(Executor, Duration)} that
+     * Overload of {@link #runBlockingTimed(Executor, Duration)} that
      * uses {@link TaskExecutors#global()} as the executor.
      *
      * @param timeout is the maximum time to wait for the task to complete
@@ -151,14 +151,14 @@ public final class Task<T extends @Nullable Object> {
      *                              specified timeout. The running task is also cancelled on timeout,
      *                              and this method does not returning until `onCancel` is signaled.
      */
-    public T executeBlockingTimed(final Duration timeout)
+    public T runBlockingTimed(final Duration timeout)
         throws ExecutionException, InterruptedException, TimeoutException {
-        return executeBlockingTimed(TaskExecutors.global(), timeout);
+        return runBlockingTimed(TaskExecutors.global(), timeout);
     }
 
     /**
-     * Creates a task from a builder function that, on evaluation, will have
-     * same-thread execution.
+     * Creates a task from an asynchronous computation, initiated on the current
+     * thread.
      * <p>
      * This method ensures:
      * <ol>
@@ -170,16 +170,16 @@ public final class Task<T extends @Nullable Object> {
      * using a "trampoline" to avoid stack overflows. This may be useful if the
      * computation for initiating the async process is expected to be fast. However,
      * if the computation can block the current thread, it is recommended to use
-     * {@link #createAsync(AsyncFun)} instead, which will initiate the computation
-     * on a separate thread.
+     * {@link #fromForkedAsync(AsyncFun)} instead, which will initiate the
+     * computation on a separate thread.
      *
      * @param start is the function that will trigger the async computation,
      *              injecting a callback that will be used to signal the result,
      *              and an executor that can be used for creating additional threads.
      * @return a new task that will execute the given builder function upon execution
-     * @see #createAsync(AsyncFun)
+     * @see #fromForkedAsync(AsyncFun)
      */
-    public static <T> Task<T> create(final AsyncFun<? extends T> start) {
+    public static <T> Task<T> fromAsync(final AsyncFun<? extends T> start) {
         return new Task<>((cont) ->
             Trampoline.execute(() -> {
                 try {
@@ -194,22 +194,23 @@ public final class Task<T extends @Nullable Object> {
     }
 
     /**
-     * Creates a task that, when executed, will execute the given asynchronous
-     * computation starting from a separate thread.
+     * Creates a task that, from an asynchronous computation, initiated on a
+     * separate thread.
      * <p>
-     * This is a variant of {@link #create(AsyncFun)}, which executes the given
-     * builder function on the same thread.
+     * This is a variant of {@link #fromAsync(AsyncFun)}. The former executes
+     * the given builder function on the same thread, whereas this variant starts
+     * the computation on a separate thread.
      * <p>
      * NOTE: the thread is created via the injected {@link Executor} in the
-     * "execute" methods (e.g., {@link #executeAsync(Executor, CompletionCallback)}).
+     * "execute" methods (e.g., {@link #runAsync(Executor, CompletionCallback)}).
      * Even when using on of the overloads, then {@link TaskExecutors#global()}
      * is assumed.
      *
      * @param start is the function that will trigger the async computation
      * @return a new task that will execute the given builder function
-     * @see #create(AsyncFun)
+     * @see #fromAsync(AsyncFun)
      */
-    public static <T> Task<T> createAsync(final AsyncFun<? extends T> start) {
+    public static <T> Task<T> fromForkedAsync(final AsyncFun<? extends T> start) {
         return new Task<>((cont) -> {
             // Starting the execution on another thread, to ensure concurrent
             // execution; NOTE: this execution is not cancellable, to simplify

@@ -43,7 +43,7 @@ public class TaskFromBlockingFutureTest {
             return es.submit(() -> "Hello, world!");
         });
 
-        final var r = task.executeBlocking();
+        final var r = task.runBlocking();
         assertEquals("Hello, world!", r);
         assertTrue(name.get().startsWith("tasks-io-"));
     }
@@ -59,7 +59,7 @@ public class TaskFromBlockingFutureTest {
             return es.submit(() -> "Hello, world!");
         });
 
-        final var r = task.executeBlocking();
+        final var r = task.runBlocking();
         assertEquals("Hello, world!", r);
         assertTrue(name.get().startsWith("tasks-io-virtual-"));
     }
@@ -71,7 +71,7 @@ public class TaskFromBlockingFutureTest {
         try {
             Task.fromBlockingFuture(() -> {
                 throw new RuntimeException("Error");
-            }).executeBlocking();
+            }).runBlocking();
         } catch (final ExecutionException ex) {
             assertEquals("Error", ex.getCause().getMessage());
         }
@@ -84,7 +84,7 @@ public class TaskFromBlockingFutureTest {
             Task.fromBlockingFuture(() -> es.submit(() -> {
                         throw new RuntimeException("Error");
                     }))
-                    .executeBlocking();
+                    .runBlocking();
         } catch (final ExecutionException ex) {
             assertEquals("Error", ex.getCause().getMessage());
         }
@@ -108,7 +108,7 @@ public class TaskFromBlockingFutureTest {
                         latch.countDown();
                         throw e;
                     }
-                }).executeFiber();
+                }).runFiber();
 
         TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");
         fiber.cancel();
@@ -137,7 +137,7 @@ public class TaskFromBlockingFutureTest {
                     } catch (final InterruptedException e) {
                         latch.countDown();
                     }
-                })).executeFiber();
+                })).runFiber();
 
         wasStarted.await();
         fiber.cancel();

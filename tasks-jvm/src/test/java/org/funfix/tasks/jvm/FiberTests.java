@@ -31,7 +31,7 @@ abstract class BaseFiberTest {
     }
 
     protected <T extends @Nullable Object> Fiber<T> startFiber(Task<T> task) {
-        return executor != null ? task.executeFiber(executor) : task.executeFiber();
+        return executor != null ? task.runFiber(executor) : task.runFiber();
     }
 
     protected <T extends @Nullable Object> Fiber<T> startFiber(DelayedFun<T> builder) {
@@ -308,7 +308,7 @@ class FiberWithVirtualThreadsTest extends BaseFiberTest {
         final var task =
             Task.fromBlockingIO(() -> Thread.currentThread().getName());
         assertTrue(
-            Objects.requireNonNull(task.executeBlocking()).matches("tasks-io-virtual-\\d+"),
+            Objects.requireNonNull(task.runBlocking()).matches("tasks-io-virtual-\\d+"),
             "currentThread.name.matches(\"tasks-io-virtual-\\\\d+\")"
         );
     }
@@ -328,7 +328,7 @@ class FiberWithPlatformThreadsTest extends BaseFiberTest {
         final var task =
             Task.fromBlockingIO(() -> Thread.currentThread().getName());
         assertTrue(
-            Objects.requireNonNull(task.executeBlocking()).matches("tasks-io-platform-\\d+"),
+            Objects.requireNonNull(task.runBlocking()).matches("tasks-io-platform-\\d+"),
             "currentThread.name.matches(\"tasks-io-platform-\\\\d+\")"
         );
     }

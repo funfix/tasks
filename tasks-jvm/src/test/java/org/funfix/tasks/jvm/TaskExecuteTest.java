@@ -15,14 +15,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @NullMarked
 public class TaskExecuteTest {
     @Test
-    void executeAsyncWorksForSuccess() throws InterruptedException, TaskCancellationException, ExecutionException {
+    void runAsyncWorksForSuccess() throws InterruptedException, TaskCancellationException, ExecutionException {
         final var latch =
             new CountDownLatch(1);
         final var outcomeRef =
             new AtomicReference<@Nullable Outcome<String>>(null);
 
         final var task = Task.fromBlockingIO(() -> "Hello!");
-        task.executeAsync(new CompletionCallback<>() {
+        task.runAsync(new CompletionCallback<>() {
             @Override
             public void onSuccess(String value) {
                 outcomeRef.set(Outcome.success(value));
@@ -48,7 +48,7 @@ public class TaskExecuteTest {
     }
 
     @Test
-    void executeAsyncWorksForFailure() throws InterruptedException, TaskCancellationException {
+    void runAsyncWorksForFailure() throws InterruptedException, TaskCancellationException {
         final var latch =
             new CountDownLatch(1);
         final var outcomeRef =
@@ -59,7 +59,7 @@ public class TaskExecuteTest {
         final var task = Task.<String>fromBlockingIO(() -> {
             throw expectedError;
         });
-        task.executeAsync(new CompletionCallback<>() {
+        task.runAsync(new CompletionCallback<>() {
             @Override
             public void onSuccess(String value) {
                 outcomeRef.set(Outcome.success(value));
@@ -90,7 +90,7 @@ public class TaskExecuteTest {
     }
 
     @Test
-    void executeAsyncWorksForCancellation() throws InterruptedException {
+    void runAsyncWorksForCancellation() throws InterruptedException {
         final var nonTermination =
             new CountDownLatch(1);
         final var latch =
@@ -102,7 +102,7 @@ public class TaskExecuteTest {
             nonTermination.await();
             return "Nooo";
         });
-        final var token = task.executeAsync(
+        final var token = task.runAsync(
             new CompletionCallback<>() {
                 @Override
                 public void onSuccess(String value) {
@@ -129,7 +129,7 @@ public class TaskExecuteTest {
     }
 
     @Test
-    void executeBlockingStackedIsCancellable() throws InterruptedException, ExecutionException, Fiber.NotCompletedException {
+    void runBlockingStackedIsCancellable() throws InterruptedException, ExecutionException, Fiber.NotCompletedException {
         final var started = new CountDownLatch(1);
         final var latch = new CountDownLatch(1);
         final var interruptedHits = new AtomicInteger(0);
@@ -146,14 +146,14 @@ public class TaskExecuteTest {
                 }
             });
             try {
-                return innerTask.executeBlocking();
+                return innerTask.runBlocking();
             } catch (final InterruptedException e) {
                 interruptedHits.incrementAndGet();
                 throw e;
             }
         });
 
-        final var fiber = task.executeFiber();
+        final var fiber = task.runFiber();
         TimedAwait.latchAndExpectCompletion(started, "started");
 
         fiber.cancel();

@@ -21,10 +21,6 @@ kotlin {
                 explicitApi = ExplicitApiMode.Strict
                 allWarningsAsErrors = true
             }
-
-            dependencies {
-                implementation(libs.kotlinx.coroutines.core)
-            }
         }
 
         val commonTest by getting {
@@ -42,7 +38,6 @@ kotlin {
 
             dependencies {
                 implementation(project(":tasks-jvm"))
-                implementation(libs.kotlinx.coroutines.core)
             }
         }
 
@@ -58,12 +53,6 @@ kotlin {
                 explicitApi = ExplicitApiMode.Strict
                 allWarningsAsErrors = true
             }
-
-            dependencies {
-                implementation(libs.kotlinx.coroutines.core)
-            }
         }
-
-        val jsTest by getting
     }
 }
