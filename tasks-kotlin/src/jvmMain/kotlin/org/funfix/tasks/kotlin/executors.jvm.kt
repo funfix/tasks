@@ -1,4 +1,4 @@
-@file:JvmName("ExecutorsKt")
+@file:JvmName("ExecutorsJvmKt")
 
 package org.funfix.tasks.kotlin
 

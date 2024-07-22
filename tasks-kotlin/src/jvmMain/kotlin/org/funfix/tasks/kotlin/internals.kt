@@ -1,3 +1,5 @@
+@file:JvmName("InternalsJvmKt")
+
 package org.funfix.tasks.kotlin
 
 internal typealias KotlinCallback<T> = (Outcome<T>) -> Unit

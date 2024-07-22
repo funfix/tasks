@@ -1,4 +1,4 @@
-public final class org/funfix/tasks/kotlin/ExecutorsKt {
+public final class org/funfix/tasks/kotlin/ExecutorsJvmKt {
 	public static final fun getGlobalExecutor ()Ljava/util/concurrent/Executor;
 	public static final fun getTrampolineExecutor ()Ljava/util/concurrent/Executor;
 }
@@ -61,14 +61,14 @@ public final class org/funfix/tasks/kotlin/Task {
 public final class org/funfix/tasks/kotlin/Task$Companion {
 }
 
-public final class org/funfix/tasks/kotlin/TaskKt {
-	public static final fun asKotlin (Lorg/funfix/tasks/jvm/Task;)Lorg/funfix/tasks/jvm/Task;
-}
-
-public final class org/funfix/tasks/kotlin/Task_jvmKt {
+public final class org/funfix/tasks/kotlin/TaskJvmKt {
 	public static final fun fromAsync (Lkotlin/jvm/functions/Function2;)Lorg/funfix/tasks/jvm/Task;
 	public static final fun fromForkedAsync (Lkotlin/jvm/functions/Function2;)Lorg/funfix/tasks/jvm/Task;
 	public static final fun runAsync-A-R0woo (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/jvm/functions/Function1;)Lorg/funfix/tasks/jvm/Cancellable;
 	public static synthetic fun runAsync-A-R0woo$default (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lorg/funfix/tasks/jvm/Cancellable;
+}
+
+public final class org/funfix/tasks/kotlin/TaskKt {
+	public static final fun asKotlin (Lorg/funfix/tasks/jvm/Task;)Lorg/funfix/tasks/jvm/Task;
 }
 
