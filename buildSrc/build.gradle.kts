@@ -26,4 +26,5 @@ dependencies {
     implementation(libs.dokka.gradle.plugin)
     implementation(libs.gradle.versions.plugin)
     implementation(libs.binary.compatibility.validator.plugin)
+    implementation(libs.vanniktech.publish.plugin)
 }

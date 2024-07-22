@@ -1,10 +1,7 @@
 plugins {
     `java-library`
     jacoco
-}
-
-repositories {
-    mavenCentral()
+    id("tasks.base")
 }
 
 dependencies {

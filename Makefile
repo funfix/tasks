@@ -10,3 +10,8 @@ update-gradle:
 
 test-watch:
 	./gradlew -t -i check
+
+test-coverage:
+	./gradlew clean jvmTest koverHtmlReportJvm
+	open ./tasks-core/build/reports/kover/htmlJvm/index.html
+	open ./tasks-kotlin/build/reports/kover/htmlJvm/index.html

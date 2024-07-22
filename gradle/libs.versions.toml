@@ -6,6 +6,7 @@ gradleVersions = "0.51.0"
 kotlinx-coroutines = "1.9.0-RC"
 jetbrains-annotations = "24.1.0"
 junit-jupiter = "5.10.3"
+publish = "0.29.0"
 jspecify = "1.0.0"
 lombok = "1.18.34"
 binary-compatibility-validator = "0.16.2"
@@ -16,6 +17,7 @@ kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", v
 kover-gradle-plugin = { module = "org.jetbrains.kotlinx:kover-gradle-plugin", version.ref = "kover" }
 dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
 gradle-versions-plugin = { module = "com.github.ben-manes:gradle-versions-plugin", version.ref = "gradleVersions" }
+vanniktech-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "publish" }
 # org.jetbrains.kotlinx.binary-compatibility-validator
 binary-compatibility-validator-plugin = { module = "org.jetbrains.kotlinx.binary-compatibility-validator:org.jetbrains.kotlinx.binary-compatibility-validator.gradle.plugin", version.ref = "binary-compatibility-validator" }
 

@@ -7,12 +7,12 @@ plugins {
     id("tasks.kmp-project")
 }
 
-//mavenPublishing {
-//    pom {
-//        name = "Tasks / Kotlin"
-//        description = "Integration with Kotlin & its Coroutines"
-//    }
-//}
+mavenPublishing {
+    pom {
+        name = "Tasks / Kotlin"
+        description = "Integration with Kotlin's Coroutines"
+    }
+}
 
 kotlin {
     sourceSets {
