@@ -7,6 +7,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.js.Promise
 
 public actual class PlatformTask<T>(
     private val f: (Executor, (Outcome<T>) -> Unit) -> Cancellable
@@ -23,13 +24,14 @@ public actual class PlatformTask<T>(
 public actual value class Task<out T> internal actual constructor(
     internal actual val self: PlatformTask<out T>
 ) {
-    public actual suspend fun await(executor: Executor?): T = run {
-        val dispatcher = currentDispatcher()
-        val executorNonNull = executor ?: buildExecutor(dispatcher)
+    public actual suspend fun await(): T =
+        await(buildExecutor(currentDispatcher()))
+
+    public actual suspend fun await(executor: Executor): T = run {
         suspendCancellableCoroutine { cont ->
             val contCallback = cont.asCompletionCallback()
             try {
-                val token = self.invoke(executorNonNull, contCallback)
+                val token = self.invoke(executor, contCallback)
                 cont.invokeOnCancellation {
                     token.cancel()
                 }
@@ -41,7 +43,7 @@ public actual value class Task<out T> internal actual constructor(
     }
 
     public actual fun runAsync(
-        executor: Executor?,
+        executor: Executor,
         callback: (Outcome<T>) -> Unit
     ): Cancellable {
         val protected = callback.protect()
@@ -53,6 +55,33 @@ public actual value class Task<out T> internal actual constructor(
             Cancellable.empty
         }
     }
+
+    public actual fun runAsync(callback: (Outcome<T>) -> Unit): Cancellable =
+        runAsync(TaskExecutors.global, callback)
+
+    public fun runToPromise(executor: Executor): CancellablePromise<T> {
+        val cancel = MutableCancellable()
+        val promise = Promise { resolve, reject ->
+            val token = runAsync(executor) { outcome ->
+                when (outcome) {
+                    is Outcome.Success -> resolve(outcome.value)
+                    is Outcome.Failure -> reject(outcome.exception)
+                    is Outcome.Cancellation -> reject(TaskCancellationException())
+                }
+            }
+            cancel.set {
+                try {
+                    token.cancel()
+                } finally {
+                    reject(TaskCancellationException())
+                }
+            }
+        }
+        return CancellablePromise(promise, cancel)
+    }
+
+    public fun runToPromise(): CancellablePromise<T> =
+        runToPromise(TaskExecutors.global)
 
     public actual companion object {
         internal operator fun <T> invoke(f: (Executor, (Outcome<T>) -> Unit) -> Cancellable): Task<T> =

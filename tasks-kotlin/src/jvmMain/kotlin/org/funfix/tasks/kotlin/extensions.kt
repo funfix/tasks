@@ -15,6 +15,12 @@ import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resumeWithException
 
+/**
+ * Converts a [JVM Task][org.funfix.tasks.jvm.Task] to a [Kotlin Task][Task].
+ *
+ * NOTE: This conversion is type-erased, as the [underlying task][Task] is an
+ * "inlined" value type.
+ */
 public fun <T> PlatformTask<T>.asKotlin(): Task<T> =
     Task(this)
 
@@ -35,12 +41,11 @@ public fun <T> PlatformTask<T>.asKotlin(): Task<T> =
  *       the task. If `null`, the `Executor` will be derived from the
  *       `CoroutineDispatcher`
  */
-public suspend fun <T> PlatformTask<out T>.executeSuspended(executor: Executor? = null): T = run {
-    val executorNonNull = executor ?: currentDispatcher().asExecutor()
+public suspend fun <T> PlatformTask<out T>.executeSuspended(executor: Executor): T = run {
     suspendCancellableCoroutine { cont ->
         val contCallback = CoroutineAsCompletionCallback(cont)
         try {
-            val token = executeAsync(executorNonNull, contCallback)
+            val token = executeAsync(executor, contCallback)
             cont.invokeOnCancellation {
                 token.cancel()
             }
@@ -51,6 +56,17 @@ public suspend fun <T> PlatformTask<out T>.executeSuspended(executor: Executor? 
     }
 }
 
+/**
+ * Override of [executeSuspended] that uses the current coroutine's dispatcher
+ * as the [Executor].
+ */
+public suspend fun <T> PlatformTask<out T>.executeSuspended(): T = run {
+    executeSuspended(currentDispatcher().asExecutor())
+}
+
+/**
+ * Internal API: gets the current [CoroutineDispatcher] from the coroutine context.
+ */
 internal suspend fun currentDispatcher(): CoroutineDispatcher {
     // Access the coroutineContext to get the ContinuationInterceptor
     val continuationInterceptor = coroutineContext[ContinuationInterceptor]

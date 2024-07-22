@@ -1,0 +1,78 @@
+public final class org/funfix/tasks/kotlin/ExtensionsKt {
+	public static final fun asKotlin (Lorg/funfix/tasks/jvm/Task;)Lorg/funfix/tasks/jvm/Task;
+	public static final fun executeSuspended (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static final fun executeSuspended (Lorg/funfix/tasks/jvm/Task;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract interface class org/funfix/tasks/kotlin/Outcome {
+	public static final field Companion Lorg/funfix/tasks/kotlin/Outcome$Companion;
+	public fun getOrThrow ()Ljava/lang/Object;
+}
+
+public final class org/funfix/tasks/kotlin/Outcome$Cancellation : org/funfix/tasks/kotlin/Outcome {
+	public static final field INSTANCE Lorg/funfix/tasks/kotlin/Outcome$Cancellation;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class org/funfix/tasks/kotlin/Outcome$Companion {
+	public final fun cancellation ()Lorg/funfix/tasks/kotlin/Outcome;
+	public final fun failure (Ljava/lang/Throwable;)Lorg/funfix/tasks/kotlin/Outcome;
+	public final fun success (Ljava/lang/Object;)Lorg/funfix/tasks/kotlin/Outcome;
+}
+
+public final class org/funfix/tasks/kotlin/Outcome$Failure : org/funfix/tasks/kotlin/Outcome {
+	public fun <init> (Ljava/lang/Throwable;)V
+	public final fun component1 ()Ljava/lang/Throwable;
+	public final fun copy (Ljava/lang/Throwable;)Lorg/funfix/tasks/kotlin/Outcome$Failure;
+	public static synthetic fun copy$default (Lorg/funfix/tasks/kotlin/Outcome$Failure;Ljava/lang/Throwable;ILjava/lang/Object;)Lorg/funfix/tasks/kotlin/Outcome$Failure;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getException ()Ljava/lang/Throwable;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class org/funfix/tasks/kotlin/Outcome$Success : org/funfix/tasks/kotlin/Outcome {
+	public fun <init> (Ljava/lang/Object;)V
+	public final fun component1 ()Ljava/lang/Object;
+	public final fun copy (Ljava/lang/Object;)Lorg/funfix/tasks/kotlin/Outcome$Success;
+	public static synthetic fun copy$default (Lorg/funfix/tasks/kotlin/Outcome$Success;Ljava/lang/Object;ILjava/lang/Object;)Lorg/funfix/tasks/kotlin/Outcome$Success;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getValue ()Ljava/lang/Object;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class org/funfix/tasks/kotlin/Task {
+	public static final field Companion Lorg/funfix/tasks/kotlin/Task$Companion;
+	public static final fun await-impl (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static final fun await-impl (Lorg/funfix/tasks/jvm/Task;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static final synthetic fun box-impl (Lorg/funfix/tasks/jvm/Task;)Lorg/funfix/tasks/kotlin/Task;
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (Lorg/funfix/tasks/jvm/Task;Ljava/lang/Object;)Z
+	public static final fun equals-impl0 (Lorg/funfix/tasks/jvm/Task;Lorg/funfix/tasks/jvm/Task;)Z
+	public static final fun getAsJava-impl (Lorg/funfix/tasks/jvm/Task;)Lorg/funfix/tasks/jvm/Task;
+	public fun hashCode ()I
+	public static fun hashCode-impl (Lorg/funfix/tasks/jvm/Task;)I
+	public static final fun runAsync-impl (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/jvm/functions/Function1;)Lorg/funfix/tasks/jvm/Cancellable;
+	public static final fun runAsync-impl (Lorg/funfix/tasks/jvm/Task;Lkotlin/jvm/functions/Function1;)Lorg/funfix/tasks/jvm/Cancellable;
+	public static final fun runBlocking-impl (Lorg/funfix/tasks/jvm/Task;)Ljava/lang/Object;
+	public static final fun runBlocking-impl (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;)Ljava/lang/Object;
+	public static final fun runBlockingTimed-HG0u8IE (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;J)Ljava/lang/Object;
+	public static final fun runBlockingTimed-LRDsOJo (Lorg/funfix/tasks/jvm/Task;J)Ljava/lang/Object;
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (Lorg/funfix/tasks/jvm/Task;)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()Lorg/funfix/tasks/jvm/Task;
+}
+
+public final class org/funfix/tasks/kotlin/Task$Companion {
+	public final fun create-GtQLo0Y (Lkotlin/jvm/functions/Function2;)Lorg/funfix/tasks/jvm/Task;
+	public final fun createAsync-GtQLo0Y (Lkotlin/jvm/functions/Function2;)Lorg/funfix/tasks/jvm/Task;
+	public final fun fromBlockingFuture-GtQLo0Y (Lkotlin/jvm/functions/Function0;)Lorg/funfix/tasks/jvm/Task;
+	public final fun fromBlockingIO-GtQLo0Y (Lkotlin/jvm/functions/Function0;)Lorg/funfix/tasks/jvm/Task;
+	public final fun fromCancellableFuture-GtQLo0Y (Lkotlin/jvm/functions/Function0;)Lorg/funfix/tasks/jvm/Task;
+	public final fun fromCompletionStage-GtQLo0Y (Lkotlin/jvm/functions/Function0;)Lorg/funfix/tasks/jvm/Task;
+	public final fun fromSuspended-GtQLo0Y (Lkotlin/jvm/functions/Function1;)Lorg/funfix/tasks/jvm/Task;
+}
+

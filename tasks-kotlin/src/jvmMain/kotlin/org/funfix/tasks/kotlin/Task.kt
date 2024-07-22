@@ -20,26 +20,29 @@ public actual value class Task<out T> internal constructor(
     public val asJava: PlatformTask<out T>
         get() = self
 
-    public actual suspend fun await(executor: Executor?): T =
+    public actual suspend fun await(): T =
+        self.executeSuspended()
+
+    public actual suspend fun await(executor: Executor): T =
         self.executeSuspended(executor)
 
-    public fun runBlocking(executor: Executor? = null): T =
-        when (executor) {
-            null -> self.executeBlocking()
-            else -> self.executeBlocking(executor)
-        }
+    public fun runBlocking(executor: Executor): T =
+        self.executeBlocking(executor)
 
-    public fun runBlockingTimed(timeout: Duration, executor: Executor? = null): T =
-        when (executor) {
-            null -> self.executeBlockingTimed(timeout.toJavaDuration())
-            else -> self.executeBlockingTimed(executor, timeout.toJavaDuration())
-        }
+    public fun runBlocking(): T =
+        self.executeBlocking()
 
-    public actual fun runAsync(executor: Executor?, callback: (Outcome<T>) -> Unit): Cancellable =
-        when (executor) {
-            null -> self.executeAsync(callback.asJava())
-            else -> self.executeAsync(executor, callback.asJava())
-        }
+    public fun runBlockingTimed(executor: Executor, timeout: Duration): T =
+        self.executeBlockingTimed(executor, timeout.toJavaDuration())
+
+    public fun runBlockingTimed(timeout: Duration): T =
+        self.executeBlockingTimed(timeout.toJavaDuration())
+
+    public actual fun runAsync(executor: Executor, callback: (Outcome<T>) -> Unit): Cancellable =
+        self.executeAsync(executor, callback.asJava())
+
+    public actual fun runAsync(callback: (Outcome<T>) -> Unit): Cancellable =
+        self.executeAsync(callback.asJava())
 
     public actual companion object {
         public actual fun <T> create(f: (Executor, (Outcome<T>) -> Unit) -> Cancellable): Task<T> =

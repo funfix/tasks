@@ -5,8 +5,11 @@ package org.funfix.tasks.kotlin
 public expect class PlatformTask<T> {}
 
 public expect value class Task<out T> internal constructor(private val self: PlatformTask<out T>) {
-    public suspend fun await(executor: Executor? = null): T
-    public fun runAsync(executor: Executor? = null, callback: (Outcome<T>) -> Unit): Cancellable
+    public suspend fun await(executor: Executor): T
+    public suspend fun await(): T
+
+    public fun runAsync(executor: Executor, callback: (Outcome<T>) -> Unit): Cancellable
+    public fun runAsync(callback: (Outcome<T>) -> Unit): Cancellable
 
     public companion object {
         public fun <T> create(f: (Executor, (Outcome<T>) -> Unit) -> Cancellable): Task<T>
