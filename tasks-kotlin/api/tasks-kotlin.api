@@ -49,6 +49,7 @@ public final class org/funfix/tasks/kotlin/Task {
 	public fun equals (Ljava/lang/Object;)Z
 	public static fun equals-impl (Lorg/funfix/tasks/jvm/Task;Ljava/lang/Object;)Z
 	public static final fun equals-impl0 (Lorg/funfix/tasks/jvm/Task;Lorg/funfix/tasks/jvm/Task;)Z
+	public static final fun getAsJava-impl (Lorg/funfix/tasks/jvm/Task;)Lorg/funfix/tasks/jvm/Task;
 	public final fun getAsPlatform ()Lorg/funfix/tasks/jvm/Task;
 	public fun hashCode ()I
 	public static fun hashCode-impl (Lorg/funfix/tasks/jvm/Task;)I
