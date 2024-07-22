@@ -93,7 +93,7 @@ final class MutableCancellable implements Cancellable {
         }
     }
 
-    private <E extends Exception> void registerOrdered(
+    private void registerOrdered(
         final long order,
         final Cancellable newToken,
         State current
