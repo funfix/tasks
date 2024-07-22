@@ -35,6 +35,16 @@ public final class TaskExecutors {
         }
     }
 
+    /**
+     * Returns a shared {@link Executor} that runs tasks on the current thread.
+     * <p>
+     * The implementation is thread-safe and uses an internal trampoline
+     * mechanism to avoid stack overflows when running recursive tasks.
+     */
+    public static Executor trampoline() {
+        return Trampoline.INSTANCE;
+    }
+
     private static Executor sharedPlatformIO() {
         // Using double-checked locking to avoid synchronization
         if (sharedPlatformIORef == null) {

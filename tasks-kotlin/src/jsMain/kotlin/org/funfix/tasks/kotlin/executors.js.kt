@@ -1,12 +1,23 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package org.funfix.tasks.kotlin
 
 import org.w3c.dom.WindowOrWorkerGlobalScope
 import kotlin.js.Promise
 
-public object TaskExecutors {
-    public val trampoline: Executor = Trampoline
-    public val global: Executor = JSExecutor
+public actual fun interface Runnable {
+    public actual fun run()
 }
+
+public actual fun interface Executor {
+    public actual fun execute(command: Runnable)
+}
+
+public actual val GlobalExecutor: Executor
+    get() = JSExecutor
+
+public actual val TrampolineExecutor: Executor
+    get() = Trampoline
 
 private external val self: dynamic
 private external val global: dynamic
@@ -116,4 +127,3 @@ internal object UncaughtExceptionHandler {
         console.error(e)
     }
 }
-

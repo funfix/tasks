@@ -173,18 +173,18 @@ public final class Task<T extends @Nullable Object> {
      * {@link #createAsync(AsyncFun)} instead, which will initiate the computation
      * on a separate thread.
      *
-     * @param fun is the function that will trigger the async computation,
-     *            injecting a callback that will be used to signal the result,
-     *            and an executor that can be used for creating additional threads.
+     * @param start is the function that will trigger the async computation,
+     *              injecting a callback that will be used to signal the result,
+     *              and an executor that can be used for creating additional threads.
      * @return a new task that will execute the given builder function upon execution
      * @see #createAsync(AsyncFun)
      */
-    public static <T> Task<T> create(final AsyncFun<? extends T> fun) {
+    public static <T> Task<T> create(final AsyncFun<? extends T> start) {
         return new Task<>((cont) ->
             Trampoline.execute(() -> {
                 try {
                     cont.registerForwardCancellable().set(
-                        fun.invoke(cont.getExecutor(), cont)
+                        start.invoke(cont.getExecutor(), cont)
                     );
                 } catch (final Throwable e) {
                     UncaughtExceptionHandler.rethrowIfFatal(e);
@@ -205,11 +205,11 @@ public final class Task<T extends @Nullable Object> {
      * Even when using on of the overloads, then {@link TaskExecutors#global()}
      * is assumed.
      *
-     * @param fun is the function that will trigger the async computation
+     * @param start is the function that will trigger the async computation
      * @return a new task that will execute the given builder function
      * @see #create(AsyncFun)
      */
-    public static <T> Task<T> createAsync(final AsyncFun<? extends T> fun) {
+    public static <T> Task<T> createAsync(final AsyncFun<? extends T> start) {
         return new Task<>((cont) -> {
             // Starting the execution on another thread, to ensure concurrent
             // execution; NOTE: this execution is not cancellable, to simplify
@@ -217,7 +217,7 @@ public final class Task<T extends @Nullable Object> {
             cont.getExecutor().execute(() -> {
                 try {
                     cont.registerForwardCancellable().set(
-                        fun.invoke(cont.getExecutor(), cont)
+                        start.invoke(cont.getExecutor(), cont)
                     );
                 } catch (final Throwable e) {
                     UncaughtExceptionHandler.rethrowIfFatal(e);

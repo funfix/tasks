@@ -16,5 +16,3 @@ public typealias UncaughtExceptionHandler = org.funfix.tasks.jvm.UncaughtExcepti
 public actual typealias Runnable = java.lang.Runnable
 
 public actual typealias Executor = java.util.concurrent.Executor
-
-public actual typealias PlatformTask<T> = org.funfix.tasks.jvm.Task<T>

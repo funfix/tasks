@@ -10,7 +10,7 @@ internal fun <T> Callback<T>.protect(): Callback<T> {
         }
         if (isWaiting) {
             isWaiting = false
-            TaskExecutors.trampoline.execute {
+            TrampolineExecutor.execute {
                 this@protect.invoke(o)
             }
         }

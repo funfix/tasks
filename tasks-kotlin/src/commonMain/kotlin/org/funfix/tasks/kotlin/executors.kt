@@ -9,3 +9,7 @@ public expect fun interface Runnable {
 public expect fun interface Executor {
     public fun execute(command: Runnable)
 }
+
+public expect val GlobalExecutor: Executor
+
+public expect val TrampolineExecutor: Executor
