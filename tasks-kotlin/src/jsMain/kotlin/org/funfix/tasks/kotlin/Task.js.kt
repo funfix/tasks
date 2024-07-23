@@ -35,7 +35,7 @@ public actual fun <T> Task<T>.runAsync(
     }
 }
 
-public actual fun <T> fromAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T> =
+public actual fun <T> Task.Companion.fromAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T> =
     Task(PlatformTask { executor, cb ->
         val cRef = MutableCancellable()
         TrampolineExecutor.execute {
@@ -44,7 +44,7 @@ public actual fun <T> fromAsync(start: (Executor, Callback<T>) -> Cancellable): 
         cRef
     })
 
-public actual fun <T> fromForkedAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T> =
+public actual fun <T> Task.Companion.fromForkedAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T> =
     Task(PlatformTask { executor, cb ->
         val cRef = MutableCancellable()
         executor.execute {

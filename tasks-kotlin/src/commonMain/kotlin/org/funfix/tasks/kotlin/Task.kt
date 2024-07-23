@@ -73,7 +73,7 @@ public expect fun <T> Task<T>.runAsync(
  * @return a new task that will execute the given builder function upon execution
  * @see fromForkedAsync
  */
-public expect fun <T> fromAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T>
+public expect fun <T> Task.Companion.fromAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T>
 
 /**
  * Creates a task from an asynchronous computation, initiated on a
@@ -91,4 +91,4 @@ public expect fun <T> fromAsync(start: (Executor, Callback<T>) -> Cancellable): 
  * @return a new task that will execute the given builder function.
  * @see fromAsync
  */
-public expect fun <T> fromForkedAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T>
+public expect fun <T> Task.Companion.fromForkedAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T>

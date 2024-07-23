@@ -26,12 +26,12 @@ public actual fun <T> Task<T>.runAsync(
         callback.asJava()
     )
 
-public actual fun <T> fromAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T> =
+public actual fun <T> Task.Companion.fromAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T> =
     Task(PlatformTask.fromAsync { executor, cb ->
         start(executor, cb.asKotlin())
     })
 
-public actual fun <T> fromForkedAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T> =
+public actual fun <T> Task.Companion.fromForkedAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T> =
     Task(PlatformTask.fromForkedAsync { executor, cb ->
         start(executor, cb.asKotlin())
     })
