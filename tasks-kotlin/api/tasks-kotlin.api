@@ -3,6 +3,23 @@ public final class org/funfix/tasks/kotlin/ExecutorsJvmKt {
 	public static final fun getTrampolineExecutor ()Ljava/util/concurrent/Executor;
 }
 
+public final class org/funfix/tasks/kotlin/Fiber : org/funfix/tasks/jvm/Cancellable {
+	public static final synthetic fun box-impl (Lorg/funfix/tasks/jvm/Fiber;)Lorg/funfix/tasks/kotlin/Fiber;
+	public fun cancel ()V
+	public static fun cancel-impl (Lorg/funfix/tasks/jvm/Fiber;)V
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (Lorg/funfix/tasks/jvm/Fiber;Ljava/lang/Object;)Z
+	public static final fun equals-impl0 (Lorg/funfix/tasks/jvm/Fiber;Lorg/funfix/tasks/jvm/Fiber;)Z
+	public final fun getAsPlatform ()Lorg/funfix/tasks/jvm/Fiber;
+	public fun hashCode ()I
+	public static fun hashCode-impl (Lorg/funfix/tasks/jvm/Fiber;)I
+	public static final fun joinAsync-impl (Lorg/funfix/tasks/jvm/Fiber;Ljava/lang/Runnable;)Lorg/funfix/tasks/jvm/Cancellable;
+	public static final fun resultOrThrow-impl (Lorg/funfix/tasks/jvm/Fiber;)Ljava/lang/Object;
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (Lorg/funfix/tasks/jvm/Fiber;)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()Lorg/funfix/tasks/jvm/Fiber;
+}
+
 public abstract interface class org/funfix/tasks/kotlin/Outcome {
 	public static final field Companion Lorg/funfix/tasks/kotlin/Outcome$Companion;
 	public fun getOrThrow ()Ljava/lang/Object;
