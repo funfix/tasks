@@ -2,6 +2,9 @@
 
 package org.funfix.tasks.kotlin
 
-public expect open class TaskCancellationException(message: String?): kotlin.Exception {
+/**
+ * An exception that is thrown when a task is cancelled.
+ */
+public expect open class TaskCancellationException(message: String?): Exception {
     public constructor()
 }

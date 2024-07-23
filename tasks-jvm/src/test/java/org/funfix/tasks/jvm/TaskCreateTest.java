@@ -23,7 +23,7 @@ abstract class BaseTaskCreateTest {
     protected AutoCloseable closeable;
     @Nullable protected Executor executor;
 
-    protected abstract  <T> Task<T> createTask(final AsyncFun<? extends T> builder);
+    protected abstract  <T> Task<T> fromAsyncTask(final AsyncFun<? extends T> builder);
 
     @AfterEach
     void tearDown() throws Exception {
@@ -38,7 +38,7 @@ abstract class BaseTaskCreateTest {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
-        final Task<String> task = createTask((executor, cb) -> {
+        final Task<String> task = fromAsyncTask((executor, cb) -> {
             cb.onSuccess("Hello, world!");
             // callback is idempotent
             cb.onSuccess("Hello, world! (2)");
@@ -46,7 +46,7 @@ abstract class BaseTaskCreateTest {
             return Cancellable.getEmpty();
         });
 
-        final String result = task.executeBlockingTimed(TimedAwait.TIMEOUT);
+        final String result = task.runBlockingTimed(TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", result);
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
         assertNull(reportedException.get(), "reportedException.get()");
@@ -56,7 +56,7 @@ abstract class BaseTaskCreateTest {
     void failed() throws InterruptedException {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
-        final Task<String> task = createTask((executor, cb) -> {
+        final Task<String> task = fromAsyncTask((executor, cb) -> {
             Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
             cb.onFailure(new RuntimeException("Sample exception"));
             // callback is idempotent
@@ -66,9 +66,9 @@ abstract class BaseTaskCreateTest {
         });
         try {
             if (executor != null)
-                task.executeBlockingTimed(executor, TimedAwait.TIMEOUT);
+                task.runBlockingTimed(executor, TimedAwait.TIMEOUT);
             else
-                task.executeBlockingTimed(TimedAwait.TIMEOUT);
+                task.runBlockingTimed(TimedAwait.TIMEOUT);
         } catch (final ExecutionException | TimeoutException ex) {
             assertEquals("Sample exception", ex.getCause().getMessage());
         }
@@ -85,7 +85,7 @@ abstract class BaseTaskCreateTest {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
-        final Task<String> task = createTask((executor, cb) -> () -> {
+        final Task<String> task = fromAsyncTask((executor, cb) -> () -> {
             Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
             cb.onCancellation();
             // callback is idempotent
@@ -95,8 +95,8 @@ abstract class BaseTaskCreateTest {
 
         final var fiber =
                 executor != null
-                        ? task.executeFiber(executor)
-                        : task.executeFiber();
+                        ? task.runFiber(executor)
+                        : task.runFiber();
         try {
             fiber.cancel();
             // call is idempotent
@@ -120,8 +120,8 @@ class TaskCreateSimpleDefaultExecutorTest extends BaseTaskCreateTest {
     }
 
     @Override
-    protected <T> Task<T> createTask(final AsyncFun<? extends T> builder) {
-        return Task.create(builder);
+    protected <T> Task<T> fromAsyncTask(final AsyncFun<? extends T> builder) {
+        return Task.fromAsync(builder);
     }
 }
 
@@ -134,32 +134,31 @@ class TaskCreateSimpleCustomJavaExecutorTest extends BaseTaskCreateTest {
         closeable = javaExecutor::shutdown;
     }
 
-    @Override
-    protected <T> Task<T> createTask(final AsyncFun<? extends T> builder) {
-        return Task.create(builder);
+    protected <T> Task<T> fromAsyncTask(final AsyncFun<? extends T> builder) {
+        return Task.fromAsync(builder);
     }
 }
 
 @NullMarked
-abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
+abstract class BaseTaskCreateForkedAsyncTest extends BaseTaskCreateTest {
     @Override
-    protected <T> Task<T> createTask(final AsyncFun<? extends T> builder) {
-        return Task.createAsync(builder);
+    protected <T> Task<T> fromAsyncTask(final AsyncFun<? extends T> builder) {
+        return Task.fromForkedAsync(builder);
     }
 
     @Test
     void java21Plus() throws ExecutionException, InterruptedException {
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
 
-        final Task<String> task = createTask((executor, cb) -> {
+        final Task<String> task = fromAsyncTask((executor, cb) -> {
             cb.onSuccess(Thread.currentThread().getName());
             return Cancellable.getEmpty();
         });
 
         final var result =
                 executor != null
-                        ? task.executeBlocking(executor)
-                        : task.executeBlocking();
+                        ? task.runBlocking(executor)
+                        : task.runBlocking();
         assertTrue(
                 Objects.requireNonNull(result).matches("tasks-io-virtual-\\d+"),
                 "result.matches(\"tasks-io-virtual-\\\\d+\")"
@@ -170,15 +169,15 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
     void olderJava() throws ExecutionException, InterruptedException {
         assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires older Java versions");
 
-        final Task<String> task = createTask((executor, cb) -> {
+        final Task<String> task = fromAsyncTask((executor, cb) -> {
             cb.onSuccess(Thread.currentThread().getName());
             return Cancellable.getEmpty();
         });
 
         final var result =
                 executor != null
-                        ? task.executeBlocking(executor)
-                        : task.executeBlocking();
+                        ? task.runBlocking(executor)
+                        : task.runBlocking();
         assertTrue(
                 Objects.requireNonNull(result).matches("tasks-io-platform-\\d+"),
                 "result.matches(\"tasks-io-virtual-\\\\d+\")"
@@ -187,7 +186,7 @@ abstract class BaseTaskCreateAsyncTest extends BaseTaskCreateTest {
 }
 
 @NullMarked
-class TaskCreateAsyncDefaultExecutorJava21Test extends BaseTaskCreateAsyncTest {
+class TaskCreateForkedAsyncDefaultExecutorJava21Test extends BaseTaskCreateForkedAsyncTest {
     @BeforeEach
     void setUp() {
         closeable = SysProp.withVirtualThreads(true);
@@ -196,7 +195,7 @@ class TaskCreateAsyncDefaultExecutorJava21Test extends BaseTaskCreateAsyncTest {
 }
 
 @NullMarked
-class TaskCreateAsyncDefaultExecutorOlderJavaTest extends BaseTaskCreateAsyncTest {
+class TaskCreateForkedAsyncDefaultExecutorOlderJavaTest extends BaseTaskCreateForkedAsyncTest {
     @BeforeEach
     void setUp() {
         closeable = SysProp.withVirtualThreads(false);
@@ -205,7 +204,7 @@ class TaskCreateAsyncDefaultExecutorOlderJavaTest extends BaseTaskCreateAsyncTes
 }
 
 @NullMarked
-class TaskCreateAsyncCustomExecutorOlderJavaTest extends BaseTaskCreateAsyncTest {
+class TaskCreateForkedAsyncCustomExecutorOlderJavaTest extends BaseTaskCreateForkedAsyncTest {
     @BeforeEach
     void setUp() {
         closeable = SysProp.withVirtualThreads(false);
@@ -214,7 +213,7 @@ class TaskCreateAsyncCustomExecutorOlderJavaTest extends BaseTaskCreateAsyncTest
 }
 
 @NullMarked
-class TaskCreateAsyncCustomExecutorJava21Test extends BaseTaskCreateAsyncTest {
+class TaskCreateForkedAsyncCustomExecutorJava21Test extends BaseTaskCreateForkedAsyncTest {
     @BeforeEach
     void setUp() {
         closeable = SysProp.withVirtualThreads(true);

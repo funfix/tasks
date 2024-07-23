@@ -13,7 +13,7 @@ import java.util.concurrent.Executor;
  * {@link Cancellable} references that can be used to interrupt running tasks.
  * <p>
  * {@code Continuation} objects get injected in {@link AsyncFun} functions.
- * See {@link Task#create(AsyncFun)}.
+ * See {@link Task#fromAsync(AsyncFun)}.
  *
  * @param <T> is the type of the value that the task will complete with
  */

@@ -1,20 +1,7 @@
-@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-
-/**
- * Extensions for blah blah.
- */
 package org.funfix.tasks.kotlin
 
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
-
-public expect class Task<T>
-
-public expect fun <T> Task<out T>.executeAsync(
-    executor: Executor? = null,
-    callback: (Outcome<T>) -> Unit
-): Cancellable
 
 /**
  * Similar with `executeBlocking`, however this is a "suspended" function,
@@ -33,15 +20,21 @@ public expect fun <T> Task<out T>.executeAsync(
  *       the task. If `null`, the `Executor` will be derived from the
  *       `CoroutineDispatcher`
  */
-public expect suspend fun <T> Task<out T>.executeSuspended(
+public expect suspend fun <T> Task<T>.runSuspended(
     executor: Executor? = null
 ): T
 
-public expect fun <T> taskFromAsync(
-    start: (Executor, (Outcome<T>) -> Unit) -> Cancellable
-): Task<T>
+/**
+ * See documentation for [Task.runSuspended].
+ */
+public expect suspend fun <T> PlatformTask<out T>.runSuspended(
+    executor: Executor? = null
+): T
 
-public expect fun <T> taskFromSuspended(
+/**
+ * Creates a [Task] from a suspended block of code.
+ */
+public expect suspend fun <T> Task.Companion.fromSuspended(
     coroutineContext: CoroutineContext = EmptyCoroutineContext,
     block: suspend () -> T
 ): Task<T>

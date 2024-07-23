@@ -118,12 +118,12 @@ private object Trampoline: Executor {
     }
 }
 
-internal object UncaughtExceptionHandler {
-    fun rethrowIfFatal(e: Throwable) {
+public object UncaughtExceptionHandler {
+    public fun rethrowIfFatal(e: Throwable) {
         // Can we do something here?
     }
 
-    fun logOrRethrow(e: Throwable) {
+    public fun logOrRethrow(e: Throwable) {
         console.error(e)
     }
 }
