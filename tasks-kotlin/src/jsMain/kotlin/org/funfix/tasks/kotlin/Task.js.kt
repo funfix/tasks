@@ -12,7 +12,7 @@ public actual class PlatformTask<T>(
         f(executor, callback)
 }
 
-public actual value class Task<out T> internal actual constructor(
+public actual value class Task<out T> public actual constructor(
     public actual val asPlatform: PlatformTask<out T>
 ) {
     public actual companion object

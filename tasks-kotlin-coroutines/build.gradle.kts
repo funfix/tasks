@@ -9,8 +9,8 @@ plugins {
 
 mavenPublishing {
     pom {
-        name = "Tasks / Kotlin"
-        description = "Integration with Kotlin Multiplatform"
+        name = "Tasks / Kotlin Coroutines"
+        description = "Integration with Kotlin's Coroutines"
     }
 }
 
@@ -20,6 +20,11 @@ kotlin {
             compilerOptions {
                 explicitApi = ExplicitApiMode.Strict
                 allWarningsAsErrors = true
+            }
+
+            dependencies {
+                implementation(project(":tasks-kotlin"))
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
 
@@ -38,6 +43,8 @@ kotlin {
 
             dependencies {
                 implementation(project(":tasks-jvm"))
+                implementation(project(":tasks-kotlin"))
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
 
@@ -52,6 +59,11 @@ kotlin {
             compilerOptions {
                 explicitApi = ExplicitApiMode.Strict
                 allWarningsAsErrors = true
+            }
+
+            dependencies {
+                implementation(project(":tasks-kotlin"))
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
     }

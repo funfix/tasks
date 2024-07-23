@@ -23,7 +23,7 @@ public typealias Callback<T> = (Outcome<T>) -> Unit
  * "functional programming", this is a pure value, being somewhat equivalent
  * to `IO`.
  */
-public expect value class Task<out T> internal constructor(
+public expect value class Task<out T> public constructor(
     public val asPlatform: PlatformTask<out T>
 ) {
     // Companion object currently doesn't do anything, but we

@@ -6,7 +6,7 @@ package org.funfix.tasks.kotlin
 public actual typealias PlatformTask<T> = org.funfix.tasks.jvm.Task<T>
 
 @JvmInline
-public actual value class Task<out T> internal actual constructor(
+public actual value class Task<out T> public actual constructor(
     public actual val asPlatform: PlatformTask<out T>
 ) {
     /**

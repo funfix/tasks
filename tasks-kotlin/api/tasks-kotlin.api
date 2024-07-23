@@ -63,6 +63,7 @@ public final class org/funfix/tasks/kotlin/Outcome$Success : org/funfix/tasks/ko
 public final class org/funfix/tasks/kotlin/Task {
 	public static final field Companion Lorg/funfix/tasks/kotlin/Task$Companion;
 	public static final synthetic fun box-impl (Lorg/funfix/tasks/jvm/Task;)Lorg/funfix/tasks/kotlin/Task;
+	public static fun constructor-impl (Lorg/funfix/tasks/jvm/Task;)Lorg/funfix/tasks/jvm/Task;
 	public fun equals (Ljava/lang/Object;)Z
 	public static fun equals-impl (Lorg/funfix/tasks/jvm/Task;Ljava/lang/Object;)Z
 	public static final fun equals-impl0 (Lorg/funfix/tasks/jvm/Task;Lorg/funfix/tasks/jvm/Task;)Z
