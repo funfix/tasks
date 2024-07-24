@@ -49,6 +49,8 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
       - name: Build and test
         run: sbt -v publishLocalGradleDependencies ++test
         working-directory: ./tasks-scala
