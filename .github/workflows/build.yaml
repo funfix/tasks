@@ -48,7 +48,8 @@ jobs:
           java-version: 21
           distribution: 'temurin'
       - name: Build and test
-        run: sbt -v +test
+        run: sbt -v publishLocalGradleDependencies ++test
+        working-directory: ./tasks-scala
 
 #  publish-snapshot:
 #    runs-on: ubuntu-latest
