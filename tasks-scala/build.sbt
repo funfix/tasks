@@ -1,5 +1,4 @@
 import Boilerplate.crossVersionSharedSources
-
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -8,7 +7,9 @@ ThisBuild / crossScalaVersions := Seq("2.13.14", scalaVersion.value)
 
 ThisBuild / resolvers ++= Seq(Resolver.mavenLocal)
 
+val publishLocalGradleDependencies = taskKey[Unit]("Builds and publishes gradle dependencies")
 val props = settingKey[Properties]("Main project properties")
+
 ThisBuild / props := {
   val projectProperties = new Properties()
   val rootDir = (ThisBuild / baseDirectory).value
@@ -33,6 +34,19 @@ lazy val root = project
   .settings(
     publish := {},
     publishLocal := {},
+    publishLocalGradleDependencies := {
+      import scala.sys.process.*
+      val rootDir = (ThisBuild / baseDirectory).value
+      val command = Process(
+        "./gradlew" :: "publishToMavenLocal" :: Nil,
+        new File(rootDir, ".."),
+      )
+      val log = streams.value.log
+      val exitCode = command ! log
+      if (exitCode != 0) {
+        sys.error(s"Command failed with exit code $exitCode")
+      }
+    }
   )
   .aggregate(coreJVM, coreJS)
 
