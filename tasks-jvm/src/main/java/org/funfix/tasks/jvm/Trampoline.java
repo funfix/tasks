@@ -1,6 +1,7 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -41,7 +42,14 @@ final class Trampoline {
     }
 
     public static final Executor INSTANCE =
-            command -> {
+        new TaskExecutor() {
+            @Override
+            public void resumeOnExecutor(Runnable runnable) {
+                execute(runnable);
+            }
+
+            @Override
+            public void execute(@NotNull Runnable command) {
                 var current = queue.get();
                 if (current == null) {
                     current = new LinkedList<>();
@@ -55,7 +63,8 @@ final class Trampoline {
                 } else {
                     current.add(command);
                 }
-            };
+            }
+        };
 
     public static void execute(final Runnable command) {
         INSTANCE.execute(command);

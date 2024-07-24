@@ -27,7 +27,7 @@ public final class TaskExecutors {
      * which will use virtual threads on Java 21+, or a plain
      * {@code Executors.newCachedThreadPool()} on older JVM versions.
      */
-    public static Executor global() {
+    public static Executor sharedBlockingIO() {
         if (VirtualThreads.areVirtualThreadsSupported()) {
             return sharedVirtualIO();
         } else {
@@ -50,7 +50,7 @@ public final class TaskExecutors {
         if (sharedPlatformIORef == null) {
             synchronized (TaskExecutors.class) {
                 if (sharedPlatformIORef == null) {
-                    sharedPlatformIORef = unlimitedThreadPoolForIO("tasks-io");
+                    sharedPlatformIORef = TaskExecutor.from(unlimitedThreadPoolForIO("tasks-io"));
                 }
             }
         }
@@ -62,7 +62,7 @@ public final class TaskExecutors {
         if (sharedVirtualIORef == null) {
             synchronized (TaskExecutors.class) {
                 if (sharedVirtualIORef == null) {
-                    sharedVirtualIORef = unlimitedThreadPoolForIO("tasks-io");
+                    sharedVirtualIORef = TaskExecutor.from(unlimitedThreadPoolForIO("tasks-io"));
                 }
             }
         }

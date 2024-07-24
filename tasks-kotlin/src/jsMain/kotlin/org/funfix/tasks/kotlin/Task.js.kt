@@ -44,15 +44,6 @@ public actual fun <T> Task.Companion.fromAsync(start: (Executor, Callback<T>) ->
         cRef
     })
 
-public actual fun <T> Task.Companion.fromForkedAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T> =
-    Task(PlatformTask { executor, cb ->
-        val cRef = MutableCancellable()
-        executor.execute {
-            cRef.set(start(executor, cb))
-        }
-        cRef
-    })
-
 internal fun <T> Callback<T>.protect(): Callback<T> {
     var isWaiting = true
     return { o ->

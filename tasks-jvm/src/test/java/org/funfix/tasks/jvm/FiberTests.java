@@ -7,9 +7,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
@@ -288,6 +290,274 @@ abstract class BaseFiberTest {
             fiber.cancel();
         }
     }
+
+    @Test
+    void awaitAsyncHappyPath() throws InterruptedException {
+        for (int i = 0; i < repeatCount; i++) {
+            final var latch = new CountDownLatch(1);
+            final var fiber = startFiber(() -> 1);
+            final var result = new AtomicInteger(0);
+            fiber.awaitAsync(new CompletionCallback<>() {
+                @SuppressWarnings("NullableProblems")
+                @Override
+                public void onSuccess(final Integer value) {
+                    result.set(value);
+                    latch.countDown();
+                }
+
+                @Override
+                public void onFailure(Throwable e) {
+                    throw new IllegalStateException("Unexpected failure", e);
+                }
+
+                @Override
+                public void onCancellation() {
+                    throw new IllegalStateException("Unexpected cancellation");
+                }
+            });
+
+            TimedAwait.latchAndExpectCompletion(latch);
+            assertEquals(1, result.get());
+        }
+    }
+
+    @Test
+    void awaitAsyncCanFail() throws InterruptedException {
+        for (int i = 0; i < repeatCount; i++) {
+            final var latch = new CountDownLatch(1);
+            final var ex = new RuntimeException("My Error");
+            final Fiber<Integer> fiber = startFiber(() -> {
+                throw ex;
+            });
+            final var result = new AtomicReference<@Nullable Throwable>(null);
+            fiber.awaitAsync(new CompletionCallback<>() {
+                @Override
+                public void onFailure(Throwable e) {
+                    result.set(e);
+                    latch.countDown();
+                }
+
+                @SuppressWarnings("NullableProblems")
+                @Override
+                public void onSuccess(final Integer value) {
+                    throw new IllegalStateException("Unexpected success");
+                }
+
+                @Override
+                public void onCancellation() {
+                    throw new IllegalStateException("Unexpected cancellation");
+                }
+            });
+
+            TimedAwait.latchAndExpectCompletion(latch);
+            assertEquals(ex, result.get());
+        }
+    }
+
+    @Test
+    void awaitAsyncSignalsCancellation() throws InterruptedException {
+        for (int i = 0; i < repeatCount; i++) {
+            final var fiberLatch = new CountDownLatch(1);
+            final var wasInterrupted = new AtomicInteger(0);
+            final var wasStarted = new CountDownLatch(1);
+
+            final Fiber<String> fiber = startFiber(() -> {
+                wasStarted.countDown();
+                try {
+                    TimedAwait.latchNoExpectations(fiberLatch);
+                    throw new IllegalStateException("Should have been interrupted");
+                } catch (InterruptedException e) {
+                    wasInterrupted.incrementAndGet();
+                    throw e;
+                }
+            });
+
+            final var awaitLatch = new CountDownLatch(1);
+            fiber.awaitAsync(new CompletionCallback<>() {
+                @SuppressWarnings("NullableProblems")
+                @Override
+                public void onSuccess(String value) {
+                    awaitLatch.countDown();
+                }
+
+                @Override
+                public void onFailure(Throwable e) {
+                    awaitLatch.countDown();
+                    UncaughtExceptionHandler.logOrRethrow(e);
+                }
+
+                @Override
+                public void onCancellation() {
+                    wasInterrupted.incrementAndGet();
+                    awaitLatch.countDown();
+                }
+            });
+
+            TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");
+            fiber.cancel();
+            TimedAwait.latchAndExpectCompletion(awaitLatch, "awaitLatch");
+            assertEquals(2, wasInterrupted.get());
+        }
+    }
+
+    @Test
+    void awaitBlockingHappyPath() throws TaskCancellationException, ExecutionException, InterruptedException {
+        for (int i = 0; i < repeatCount; i++) {
+            final var fiber = startFiber(() -> 1);
+            final var r = fiber.awaitBlocking();
+            assertEquals(1, r);
+        }
+    }
+
+    @Test
+    void awaitBlockingFailure() throws TaskCancellationException, InterruptedException {
+        for (int i = 0; i < repeatCount; i++) {
+            final var ex = new RuntimeException("My Error");
+            final Fiber<String> fiber = startFiber(() -> { throw ex; });
+            try {
+                fiber.awaitBlocking();
+                fail("Should have failed");
+            } catch (ExecutionException e) {
+                assertEquals(ex, e.getCause());
+            }
+        }
+    }
+
+    @Test
+    void awaitBlockingSignalsCancellation() throws InterruptedException, ExecutionException {
+        for (int i = 0; i < repeatCount; i++) {
+            final var latch = new CountDownLatch(1);
+            final Fiber<String> fiber = startFiber(() -> {
+                TimedAwait.latchNoExpectations(latch);
+                return "Boo!";
+            });
+
+            fiber.cancel();
+            try {
+                fiber.awaitBlocking();
+                fail("Should have failed");
+            } catch (TaskCancellationException ignored) {
+            }
+        }
+    }
+
+    @Test
+    void awaitBlockingTimedHappyPath() throws TaskCancellationException, ExecutionException,
+        InterruptedException, TimeoutException {
+
+        for (int i = 0; i < repeatCount; i++) {
+            final var fiber = startFiber(() -> 1);
+            final var r = fiber.awaitBlockingTimed(TimedAwait.TIMEOUT);
+            assertEquals(1, r);
+        }
+    }
+
+    @Test
+    void awaitBlockingTimedFailure() throws TaskCancellationException, InterruptedException, TimeoutException {
+        for (int i = 0; i < repeatCount; i++) {
+            final var ex = new RuntimeException("My Error");
+            final Fiber<String> fiber = startFiber(() -> { throw ex; });
+            try {
+                fiber.awaitBlockingTimed(TimedAwait.TIMEOUT);
+                fail("Should have failed");
+            } catch (ExecutionException e) {
+                assertEquals(ex, e.getCause());
+            }
+        }
+    }
+
+
+    @Test
+    void awaitBlockingTimedSignalsCancellation() throws InterruptedException, ExecutionException, TimeoutException {
+        for (int i = 0; i < repeatCount; i++) {
+            final var latch = new CountDownLatch(1);
+            final Fiber<String> fiber = startFiber(() -> {
+                TimedAwait.latchNoExpectations(latch);
+                return "Boo!";
+            });
+
+            fiber.cancel();
+            try {
+                fiber.awaitBlockingTimed(TimedAwait.TIMEOUT);
+                fail("Should have failed");
+            } catch (TaskCancellationException ignored) {
+            }
+        }
+    }
+
+    @Test
+    void awaitBlockingTimesOut() throws TaskCancellationException, ExecutionException, InterruptedException {
+        final var fiber = startFiber(() -> {
+            Thread.sleep(10000);
+            return 1;
+        });
+
+        try {
+            fiber.awaitBlockingTimed(Duration.ofMillis(10));
+            fail("Should have timed out");
+        } catch (TimeoutException ignored) {
+        } finally {
+            fiber.cancel();
+            try {
+                fiber.awaitBlockingTimed(TimedAwait.TIMEOUT);
+                fail("Should have been cancelled");
+            } catch (TimeoutException e) {
+                //noinspection ThrowFromFinallyBlock
+                throw new RuntimeException(e);
+            } catch (TaskCancellationException ignored) {
+            }
+        }
+    }
+
+    @Test
+    void awaitAsyncFutureHappyPath() {
+        for (int i = 0; i < repeatCount; i++) {
+            final var fiber = startFiber(() -> 1);
+            final var future = fiber.awaitAsync().future();
+            try {
+                assertEquals(1, future.get());
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    @Test
+    void awaitAsyncFutureFailure() throws InterruptedException {
+        for (int i = 0; i < repeatCount; i++) {
+            final var ex = new RuntimeException("My Error");
+            final var fiber = startFiber(() -> {
+                throw ex;
+            });
+            final var future = fiber.awaitAsync().future();
+            try {
+                future.get();
+                fail("Should have failed");
+            } catch (ExecutionException e) {
+                assertEquals(ex, e.getCause());
+            }
+        }
+    }
+
+    @Test
+    void awaitAsyncFutureCanSignalCancellation() throws InterruptedException {
+        for (int i = 0; i < repeatCount; i++) {
+            final var latch = new CountDownLatch(1);
+            final var fiber = startFiber(() -> {
+                TimedAwait.latchNoExpectations(latch);
+                return "Boo!";
+            });
+
+            fiber.cancel();
+            final var future = fiber.awaitAsync().future();
+            try {
+                future.get();
+                fail("Should have failed");
+            } catch (ExecutionException e) {
+                assertInstanceOf(TaskCancellationException.class, e.getCause());
+            }
+        }
+    }
 }
 
 @NullMarked
@@ -300,15 +570,16 @@ class FiberWithVirtualThreadsTest extends BaseFiberTest {
     void setUp() {
         closeable = SysProp.withVirtualThreads(true);
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Java 21+ required");
-        executor = TaskExecutors.global();
+        executor = TaskExecutors.sharedBlockingIO();
     }
 
     @Test
-    void testVirtualThreads() throws ExecutionException, InterruptedException {
-        final var task =
-            Task.fromBlockingIO(() -> Thread.currentThread().getName());
+    void testVirtualThreads() throws ExecutionException, InterruptedException, TimeoutException {
+        final var task = Task
+            .fromBlockingIO(() -> Thread.currentThread().getName());
         assertTrue(
-            Objects.requireNonNull(task.runBlocking()).matches("tasks-io-virtual-\\d+"),
+            Objects.requireNonNull(task.runBlockingTimed(TimedAwait.TIMEOUT))
+                .matches("tasks-io-virtual-\\d+"),
             "currentThread.name.matches(\"tasks-io-virtual-\\\\d+\")"
         );
     }
@@ -320,15 +591,16 @@ class FiberWithPlatformThreadsTest extends BaseFiberTest {
     void setUp() {
         closeable = SysProp.withVirtualThreads(false);
         assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Java older than 21 required");
-        executor = TaskExecutors.global();
+        executor = TaskExecutors.sharedBlockingIO();
     }
 
     @Test
-    void testPlatformThreads() throws ExecutionException, InterruptedException {
+    void testPlatformThreads() throws ExecutionException, InterruptedException, TimeoutException {
         final var task =
             Task.fromBlockingIO(() -> Thread.currentThread().getName());
         assertTrue(
-            Objects.requireNonNull(task.runBlocking()).matches("tasks-io-platform-\\d+"),
+            Objects.requireNonNull(task.runBlockingTimed(TimedAwait.TIMEOUT))
+                .matches("tasks-io-platform-\\d+"),
             "currentThread.name.matches(\"tasks-io-platform-\\\\d+\")"
         );
     }

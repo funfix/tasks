@@ -67,13 +67,18 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
 
     private final AtomicBoolean isWaiting = new AtomicBoolean(true);
     private final CompletionCallback<T> listener;
+    private final TaskExecutor executor;
 
     private @Nullable T successValue;
     private @Nullable Throwable failureCause;
     private boolean isCancelled = false;
 
-    private ProtectedCompletionCallback(final CompletionCallback<T> listener) {
+    private ProtectedCompletionCallback(
+        final CompletionCallback<T> listener,
+        final TaskExecutor executor
+    ) {
         this.listener = listener;
+        this.executor = executor;
     }
 
     @Override
@@ -95,9 +100,7 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
     public void onSuccess(final T value) {
         if (isWaiting.getAndSet(false)) {
             this.successValue = value;
-            // Trampolined execution is needed because, with chained tasks,
-            // we might end up with a stack overflow
-            Trampoline.execute(this);
+            executor.resumeOnExecutor(this);
         }
     }
 
@@ -107,9 +110,7 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
         UncaughtExceptionHandler.logOrRethrow(e);
         if (isWaiting.getAndSet(false)) {
             this.failureCause = e;
-            // Trampolined execution is needed because, with chained tasks,
-            // we might end up with a stack overflow
-            Trampoline.execute(this);
+            executor.resumeOnExecutor(this);
         } else {
             UncaughtExceptionHandler.logOrRethrow(e);
         }
@@ -119,14 +120,18 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
     public void onCancellation() {
         if (isWaiting.getAndSet(false)) {
             this.isCancelled = true;
-            // Trampolined execution is needed because, with chained tasks,
-            // we might end up with a stack overflow
-            Trampoline.execute(this);
+            executor.resumeOnExecutor(this);
         }
     }
 
-    public static <T> CompletionCallback<T> protect(final CompletionCallback<T> listener) {
+    public static <T> CompletionCallback<T> protect(
+        final TaskExecutor executor,
+        final CompletionCallback<T> listener
+    ) {
         Objects.requireNonNull(listener, "listener");
-        return new ProtectedCompletionCallback<>(listener);
+        return new ProtectedCompletionCallback<>(
+            listener,
+            executor
+        );
     }
 }

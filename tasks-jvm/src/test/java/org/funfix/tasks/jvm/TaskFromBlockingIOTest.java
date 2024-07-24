@@ -5,6 +5,8 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opentest4j.AssertionFailedError;
+
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -27,14 +29,28 @@ abstract class TaskFromBlockingIOTestBase {
     abstract void testThreadName(String name);
 
     @Test
-    public void happyPath() throws ExecutionException, InterruptedException {
+    public void runBlockingDoesNotFork() throws ExecutionException, InterruptedException {
+        Objects.requireNonNull(executor);
+        final var name = new AtomicReference<>("");
+        final var thisName = Thread.currentThread().getName();
+        final var r =
+            Task.fromBlockingIO(() -> {
+                name.set(Thread.currentThread().getName());
+                return "Hello, world!";
+            }).runBlocking(executor);
+        assertEquals("Hello, world!", r);
+        assertEquals(thisName, name.get());
+    }
+
+    @Test
+    public void runBlockingTimedForks() throws ExecutionException, InterruptedException, TimeoutException {
         Objects.requireNonNull(executor);
         final var name = new AtomicReference<>("");
         final var r =
                 Task.fromBlockingIO(() -> {
                     name.set(Thread.currentThread().getName());
                     return "Hello, world!";
-                }).runBlocking(executor);
+                }).runBlockingTimed(executor, TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", r);
         testThreadName(name.get());
     }
@@ -101,6 +117,6 @@ final class TaskFromBlockingWithSharedExecutorTest extends TaskFromBlockingIOTes
 
     @BeforeEach
     void setup() {
-        this.executor = TaskExecutors.global();
+        this.executor = TaskExecutors.sharedBlockingIO();
     }
 }

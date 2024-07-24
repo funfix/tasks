@@ -1,23 +1,54 @@
+import Boilerplate.crossVersionSharedSources
+
+import java.io.FileInputStream
 import java.util.Properties
 
-val scala3Version = "3.3.1"
+ThisBuild / scalaVersion := "3.3.1"
+ThisBuild / crossScalaVersions := Seq("2.13.14", scalaVersion.value)
 
-//val props = settingsKey[Properties]("Main project properties")
-//props := {
-//  val projectProperties = Properties()
-//  val rootDir = (baseDirectory in ThisBuild).value
-//  val fis = FileInputStream(s"$rootDir/../gradle.properties")
-//  projectProperties.load(fis)
-//  projectProperties
-//}
+ThisBuild / resolvers ++= Seq(Resolver.mavenLocal)
+
+val props = settingKey[Properties]("Main project properties")
+ThisBuild / props := {
+  val projectProperties = new Properties()
+  val rootDir = (ThisBuild / baseDirectory).value
+  val fis = new FileInputStream(s"$rootDir/../gradle.properties")
+  projectProperties.load(fis)
+  projectProperties
+}
+
+ThisBuild / version := {
+  val base = props.value.getProperty("project.version")
+  val isRelease =
+    sys.env.get("BUILD_RELEASE").filter(_.nonEmpty)
+      .orElse(Option(System.getProperty("buildRelease")))
+      .exists(it => it == "true" || it == "1" || it == "yes" || it == "on")
+  if (isRelease) base else s"$base-SNAPSHOT"
+}
+
+Global / onChangedBuildSource := ReloadOnSourceChanges
 
 lazy val root = project
   .in(file("."))
   .settings(
-    name := "Tasks Scala",
-//    version := props.value.getProperty("project.version"),
-
-    scalaVersion := scala3Version,
-
-    libraryDependencies += "org.scalameta" %% "munit" % "1.0.0" % Test
+    publish := {},
+    publishLocal := {},
   )
+  .aggregate(coreJVM, coreJS)
+
+lazy val core = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .in(file("core"))
+  .settings(crossVersionSharedSources)
+  .settings(
+    name := "tasks-scala",
+  )
+  .jvmSettings(
+    libraryDependencies ++= Seq(
+      "org.funfix" % "tasks-jvm" % version.value
+    )
+  )
+
+lazy val coreJVM = core.jvm
+lazy val coreJS = core.js
+

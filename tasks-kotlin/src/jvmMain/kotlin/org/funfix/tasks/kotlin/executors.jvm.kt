@@ -8,4 +8,4 @@ public actual val TrampolineExecutor: Executor
     get() = TaskExecutors.trampoline()
 
 public actual val GlobalExecutor: Executor
-    get() = TaskExecutors.global()
+    get() = TaskExecutors.sharedBlockingIO()

@@ -30,8 +30,3 @@ public actual fun <T> Task.Companion.fromAsync(start: (Executor, Callback<T>) ->
     Task(PlatformTask.fromAsync { executor, cb ->
         start(executor, cb.asKotlin())
     })
-
-public actual fun <T> Task.Companion.fromForkedAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T> =
-    Task(PlatformTask.fromForkedAsync { executor, cb ->
-        start(executor, cb.asKotlin())
-    })

@@ -26,7 +26,7 @@ interface Continuation<T extends @Nullable Object>
      * Returns the {@link Executor} that the task can use to run its
      * asynchronous computation.
      */
-    Executor getExecutor();
+    TaskExecutor getExecutor();
 
     /**
      * Registers a {@link Cancellable} reference that can be used to interrupt
@@ -38,6 +38,8 @@ interface Continuation<T extends @Nullable Object>
     void registerCancellable(Cancellable cancellable);
 
     CancellableForwardRef registerForwardCancellable();
+
+    CancellableContinuation<T> withExecutorOverride(TaskExecutor executor);
 }
 
 /**
@@ -60,19 +62,31 @@ final class CancellableContinuation<T extends @Nullable Object>
 
     private final CompletionCallback<T> callback;
     private final MutableCancellable cancellable;
-    private final Executor executor;
+    private final TaskExecutor executor;
 
     public CancellableContinuation(
-        final Executor executor,
+        final TaskExecutor executor,
         final CompletionCallback<T> callback
+    ) {
+        this(
+            executor,
+            callback,
+            new MutableCancellable()
+        );
+    }
+
+    private CancellableContinuation(
+        final TaskExecutor executor,
+        final CompletionCallback<T> callback,
+        final MutableCancellable cancellable
     ) {
         this.executor = executor;
         this.callback = callback;
-        this.cancellable = new MutableCancellable();
+        this.cancellable = cancellable;
     }
 
     @Override
-    public Executor getExecutor() {
+    public TaskExecutor getExecutor() {
         return this.executor;
     }
 
@@ -104,5 +118,14 @@ final class CancellableContinuation<T extends @Nullable Object>
     @Override
     public void onCancellation() {
         callback.onCancellation();
+    }
+
+    @Override
+    public CancellableContinuation<T> withExecutorOverride(TaskExecutor executor) {
+        return new CancellableContinuation<>(
+            executor,
+            callback,
+            cancellable
+        );
     }
 }

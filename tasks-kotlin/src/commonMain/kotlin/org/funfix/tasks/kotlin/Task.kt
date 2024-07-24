@@ -74,21 +74,3 @@ public expect fun <T> Task<T>.runAsync(
  * @see fromForkedAsync
  */
 public expect fun <T> Task.Companion.fromAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T>
-
-/**
- * Creates a task from an asynchronous computation, initiated on a
- * separate thread.
- *
- * This is a variant of [fromAsync]. The former executes the given
- * builder function on the same thread, whereas this variant starts the
- * computation on a separate thread.
- *
- * **NOTE:** The thread is created via the injected [Executor] in the
- * "execute" methods (e.g., [runAsync]). Even when using one of the
- * overloads, then [GlobalExecutor] is assumed.
- *
- * @param start is the function that will trigger the async computation.
- * @return a new task that will execute the given builder function.
- * @see fromAsync
- */
-public expect fun <T> Task.Companion.fromForkedAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T>
