@@ -1,7 +1,7 @@
 package org.funfix.tasks.jvm;
 
 import lombok.EqualsAndHashCode;
-import lombok.val;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 
+@ApiStatus.Internal
 @NullMarked
 abstract class ImmutableStack<T> implements Iterable<T> {
     protected ImmutableStack() {}
@@ -205,7 +206,7 @@ final class ImmutableQueue<T> implements Iterable<T> {
         final var sb = new StringBuilder();
         sb.append("ImmutableQueue(");
         var isFirst = true;
-        for (val t : this) {
+        for (final T t : this) {
             if (isFirst) {
                 isFirst = false;
             } else {

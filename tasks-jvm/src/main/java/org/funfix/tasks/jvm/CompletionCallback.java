@@ -1,5 +1,6 @@
 package org.funfix.tasks.jvm;
 
+import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -61,6 +62,28 @@ public interface CompletionCallback<T extends @Nullable Object>
     }
 }
 
+@ApiStatus.Internal
+@NullMarked
+interface CallbackBasedOnOutcome<T> extends CompletionCallback<T> {
+    void onOutcome(Outcome<T> outcome);
+
+    @Override
+    default void onSuccess(final T value) {
+        onOutcome(Outcome.success(value));
+    }
+
+    @Override
+    default void onFailure(final Throwable e) {
+        onOutcome(Outcome.failure(e));
+    }
+
+    @Override
+    default void onCancellation() {
+        onOutcome(Outcome.cancellation());
+    }
+}
+
+@ApiStatus.Internal
 @NullMarked
 final class ProtectedCompletionCallback<T extends @Nullable Object>
     implements CompletionCallback<T>, Runnable {

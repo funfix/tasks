@@ -231,11 +231,13 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
 @ApiStatus.Internal
 @NullMarked
 final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
+    private final TaskExecutor executor;
     private final Continuation<? super T> continuation;
     private final AtomicReference<State<T>> stateRef =
         new AtomicReference<>(State.start());
 
     private ExecutedFiber(final TaskExecutor executor) {
+        this.executor = executor;
         this.continuation = new FiberContinuation<>(executor, stateRef);
     }
 
@@ -259,7 +261,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
                     return removeListenerCancellable(onComplete);
                 }
             } else {
-                Trampoline.execute(onComplete);
+                executor.resumeOnExecutor(onComplete);
                 return Cancellable.getEmpty();
             }
         }
@@ -280,8 +282,6 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
             }
         }
     }
-
-//        new FiberContinuation<>(executor, stateRef);
 
     private Cancellable removeListenerCancellable(final Runnable listener) {
         return () -> {
@@ -338,16 +338,16 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
             }
         }
 
-        final void triggerListeners() {
+        final void triggerListeners(TaskExecutor executor) {
             if (this instanceof Active) {
                 final var ref = (Active<T>) this;
                 for (final var listener : ref.listeners) {
-                    Trampoline.execute(listener);
+                    executor.resumeOnExecutor(listener);
                 }
             } else if (this instanceof Cancelled) {
                 final var ref = (Cancelled<T>) this;
                 for (final var listener : ref.listeners) {
-                    Trampoline.execute(listener);
+                    executor.resumeOnExecutor(listener);
                 }
             }
         }
@@ -466,13 +466,13 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
                 State<T> current = stateRef.get();
                 if (current instanceof State.Active) {
                     if (stateRef.compareAndSet(current, new State.Completed<>(outcome))) {
-                        current.triggerListeners();
+                        current.triggerListeners(executor);
                         return;
                     }
                 } else if (current instanceof State.Cancelled) {
                     State.Completed<T> update = new State.Completed<>(Outcome.cancellation());
                     if (stateRef.compareAndSet(current, update)) {
-                        current.triggerListeners();
+                        current.triggerListeners(executor);
                         return;
                     }
                 } else if (current instanceof State.Completed) {
