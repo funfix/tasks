@@ -47,10 +47,10 @@ kotlin {
     }
 
     tasks.withType<JavaCompile> {
-        sourceCompatibility = "11"
-        targetCompatibility = "11"
+        sourceCompatibility = JavaVersion.VERSION_11.majorVersion
+        targetCompatibility = JavaVersion.VERSION_11.majorVersion
         jvmToolchain {
-            languageVersion.set(JavaLanguageVersion.of(11))
+            languageVersion.set(JavaLanguageVersion.of(JavaVersion.VERSION_11.majorVersion))
         }
     }
 
@@ -63,7 +63,7 @@ kotlin {
         }
         kotlinJavaToolchain.toolchain.use(
             javaLauncher = javaToolchains.launcherFor {
-                languageVersion = JavaLanguageVersion.of(11)
+                languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_11.majorVersion)
             }
         )
     }
@@ -73,6 +73,6 @@ tasks.withType<Test> {
     useJUnitPlatform()
     javaLauncher =
         javaToolchains.launcherFor {
-            languageVersion = JavaLanguageVersion.of(11)
+            languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_11.majorVersion)
         }
 }

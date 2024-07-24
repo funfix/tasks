@@ -32,13 +32,13 @@ tasks.withType<JavaCompile> {
 tasks.register<Test>("testsOn21") {
     useJUnitPlatform()
     javaLauncher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_21.majorVersion)
     }
 }
 
 tasks.register<Test>("testsOn11") {
     useJUnitPlatform()
     javaLauncher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(11)
+        languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_11.majorVersion)
     }
 }
