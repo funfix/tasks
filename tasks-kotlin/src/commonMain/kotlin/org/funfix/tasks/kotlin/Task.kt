@@ -40,6 +40,30 @@ public fun <T> PlatformTask<T>.asKotlin(): Task<T> =
     Task(this)
 
 /**
+ * Ensures that the task starts asynchronously and runs on the given executor,
+ * regardless of the `run` method that is used, or the injected executor in
+ * any of those methods.
+ *
+ * One example where this is useful is for blocking I/O operations, for
+ * ensuring that the task runs on the thread-pool meant for blocking I/O,
+ * regardless of what executor is passed to [runAsync].
+ *
+ * Example:
+ * ```kotlin
+ * Task.fromBlockingIO {
+ *     // Reads a file from disk
+ *     Files.readString(Paths.get("file.txt"))
+ * }.ensureRunningOnExecutor(
+ *     BlockingIOExecutor
+ * )
+ * ```
+ *
+ * @param executor is the [Executor] used as an override. If `null`, then
+ * the executor injected (e.g., in [runAsync]) will be used.
+ */
+public expect fun <T> Task<T>.ensureRunningOnExecutor(executor: Executor? = null): Task<T>
+
+/**
  * Executes the task asynchronously.
  *
  * @param executor is the [Executor] to use for running the task
@@ -50,6 +74,19 @@ public expect fun <T> Task<T>.runAsync(
     executor: Executor? = null,
     callback: Callback<T>
 ): Cancellable
+
+/**
+ * Executes the task concurrently and returns a [Fiber] that can be
+ * used to wait for the result or cancel the task.
+ *
+ * Similar to [runAsync], this method starts the execution on a different thread.
+ *
+ * @param executor is the [Executor] that may be used to run the task.
+ *
+ * @return a [Fiber] that can be used to wait for the outcome,
+ * or to cancel the running fiber.
+ */
+public expect fun <T> Task<T>.runFiber(executor: Executor? = null): Fiber<T>
 
 /**
  * Creates a task from an asynchronous computation, initiated on the current thread.
@@ -73,4 +110,6 @@ public expect fun <T> Task<T>.runAsync(
  * @return a new task that will execute the given builder function upon execution
  * @see fromForkedAsync
  */
-public expect fun <T> Task.Companion.fromAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T>
+public expect fun <T> Task.Companion.fromAsync(
+    start: (Executor, Callback<T>) -> Cancellable
+): Task<T>

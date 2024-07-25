@@ -25,7 +25,7 @@ public actual fun <T> Task<T>.runAsync(
     val protected = callback.protect()
     try {
         return asPlatform.invoke(
-            executor ?: GlobalExecutor,
+            executor ?: BlockingIOExecutor,
             protected
         )
     } catch (e: Throwable) {
@@ -35,7 +35,9 @@ public actual fun <T> Task<T>.runAsync(
     }
 }
 
-public actual fun <T> Task.Companion.fromAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T> =
+public actual fun <T> Task.Companion.fromAsync(
+    start: (Executor, Callback<T>) -> Cancellable
+): Task<T> =
     Task(PlatformTask { executor, cb ->
         val cRef = MutableCancellable()
         TrampolineExecutor.execute {
@@ -57,4 +59,12 @@ internal fun <T> Callback<T>.protect(): Callback<T> {
             }
         }
     }
+}
+
+public actual fun <T> Task<T>.ensureRunningOnExecutor(executor: Executor?): Task<T> {
+    TODO("Not yet implemented")
+}
+
+public actual fun <T> Task<T>.runFiber(executor: Executor?): Fiber<T> {
+    TODO("Not yet implemented")
 }

@@ -19,8 +19,9 @@ object TaskExecutor {
     TaskExecutor(TaskExecutors.trampoline())
 
   object Givens {
-    given compute: ExecutionContext = ExecutionContext.global
-    given blockingIO: ExecutionContext = ExecutionContext.global
-    given trampoline: ExecutionContext = ExecutionContext.global
+    given compute: TaskExecutor = 
+      TaskExecutor.compute
+    given blockingIO: TaskExecutor = 
+      TaskExecutor.blockingIO
   }
 }

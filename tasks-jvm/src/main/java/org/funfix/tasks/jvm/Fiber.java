@@ -55,11 +55,13 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
      * after the fiber has completed, in which case the callback will be
      * executed immediately.
      *
-     * @param callback will be called when the fiber completes
+     * @param callback will be called with the result when the fiber completes.
+     *
      * @return a {@link Cancellable} that can be used to unregister the callback,
-     * in case the caller is no longer interested in the result.
+     * in case the caller is no longer interested in the result. Note this
+     * does not cancel the fiber itself.
      */
-    default Cancellable awaitAsync(CompletionCallback<T> callback) {
+    default Cancellable awaitAsync(CompletionCallback<? super T> callback) {
         return joinAsync(() -> {
             try {
                 final var result = getResultOrThrow();

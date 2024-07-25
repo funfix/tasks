@@ -16,6 +16,7 @@ public sealed interface Outcome<out T> {
      * @throws TaskCancellationException in case this is an [Outcome.Cancellation]
      * @throws Throwable in case this is an [Outcome.Failure]
      */
+    @Throws(TaskCancellationException::class)
     public fun getOrThrow(): T =
         when (this) {
             is Success -> value

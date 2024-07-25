@@ -7,3 +7,7 @@ public actual open class TaskCancellationException public actual constructor(
 ): Exception(message) {
     public actual constructor() : this(null)
 }
+
+public actual class FiberNotCompletedException
+    public actual constructor(): Exception("Fiber not completed yet")
+

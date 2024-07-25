@@ -13,6 +13,8 @@ public actual typealias TaskCancellationException = org.funfix.tasks.jvm.TaskCan
 
 public typealias UncaughtExceptionHandler = org.funfix.tasks.jvm.UncaughtExceptionHandler
 
+public actual typealias FiberNotCompletedException = org.funfix.tasks.jvm.Fiber.NotCompletedException
+
 public actual typealias Runnable = java.lang.Runnable
 
 public actual typealias Executor = java.util.concurrent.Executor

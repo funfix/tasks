@@ -38,6 +38,7 @@ kotlin {
 
             dependencies {
                 implementation(project(":tasks-jvm"))
+                compileOnly(libs.jetbrains.annotations)
             }
         }
 

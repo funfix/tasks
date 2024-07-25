@@ -13,7 +13,7 @@ public actual fun interface Executor {
     public actual fun execute(command: Runnable)
 }
 
-public actual val GlobalExecutor: Executor
+public actual val BlockingIOExecutor: Executor
     get() = JSExecutor
 
 public actual val TrampolineExecutor: Executor

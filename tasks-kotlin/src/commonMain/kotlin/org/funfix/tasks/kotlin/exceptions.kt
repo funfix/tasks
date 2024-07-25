@@ -8,3 +8,6 @@ package org.funfix.tasks.kotlin
 public expect open class TaskCancellationException(message: String?): Exception {
     public constructor()
 }
+
+public expect class FiberNotCompletedException public constructor() :
+    Exception

@@ -1,6 +1,7 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.NonBlocking;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -128,6 +129,7 @@ public final class Task<T extends @Nullable Object> {
      * @return a {@link Fiber} that can be used to wait for the outcome,
      * or to cancel the running fiber.
      */
+    @NonBlocking
     public Fiber<T> runFiber(final Executor executor) {
         return ExecutedFiber.start(executor, createFun);
     }
@@ -142,6 +144,7 @@ public final class Task<T extends @Nullable Object> {
      * @return a {@link Fiber} that can be used to wait for the outcome,
      * or to cancel the running fiber.
      */
+    @NonBlocking
     public Fiber<T> runFiber() {
         return runFiber(TaskExecutors.sharedBlockingIO());
     }
@@ -282,6 +285,9 @@ public final class Task<T extends @Nullable Object> {
 
     /**
      * Creates a task from a {@link DelayedFun} executing blocking IO.
+     * <p>
+     * This uses Java's interruption protocol (i.e., {@link Thread#interrupt()})
+     * for cancelling the task.
      */
     public static <T> Task<T> fromBlockingIO(final DelayedFun<? extends T> run) {
         return new Task<>((cont) -> {
@@ -397,7 +403,7 @@ public final class Task<T extends @Nullable Object> {
      *                value. It's a builder because {@link Task} values are cold values
      *                (lazy, not executed yet).
      * @return a new task that upon execution will complete with the result of
-     * the created {@code CancellableCompletionStage}
+     * the created {@link CancellableFuture}
      */
     public static <T> Task<T> fromCancellableFuture(
         final DelayedFun<CancellableFuture<? extends T>> builder
