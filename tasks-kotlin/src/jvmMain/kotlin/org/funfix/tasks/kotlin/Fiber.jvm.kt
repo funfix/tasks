@@ -5,6 +5,7 @@ package org.funfix.tasks.kotlin
 
 import org.jetbrains.annotations.Blocking
 import org.jetbrains.annotations.NonBlocking
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeoutException
 import kotlin.jvm.Throws
 import kotlin.time.Duration
@@ -15,20 +16,32 @@ public actual typealias PlatformFiber<T> = org.funfix.tasks.jvm.Fiber<T>
 @JvmInline
 public actual value class Fiber<out T> public actual constructor(
     public actual val asPlatform: PlatformFiber<out T>
-)
+): Cancellable {
+    @NonBlocking
+    actual override fun cancel(): Unit =
+        asPlatform.cancel()
+}
 
-@NonBlocking
-@Throws(TaskCancellationException::class, FiberNotCompletedException::class)
-public actual fun <T> Fiber<T>.resultOrThrow(): T =
-    asPlatform.resultOrThrow
+public actual val <T> Fiber<T>.resultOrThrow: T
+    @NonBlocking
+    @Throws(TaskCancellationException::class, FiberNotCompletedException::class)
+    get() = asPlatform.resultOrThrow
+
+public actual val <T> Fiber<T>.outcomeOrNull: Outcome<T>? get() =
+    try {
+        Outcome.Success(asPlatform.resultOrThrow)
+    } catch (e: TaskCancellationException) {
+        Outcome.Cancellation
+    } catch (e: ExecutionException) {
+        Outcome.Failure(e.cause ?: e)
+    } catch (e: Throwable) {
+        UncaughtExceptionHandler.rethrowIfFatal(e)
+        Outcome.Failure(e)
+    }
 
 @NonBlocking
 public actual fun <T> Fiber<T>.joinAsync(onComplete: Runnable): Cancellable =
     asPlatform.joinAsync(onComplete)
-
-@NonBlocking
-public actual fun <T> Fiber<T>.cancel(): Unit =
-    asPlatform.cancel()
 
 @NonBlocking
 public actual fun <T> Fiber<T>.awaitAsync(callback: Callback<T>): Cancellable =
@@ -63,7 +76,11 @@ public fun <T> Fiber<T>.joinBlocking(): Unit =
 @Blocking
 @Throws(InterruptedException::class, TaskCancellationException::class)
 public fun <T> Fiber<T>.awaitBlocking(): T =
-    asPlatform.awaitBlocking()
+    try {
+        asPlatform.awaitBlocking()
+    } catch (e: ExecutionException) {
+        throw e.cause ?: e
+    }
 
 /**
  * Blocks the current thread until the fiber completes, or until the
@@ -102,5 +119,9 @@ public fun <T> Fiber<T>.joinBlockingTimed(timeout: Duration): Unit =
 @Blocking
 @Throws(InterruptedException::class, TaskCancellationException::class, TimeoutException::class)
 public fun <T> Fiber<T>.awaitBlockingTimed(timeout: Duration): T =
-    asPlatform.awaitBlockingTimed(timeout.toJavaDuration())
+    try {
+        asPlatform.awaitBlockingTimed(timeout.toJavaDuration())
+    } catch (e: ExecutionException) {
+        throw e.cause ?: e
+    }
 

@@ -6,6 +6,7 @@ package org.funfix.tasks.kotlin
 import org.jetbrains.annotations.Blocking
 import org.jetbrains.annotations.NonBlocking
 import java.util.concurrent.CompletionStage
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.Future
 import java.util.concurrent.TimeoutException
 import kotlin.jvm.Throws
@@ -70,9 +71,13 @@ public actual fun <T> Task<T>.runFiber(executor: Executor?): Fiber<T> =
 @Blocking
 @Throws(InterruptedException::class)
 public fun <T> Task<T>.runBlocking(executor: Executor? = null): T =
-    when (executor) {
-        null -> asPlatform.runBlocking()
-        else -> asPlatform.runBlocking(executor)
+    try {
+        when (executor) {
+            null -> asPlatform.runBlocking()
+            else -> asPlatform.runBlocking(executor)
+        }
+    } catch (e: ExecutionException) {
+        throw e.cause ?: e
     }
 
 /**
@@ -103,10 +108,17 @@ public fun <T> Task<T>.runBlocking(executor: Executor? = null): T =
  */
 @Blocking
 @Throws(InterruptedException::class, TimeoutException::class)
-public fun <T> Task<T>.runBlockingTimed(timeout: Duration, executor: Executor? = null): T =
-    when (executor) {
-        null -> asPlatform.runBlockingTimed(timeout.toJavaDuration())
-        else -> asPlatform.runBlockingTimed(executor, timeout.toJavaDuration())
+public fun <T> Task<T>.runBlockingTimed(
+    timeout: Duration,
+    executor: Executor? = null
+): T =
+    try {
+        when (executor) {
+            null -> asPlatform.runBlockingTimed(timeout.toJavaDuration())
+            else -> asPlatform.runBlockingTimed(executor, timeout.toJavaDuration())
+        }
+    } catch (e: ExecutionException) {
+        throw e.cause ?: e
     }
 
 // Builders

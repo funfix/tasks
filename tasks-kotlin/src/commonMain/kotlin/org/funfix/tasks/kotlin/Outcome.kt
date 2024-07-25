@@ -9,20 +9,21 @@ package org.funfix.tasks.kotlin
  * - a cancelled computation, via [Outcome.Cancellation]
  */
 public sealed interface Outcome<out T> {
-    /**
-     * Returns the successful result of a computation, or throws an exception
-     * if the computation failed or was cancelled.
-     *
-     * @throws TaskCancellationException in case this is an [Outcome.Cancellation]
-     * @throws Throwable in case this is an [Outcome.Failure]
-     */
-    @Throws(TaskCancellationException::class)
-    public fun getOrThrow(): T =
-        when (this) {
-            is Success -> value
-            is Failure -> throw exception
-            is Cancellation -> throw TaskCancellationException("Task was cancelled")
-        }
+    public val orThrow: T
+        /**
+         * Returns the successful result of a computation, or throws an exception
+         * if the computation failed or was cancelled.
+         *
+         * @throws TaskCancellationException in case this is an [Outcome.Cancellation]
+         * @throws Throwable in case this is an [Outcome.Failure]
+         */
+        @Throws(TaskCancellationException::class)
+        get() =
+            when (this) {
+                is Success -> value
+                is Failure -> throw exception
+                is Cancellation -> throw TaskCancellationException("Task was cancelled")
+            }
 
     public data class Success<out T>(val value: T): Outcome<T>
     public data class Failure(val exception: Throwable): Outcome<Nothing>

@@ -22,6 +22,10 @@ public typealias Callback<T> = (Outcome<T>) -> Unit
  * the result won't get cached (memoized). In the vocabulary of
  * "functional programming", this is a pure value, being somewhat equivalent
  * to `IO`.
+ *
+ * This is designed to be a compile-time type that's going to be erased at
+ * runtime. Therefore, for the JVM at least, when using it in your APIs, it
+ * won't pollute it with Kotlin-specific wrappers.
  */
 public expect value class Task<out T> public constructor(
     public val asPlatform: PlatformTask<out T>
@@ -36,7 +40,7 @@ public expect value class Task<out T> public constructor(
  *
  * E.g., can convert a `jvm.Task` to a `kotlin.Task`.
  */
-public fun <T> PlatformTask<T>.asKotlin(): Task<T> =
+public fun <T> PlatformTask<out T>.asKotlin(): Task<T> =
     Task(this)
 
 /**

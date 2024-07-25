@@ -3,8 +3,10 @@ public final class org/funfix/tasks/kotlin/ExecutorsJvmKt {
 	public static final fun getTrampolineExecutor ()Ljava/util/concurrent/Executor;
 }
 
-public final class org/funfix/tasks/kotlin/Fiber {
+public final class org/funfix/tasks/kotlin/Fiber : org/funfix/tasks/jvm/Cancellable {
 	public static final synthetic fun box-impl (Lorg/funfix/tasks/jvm/Fiber;)Lorg/funfix/tasks/kotlin/Fiber;
+	public fun cancel ()V
+	public static fun cancel-impl (Lorg/funfix/tasks/jvm/Fiber;)V
 	public static fun constructor-impl (Lorg/funfix/tasks/jvm/Fiber;)Lorg/funfix/tasks/jvm/Fiber;
 	public fun equals (Ljava/lang/Object;)Z
 	public static fun equals-impl (Lorg/funfix/tasks/jvm/Fiber;Ljava/lang/Object;)Z
@@ -21,11 +23,11 @@ public final class org/funfix/tasks/kotlin/FiberJvmKt {
 	public static final fun awaitAsync-bilpdk0 (Lorg/funfix/tasks/jvm/Fiber;Lkotlin/jvm/functions/Function1;)Lorg/funfix/tasks/jvm/Cancellable;
 	public static final fun awaitBlocking-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)Ljava/lang/Object;
 	public static final fun awaitBlockingTimed-MI-qbaI (Lorg/funfix/tasks/jvm/Fiber;J)Ljava/lang/Object;
-	public static final fun cancel-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)V
+	public static final fun getOutcomeOrNull-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)Lorg/funfix/tasks/kotlin/Outcome;
+	public static final fun getResultOrThrow-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)Ljava/lang/Object;
 	public static final fun joinAsync-bilpdk0 (Lorg/funfix/tasks/jvm/Fiber;Ljava/lang/Runnable;)Lorg/funfix/tasks/jvm/Cancellable;
 	public static final fun joinBlocking-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)V
 	public static final fun joinBlockingTimed-MI-qbaI (Lorg/funfix/tasks/jvm/Fiber;J)V
-	public static final fun resultOrThrow-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)Ljava/lang/Object;
 }
 
 public final class org/funfix/tasks/kotlin/FiberKt {

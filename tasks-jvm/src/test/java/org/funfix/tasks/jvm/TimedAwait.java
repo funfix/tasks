@@ -18,8 +18,9 @@ public class TimedAwait {
             TIMEOUT = Duration.ofSeconds(10);
     }
 
-    static boolean latchNoExpectations(final CountDownLatch latch) throws InterruptedException {
-        return latch.await(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    static void latchNoExpectations(final CountDownLatch latch) throws InterruptedException {
+        latch.await(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
     }
 
     static void latchAndExpectCompletion(final CountDownLatch latch) throws InterruptedException {

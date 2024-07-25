@@ -3,17 +3,30 @@
 package org.funfix.tasks.kotlin
 
 public actual interface PlatformFiber<T>: Cancellable {
-    public fun resultOrThrow(): T
+    public val resultOrThrow: T
 
     public fun joinAsync(onComplete: Runnable): Cancellable
 }
 
 public actual value class Fiber<out T> public actual constructor(
     public actual val asPlatform: PlatformFiber<out T>
-)
+): Cancellable {
+    actual override fun cancel(): Unit =
+        asPlatform.cancel()
+}
 
-public actual fun <T> Fiber<T>.resultOrThrow(): T =
-    asPlatform.resultOrThrow()
+public actual val <T> Fiber<T>.resultOrThrow: T get() =
+    asPlatform.resultOrThrow
+
+public actual val <T> Fiber<T>.outcomeOrNull: Outcome<T>? get() =
+    try {
+        Outcome.Success(asPlatform.resultOrThrow)
+    } catch (e: TaskCancellationException) {
+        Outcome.Cancellation
+    } catch (e: Throwable) {
+        UncaughtExceptionHandler.rethrowIfFatal(e)
+        Outcome.Failure(e)
+    }
 
 public actual fun <T> Fiber<T>.joinAsync(onComplete: Runnable): Cancellable =
     asPlatform.joinAsync(onComplete)
@@ -21,8 +34,7 @@ public actual fun <T> Fiber<T>.joinAsync(onComplete: Runnable): Cancellable =
 public actual fun <T> Fiber<T>.awaitAsync(callback: Callback<T>): Cancellable =
     joinAsync {
         try {
-            val r = resultOrThrow()
-            callback(Outcome.Success(r))
+            callback(Outcome.Success(resultOrThrow))
         } catch (e: TaskCancellationException) {
             callback(Outcome.Cancellation)
         } catch (e: Throwable) {
@@ -30,7 +42,3 @@ public actual fun <T> Fiber<T>.awaitAsync(callback: Callback<T>): Cancellable =
             callback(Outcome.Failure(e))
         }
     }
-
-public actual fun <T> Fiber<T>.cancel(): Unit =
-    asPlatform.cancel()
-
