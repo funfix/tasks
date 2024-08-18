@@ -1,7 +1,5 @@
 package org.funfix.tasks.jvm;
 
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NullMarked;
 
@@ -18,28 +16,10 @@ import java.util.function.Function;
  * can do the job.
  */
 @NullMarked
-@ToString
-@EqualsAndHashCode(callSuper = false)
-public class CancellableFuture<T extends @Nullable Object> {
-    private final CompletableFuture<? extends T> future;
-    private final Cancellable cancellable;
-
-    public CancellableFuture(
-        CompletableFuture<? extends T> future,
-        Cancellable cancellable
-    ) {
-        this.future = future;
-        this.cancellable = cancellable;
-    }
-
-    public CompletableFuture<? extends T> future() {
-        return future;
-    }
-
-    public Cancellable cancellable() {
-        return cancellable;
-    }
-
+public record CancellableFuture<T extends @Nullable Object>(
+    CompletableFuture<? extends T> future,
+    Cancellable cancellable
+) {
     public <U> CancellableFuture<U> transform(
         Function<? super CompletableFuture<? extends T>, ? extends CompletableFuture<? extends U>> fn
     ) {

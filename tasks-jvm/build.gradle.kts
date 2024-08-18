@@ -25,8 +25,8 @@ tasks.jacocoTestReport {
 }
 
 tasks.withType<JavaCompile> {
-    sourceCompatibility = JavaVersion.VERSION_11.majorVersion
-    targetCompatibility = JavaVersion.VERSION_11.majorVersion
+    sourceCompatibility = JavaVersion.VERSION_17.majorVersion
+    targetCompatibility = JavaVersion.VERSION_17.majorVersion
 }
 
 tasks.register<Test>("testsOn21") {
@@ -36,9 +36,9 @@ tasks.register<Test>("testsOn21") {
     }
 }
 
-tasks.register<Test>("testsOn11") {
+tasks.register<Test>("testsOn17") {
     useJUnitPlatform()
     javaLauncher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_11.majorVersion)
+        languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_17.majorVersion)
     }
 }

@@ -12,14 +12,14 @@ import java.util.function.Predicate;
 
 @ApiStatus.Internal
 @NullMarked
-abstract class ImmutableStack<T> implements Iterable<T> {
-    protected ImmutableStack() {}
+sealed interface ImmutableStack<T> extends Iterable<T>
+    permits ImmutableStack.Cons, ImmutableStack.Nil {
 
-    ImmutableStack<T> prepend(T value) {
+    default ImmutableStack<T> prepend(T value) {
         return new Cons<>(value, this);
     }
 
-    ImmutableStack<T> prependAll(Iterable<? extends T> values) {
+    default ImmutableStack<T> prependAll(Iterable<? extends T> values) {
         ImmutableStack<T> result = this;
         for (T t : values) {
             result = result.prepend(t);
@@ -27,7 +27,8 @@ abstract class ImmutableStack<T> implements Iterable<T> {
         return result;
     }
 
-    @Nullable T head() {
+    @Nullable
+    default T head() {
         if (this instanceof Cons) {
             return ((Cons<T>) this).head;
         } else {
@@ -35,7 +36,7 @@ abstract class ImmutableStack<T> implements Iterable<T> {
         }
     }
 
-    ImmutableStack<T> tail() {
+    default ImmutableStack<T> tail() {
         if (this instanceof Cons) {
             return ((Cons<T>) this).tail;
         } else {
@@ -43,7 +44,7 @@ abstract class ImmutableStack<T> implements Iterable<T> {
         }
     }
 
-    boolean isEmpty() {
+    default boolean isEmpty() {
         return this instanceof Nil;
     }
 

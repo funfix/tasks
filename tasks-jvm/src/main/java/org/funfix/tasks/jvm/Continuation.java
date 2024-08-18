@@ -106,6 +106,11 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
+    public void onOutcome(Outcome<T> outcome) {
+        callback.onOutcome(outcome);
+    }
+
+    @Override
     public void onSuccess(T value) {
         callback.onSuccess(value);
     }

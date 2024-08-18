@@ -27,8 +27,8 @@ val javadocJar = tasks.create<Jar>("javadocJar") {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 kotlin {
@@ -47,10 +47,10 @@ kotlin {
     }
 
     tasks.withType<JavaCompile> {
-        sourceCompatibility = JavaVersion.VERSION_11.majorVersion
-        targetCompatibility = JavaVersion.VERSION_11.majorVersion
+        sourceCompatibility = JavaVersion.VERSION_17.majorVersion
+        targetCompatibility = JavaVersion.VERSION_17.majorVersion
         jvmToolchain {
-            languageVersion.set(JavaLanguageVersion.of(JavaVersion.VERSION_11.majorVersion))
+            languageVersion.set(JavaLanguageVersion.of(JavaVersion.VERSION_17.majorVersion))
         }
     }
 
@@ -58,12 +58,12 @@ kotlin {
         compilerOptions {
             // explicitApiMode = ExplicitApiMode.Strict
             // allWarningsAsErrors = true
-            jvmTarget.set(JvmTarget.JVM_11)
+            jvmTarget.set(JvmTarget.JVM_17)
             freeCompilerArgs.add("-Xjvm-default=all")
         }
         kotlinJavaToolchain.toolchain.use(
             javaLauncher = javaToolchains.launcherFor {
-                languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_11.majorVersion)
+                languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_17.majorVersion)
             }
         )
     }
@@ -73,6 +73,6 @@ tasks.withType<Test> {
     useJUnitPlatform()
     javaLauncher =
         javaToolchains.launcherFor {
-            languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_11.majorVersion)
+            languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_17.majorVersion)
         }
 }

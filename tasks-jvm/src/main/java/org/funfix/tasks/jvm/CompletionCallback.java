@@ -19,67 +19,46 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @param <T> is the type of the value that the task will complete with
  */
 @NullMarked
+@FunctionalInterface
 public interface CompletionCallback<T extends @Nullable Object>
     extends Serializable {
+
+    void onOutcome(Outcome<T> outcome);
 
     /**
      * Must be called when the task completes successfully.
      *
      * @param value is the successful result of the task, to be signaled
      */
-    void onSuccess(T value);
+    default void onSuccess(T value) {
+        onOutcome(Outcome.success(value));
+    }
 
     /**
      * Must be called when the task completes with an exception.
      *
      * @param e is the exception that the task failed with
      */
-    void onFailure(Throwable e);
+    default void onFailure(Throwable e) {
+        onOutcome(Outcome.failure(e));
+    }
 
     /**
      * Must be called when the task is cancelled.
      */
-    void onCancellation();
+    default void onCancellation() {
+        onOutcome(Outcome.cancellation());
+    }
 
     /**
      * @return a {@code CompletionListener} that does nothing.
      */
     static <T extends @Nullable Object> CompletionCallback<T> empty() {
-        return new CompletionCallback<>() {
-            @Override
-            public void onSuccess(final T value) {
-            }
-
-            @Override
-            public void onCancellation() {
-            }
-
-            @Override
-            public void onFailure(final Throwable e) {
-                UncaughtExceptionHandler.logOrRethrow(e);
+        return outcome -> {
+            if (outcome instanceof Outcome.Failure<T> f) {
+                UncaughtExceptionHandler.logOrRethrow(f.exception());
             }
         };
-    }
-}
-
-@ApiStatus.Internal
-@NullMarked
-interface CallbackBasedOnOutcome<T> extends CompletionCallback<T> {
-    void onOutcome(Outcome<T> outcome);
-
-    @Override
-    default void onSuccess(final T value) {
-        onOutcome(Outcome.success(value));
-    }
-
-    @Override
-    default void onFailure(final Throwable e) {
-        onOutcome(Outcome.failure(e));
-    }
-
-    @Override
-    default void onCancellation() {
-        onOutcome(Outcome.cancellation());
     }
 }
 
@@ -92,6 +71,7 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
     private final CompletionCallback<T> listener;
     private final TaskExecutor executor;
 
+    private @Nullable Outcome<T> outcome;
     private @Nullable T successValue;
     private @Nullable Throwable failureCause;
     private boolean isCancelled = false;
@@ -106,7 +86,9 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
 
     @Override
     public void run() {
-        if (this.failureCause != null) {
+        if (this.outcome != null) {
+            listener.onOutcome(this.outcome);
+        } else if (this.failureCause != null) {
             listener.onFailure(this.failureCause);
         } else if (this.isCancelled) {
             listener.onCancellation();
@@ -114,9 +96,21 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
             listener.onSuccess(this.successValue);
         }
         // For GC purposes; but it doesn't really matter if we nullify these or not
+        this.outcome = null;
         this.successValue = null;
         this.failureCause = null;
         this.isCancelled = false;
+    }
+
+    @Override
+    public void onOutcome(final Outcome<T> outcome) {
+        Objects.requireNonNull(outcome, "outcome");
+        if (isWaiting.getAndSet(false)) {
+            this.outcome = outcome;
+            executor.resumeOnExecutor(this);
+        } else if (outcome instanceof Outcome.Failure<T> f) {
+            UncaughtExceptionHandler.logOrRethrow(f.exception());
+        }
     }
 
     @Override
@@ -130,7 +124,6 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
     @Override
     public void onFailure(final Throwable e) {
         Objects.requireNonNull(e, "e");
-        UncaughtExceptionHandler.logOrRethrow(e);
         if (isWaiting.getAndSet(false)) {
             this.failureCause = e;
             executor.resumeOnExecutor(this);

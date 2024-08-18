@@ -1,13 +1,8 @@
 package org.funfix.tasks.jvm;
 
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.RequiredArgsConstructor;
-import lombok.ToString;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -21,10 +16,8 @@ import java.util.concurrent.ExecutionException;
  */
 @ApiStatus.Internal
 @NullMarked
-abstract class Outcome<T extends @Nullable Object> {
-    private Outcome() {
-        super();
-    }
+public sealed interface Outcome<T extends @Nullable Object>
+    permits Outcome.Success, Outcome.Failure, Outcome.Cancellation {
 
     /**
      * Returns the value of the task if it was successful, or throws an exception.
@@ -33,44 +26,24 @@ abstract class Outcome<T extends @Nullable Object> {
      * @throws ExecutionException        if the task failed with an exception
      * @throws TaskCancellationException if the task was cancelled
      */
-    abstract T getOrThrow() throws ExecutionException, TaskCancellationException;
+    T getOrThrow() throws ExecutionException, TaskCancellationException;
 
     /**
      * Signals a successful result of the task.
      */
-    @ToString
-    @EqualsAndHashCode(callSuper = false)
-    @RequiredArgsConstructor
-    static final class Success<T extends @Nullable Object>
-        extends Outcome<T> {
-
-        private final T value;
-
-        public T value() {
-            return value;
-        }
+    record Success<T extends @Nullable Object>(T value)
+        implements Outcome<T> {
 
         @Override
-        public T getOrThrow() {
-            return value;
-        }
+        public T getOrThrow() { return value; }
     }
 
     /**
      * Signals that the task failed.
      */
-    @ToString
-    @EqualsAndHashCode(callSuper = false)
-    @RequiredArgsConstructor
-    static final class Failure<T extends @Nullable Object>
-        extends Outcome<T> {
+    record Failure<T extends @Nullable Object>(Throwable exception)
+        implements Outcome<T> {
 
-        private final Throwable exception;
-        public Throwable exception() {
-            return exception;
-        }
-
-        @Override
         public T getOrThrow() throws ExecutionException {
             throw new ExecutionException(exception);
         }
@@ -79,10 +52,8 @@ abstract class Outcome<T extends @Nullable Object> {
     /**
      * Signals that the task was cancelled.
      */
-    @Data
-    @EqualsAndHashCode(callSuper = false)
-    static final class Cancellation<T extends @Nullable Object>
-        extends Outcome<T> {
+    record Cancellation<T extends @Nullable Object>()
+        implements Outcome<T> {
 
         @Override
         public T getOrThrow() throws TaskCancellationException {
