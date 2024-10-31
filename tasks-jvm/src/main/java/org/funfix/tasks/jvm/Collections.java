@@ -116,6 +116,7 @@ sealed abstract class ImmutableStack<T> implements Iterable<T>
     }
 }
 
+@ApiStatus.Internal
 @NullMarked
 final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
     private final ImmutableStack<T> toEnqueue;
