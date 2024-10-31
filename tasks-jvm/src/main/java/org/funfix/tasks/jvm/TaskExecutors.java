@@ -99,7 +99,6 @@ public final class TaskExecutors {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@SuppressWarnings("JavaLangInvokeHandleSignature")
 @NullMarked
 final class VirtualThreads {
     private static final @Nullable MethodHandle newThreadPerTaskExecutorMethodHandle;
@@ -153,10 +152,6 @@ final class VirtualThreads {
         final var e2 = new NotSupportedException("Executors.newThreadPerTaskExecutor");
         if (thrown != null) e2.addSuppressed(thrown);
         throw e2;
-    }
-
-    public static ThreadFactory factory() throws NotSupportedException {
-        return factory(VIRTUAL_THREAD_NAME_PREFIX);
     }
 
     public static ThreadFactory factory(final String prefix) throws NotSupportedException {
@@ -217,7 +212,4 @@ final class VirtualThreads {
                 || "disabled".equalsIgnoreCase(sp);
         return !disableFeature && isVirtualMethodHandle != null && newThreadPerTaskExecutorMethodHandle != null;
     }
-
-    public static final String VIRTUAL_THREAD_NAME_PREFIX =
-            "tasks-io-virtual-";
 }

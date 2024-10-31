@@ -7,14 +7,9 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * Represents the outcome of a finished task.
- * <p>
- * <strong>INTERNAL API:</strong> Internal apis are subject to change or removal
- * without any notice. When code depends on internal APIs, it is subject to
- * breakage between minor version updates.
  *
  * @param <T> is the type of the value that the task completed with
  */
-@ApiStatus.Internal
 @NullMarked
 public sealed interface Outcome<T extends @Nullable Object>
     permits Outcome.Success, Outcome.Failure, Outcome.Cancellation {

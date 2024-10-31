@@ -1,3 +1,8 @@
+.PHONY: build
+
+build:
+	./gradlew build
+
 dependency-updates:
 	./gradlew dependencyUpdates \
 		-Drevision=release \

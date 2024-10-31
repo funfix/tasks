@@ -14,6 +14,15 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
+/**
+ * A {@code Fiber} is a task that was started concurrently, and that can
+ * be joined or cancelled.
+ * <p>
+ * Fibers are the equivalent of threads, except they are higher-level and
+ * library-managed, instead of being intrinsic to the JVM.
+ *
+ * @param <T> is the result of the fiber, if successful.
+ */
 @NullMarked
 public interface Fiber<T extends @Nullable Object> extends Cancellable {
     /**
@@ -42,6 +51,10 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
      *
      * @param onComplete is the callback to run when the fiber completes
      *                   (successfully, or with failure, or cancellation)
+     *
+     * @return a {@link Cancellable} that can be used to unregister the callback,
+     * in case the caller is no longer interested in the result. Note this
+     * does not cancel the fiber itself.
      */
     @NonBlocking
     Cancellable joinAsync(Runnable onComplete);
@@ -61,6 +74,7 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
      * in case the caller is no longer interested in the result. Note this
      * does not cancel the fiber itself.
      */
+    @NonBlocking
     default Cancellable awaitAsync(CompletionCallback<? super T> callback) {
         return joinAsync(() -> {
             try {
@@ -179,12 +193,19 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
      * thrown by {@link #getResultOrThrow()}, or in the
      * {@link CompletionCallback#onCancellation()} callback being triggered.
      */
+    @NonBlocking
     @Override void cancel();
 
     /**
      * Returns a {@link CancellableFuture} that can be used to join the fiber
      * asynchronously, or to cancel it.
+     *
+     * @return a {@link CancellableFuture} that can be used to asynchronously
+     * process its result, or to give up on listening for the result. Note that
+     * cancelling the returned future does not cancel the fiber itself, for
+     * that you need to call {@link Fiber#cancel()}.
      */
+    @NonBlocking
     default CancellableFuture<@Nullable Void> joinAsync() {
         final var future = new CompletableFuture<@Nullable Void>();
         final var token = joinAsync(() -> future.complete(null));
@@ -198,6 +219,15 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
         return new CancellableFuture<>(future, cRef);
     }
 
+    /**
+     * Overload of {@link #awaitAsync(CompletionCallback)}.
+     *
+     * @return a {@link CancellableFuture} that can be used to asynchronously
+     * process its result or to give up on listening for the result. Note that
+     * cancelling the returned future does not cancel the fiber itself, for
+     * that you need to call {@link Fiber#cancel()}.
+     */
+    @NonBlocking
     default CancellableFuture<T> awaitAsync() {
         final var f = joinAsync();
         return f.transform(it -> it.thenApply(v -> {
@@ -273,8 +303,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
     public void cancel() {
         while (true) {
             final var current = stateRef.get();
-            if (current instanceof State.Active) {
-                final var active = (State.Active<T>) current;
+            if (current instanceof State.Active<T> active) {
                 if (stateRef.compareAndSet(current, new State.Cancelled<>(active.listeners))) {
                     active.cancellable.cancel();
                     return;
@@ -341,13 +370,11 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         }
 
         final void triggerListeners(TaskExecutor executor) {
-            if (this instanceof Active) {
-                final var ref = (Active<T>) this;
+            if (this instanceof Active<T> ref) {
                 for (final var listener : ref.listeners) {
                     executor.resumeOnExecutor(listener);
                 }
-            } else if (this instanceof Cancelled) {
-                final var ref = (Cancelled<T>) this;
+            } else if (this instanceof Cancelled<T> ref) {
                 for (final var listener : ref.listeners) {
                     executor.resumeOnExecutor(listener);
                 }
@@ -355,12 +382,10 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         }
 
         final State<T> addListener(final Runnable listener) {
-            if (this instanceof Active) {
-                final var ref = (Active<T>) this;
+            if (this instanceof Active<T> ref) {
                 final var newQueue = ref.listeners.enqueue(listener);
                 return new Active<>(newQueue, ref.cancellable);
-            } else if (this instanceof Cancelled) {
-                final var ref = (Cancelled<T>) this;
+            } else if (this instanceof Cancelled<T> ref) {
                 final var newQueue = ref.listeners.enqueue(listener);
                 return new Cancelled<>(newQueue);
             } else {
@@ -369,12 +394,10 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         }
 
         final State<T> removeListener(final Runnable listener) {
-            if (this instanceof Active) {
-                final var ref = (Active<T>) this;
+            if (this instanceof Active<T> ref) {
                 final var newQueue = ref.listeners.filter(l -> l != listener);
                 return new Active<>(newQueue, ref.cancellable);
-            } else if (this instanceof Cancelled) {
-                final var ref = (Cancelled<T>) this;
+            } else if (this instanceof Cancelled<T> ref) {
                 final var newQueue = ref.listeners.filter(l -> l != listener);
                 return new Cancelled<>(newQueue);
             } else {
@@ -429,8 +452,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
                 return (cancellable) -> {};
             } else if (current instanceof State.Cancelled) {
                 return Cancellable::cancel;
-            } else if (current instanceof State.Active) {
-                final var active = (State.Active<T>) current;
+            } else if (current instanceof State.Active<T> active) {
                 return active.cancellable.newCancellableRef();
             } else {
                 throw new IllegalStateException("Invalid state: " + current);
@@ -440,8 +462,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         @Override
         public void registerCancellable(Cancellable cancellable) {
             final var current = stateRef.get();
-            if (current instanceof State.Active) {
-                final var active = (State.Active<T>) current;
+            if (current instanceof State.Active<T> active) {
                 active.cancellable.register(cancellable);
             } else if (current instanceof State.Cancelled) {
                 cancellable.cancel();
@@ -463,7 +484,8 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
             onOutcome(Outcome.cancellation());
         }
 
-        private void onOutcome(Outcome<T> outcome) {
+        @Override
+        public void onOutcome(Outcome<T> outcome) {
             while (true) {
                 State<T> current = stateRef.get();
                 if (current instanceof State.Active) {
@@ -478,8 +500,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
                         return;
                     }
                 } else if (current instanceof State.Completed) {
-                    if (outcome instanceof Outcome.Failure) {
-                        final var failure = (Outcome.Failure<T>) outcome;
+                    if (outcome instanceof Outcome.Failure<T> failure) {
                         UncaughtExceptionHandler.logOrRethrow(failure.exception());
                     }
                     return;

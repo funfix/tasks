@@ -1,18 +1,18 @@
 package org.funfix.tasks.jvm;
 
-import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
- * This is a wrapper around a [CompletableFuture] with a
- * [Cancellable] reference attached.
+ * This is a wrapper around a {@link CompletableFuture} with a
+ * {@link Cancellable} reference attached.
  * <p>
- * A standard Java [CompletableFuture] is not connected to its
+ * A standard Java {@link CompletableFuture} is not connected to its
  * asynchronous task and cannot be cancelled. Thus, if we want to cancel
- * a task, we need to keep a reference to a [Cancellable] object that
+ * a task, we need to keep a reference to a {@link Cancellable} object that
  * can do the job.
  */
 @NullMarked

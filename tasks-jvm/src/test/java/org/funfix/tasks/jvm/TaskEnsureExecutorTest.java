@@ -78,27 +78,16 @@ public class TaskEnsureExecutorTest {
             final var threadName1 = new AtomicReference<@Nullable String>(null);
             final var threadName2 = new AtomicReference<@Nullable String>(null);
             final var isDone = new CountDownLatch(1);
-            final var r = Task
-                .fromBlockingIO(() -> Thread.currentThread().getName())
+            Task.fromBlockingIO(() -> Thread.currentThread().getName())
                 .ensureRunningOnExecutor(ec1)
-                .runAsync(ec2, new CompletionCallback<>() {
-                    @Override
-                    public void onSuccess(String value) {
-                        threadName1.set(value);
+                .runAsync(ec2, (CompletionCallback<String>) outcome -> {
+                    if (outcome instanceof Outcome.Success<String> value) {
+                        threadName1.set(value.value());
                         threadName2.set(Thread.currentThread().getName());
-                        isDone.countDown();
+                    } else if (outcome instanceof Outcome.Failure<String> f) {
+                        UncaughtExceptionHandler.logOrRethrow(f.exception());
                     }
-
-                    @Override
-                    public void onFailure(Throwable e) {
-                        UncaughtExceptionHandler.logOrRethrow(e);
-                        isDone.countDown();
-                    }
-
-                    @Override
-                    public void onCancellation() {
-                        isDone.countDown();
-                    }
+                    isDone.countDown();
                 });
 
             TimedAwait.latchAndExpectCompletion(isDone, "isDone");
@@ -129,20 +118,17 @@ public class TaskEnsureExecutorTest {
 
         final var isComplete = new CountDownLatch(1);
         final var r2 = new AtomicReference<@Nullable Outcome<String>>(null);
-        fiber.awaitAsync(new CallbackBasedOnOutcome<String>() {
-            @Override
-            public void onOutcome(Outcome<String> outcome) {
-                r2.set(outcome);
-                isComplete.countDown();
-            }
+        fiber.awaitAsync(outcome -> {
+            r2.set(outcome);
+            isComplete.countDown();
         });
 
         TimedAwait.latchAndExpectCompletion(isComplete, "isComplete");
+        //noinspection DataFlowIssue
         final var r2Value = Objects.requireNonNull(r2.get().getOrThrow());
         assertTrue(
             r2Value.startsWith("tasks-io-"),
             "Expected thread name to start with 'tasks-io-', but was: " + r2Value
         );
     }
-
 }

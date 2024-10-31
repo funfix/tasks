@@ -297,22 +297,13 @@ abstract class BaseFiberTest {
             final var latch = new CountDownLatch(1);
             final var fiber = startFiber(() -> 1);
             final var result = new AtomicInteger(0);
-            fiber.awaitAsync(new CompletionCallback<>() {
-                @SuppressWarnings("NullableProblems")
-                @Override
-                public void onSuccess(final Integer value) {
-                    result.set(value);
+            fiber.awaitAsync(outcome -> {
+                if (outcome instanceof Outcome.Success<Integer> success) {
+                    //noinspection DataFlowIssue
+                    result.set(success.value());
                     latch.countDown();
-                }
-
-                @Override
-                public void onFailure(Throwable e) {
-                    throw new IllegalStateException("Unexpected failure", e);
-                }
-
-                @Override
-                public void onCancellation() {
-                    throw new IllegalStateException("Unexpected cancellation");
+                } else {
+                    throw new IllegalStateException("Unexpected outcome: " + outcome);
                 }
             });
 
@@ -330,22 +321,12 @@ abstract class BaseFiberTest {
                 throw ex;
             });
             final var result = new AtomicReference<@Nullable Throwable>(null);
-            fiber.awaitAsync(new CompletionCallback<>() {
-                @Override
-                public void onFailure(Throwable e) {
-                    result.set(e);
+            fiber.awaitAsync(outcome -> {
+                if (outcome instanceof Outcome.Failure<Integer> failure) {
+                    result.set(failure.exception());
                     latch.countDown();
-                }
-
-                @SuppressWarnings("NullableProblems")
-                @Override
-                public void onSuccess(final Integer value) {
-                    throw new IllegalStateException("Unexpected success");
-                }
-
-                @Override
-                public void onCancellation() {
-                    throw new IllegalStateException("Unexpected cancellation");
+                } else {
+                    throw new IllegalStateException("Unexpected outcome: " + outcome);
                 }
             });
 
@@ -373,24 +354,13 @@ abstract class BaseFiberTest {
             });
 
             final var awaitLatch = new CountDownLatch(1);
-            fiber.awaitAsync(new CompletionCallback<>() {
-                @SuppressWarnings("NullableProblems")
-                @Override
-                public void onSuccess(String value) {
-                    awaitLatch.countDown();
-                }
-
-                @Override
-                public void onFailure(Throwable e) {
-                    awaitLatch.countDown();
-                    UncaughtExceptionHandler.logOrRethrow(e);
-                }
-
-                @Override
-                public void onCancellation() {
+            fiber.awaitAsync(outcome -> {
+                if (outcome instanceof Outcome.Cancellation<String>) {
                     wasInterrupted.incrementAndGet();
-                    awaitLatch.countDown();
+                } else if (outcome instanceof Outcome.Failure<String> failure) {
+                    UncaughtExceptionHandler.logOrRethrow(failure.exception());
                 }
+                awaitLatch.countDown();
             });
 
             TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");

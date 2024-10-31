@@ -1,10 +1,11 @@
 package org.funfix.tasks.jvm;
 
-import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.NullMarked;
 import java.util.concurrent.Executor;
 
 @NullMarked
+@ApiStatus.Internal
 interface TaskExecutor extends Executor {
     void resumeOnExecutor(Runnable runnable);
 
@@ -26,7 +27,7 @@ final class TaskExecutorWithForkedResume implements TaskExecutor {
     }
 
     @Override
-    public void execute(@NotNull Runnable command) {
+    public void execute(Runnable command) {
         executor.execute(() -> {
             final int oldLocalHash = localExecutor.get();
             localExecutor.set(System.identityHashCode(executor));

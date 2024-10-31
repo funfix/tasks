@@ -269,7 +269,7 @@ public final class Task<T extends @Nullable Object> {
      *              and an executor that can be used for creating additional threads.
      * @return a new task that will execute the given builder function upon execution
      */
-    public static <T> Task<T> fromAsync(final AsyncFun<? extends T> start) {
+    public static <T extends @Nullable Object> Task<T> fromAsync(final AsyncFun<? extends T> start) {
         return new Task<>((cont) ->
             Trampoline.execute(() -> {
                 try {
@@ -289,14 +289,13 @@ public final class Task<T extends @Nullable Object> {
      * This uses Java's interruption protocol (i.e., {@link Thread#interrupt()})
      * for cancelling the task.
      */
-    public static <T> Task<T> fromBlockingIO(final DelayedFun<? extends T> run) {
+    public static <T extends @Nullable Object> Task<T> fromBlockingIO(final DelayedFun<? extends T> run) {
         return new Task<>((cont) -> {
             Thread th = Thread.currentThread();
             cont.registerCancellable(th::interrupt);
             try {
                 T result;
                 try {
-                    //noinspection DataFlowIssue
                     result = run.invoke();
                 } finally {
                     cont.registerCancellable(Cancellable.getEmpty());
@@ -336,7 +335,7 @@ public final class Task<T extends @Nullable Object> {
      * @see #fromCompletionStage(DelayedFun)
      * @see #fromCancellableFuture(DelayedFun)
      */
-    public static <T> Task<T> fromBlockingFuture(final DelayedFun<Future<? extends T>> builder) {
+    public static <T extends @Nullable Object> Task<T> fromBlockingFuture(final DelayedFun<Future<? extends T>> builder) {
         return fromBlockingIO(() -> {
             final var f = Objects.requireNonNull(builder.invoke());
             try {
@@ -380,7 +379,7 @@ public final class Task<T extends @Nullable Object> {
      * the created {@code CancellableCompletionStage}
      * @see #fromCancellableFuture(DelayedFun)
      */
-    public static <T> Task<T> fromCompletionStage(
+    public static <T extends @Nullable Object> Task<T> fromCompletionStage(
         final DelayedFun<? extends CompletionStage<? extends T>> builder
     ) {
         return fromCancellableFuture(
@@ -405,7 +404,7 @@ public final class Task<T extends @Nullable Object> {
      * @return a new task that upon execution will complete with the result of
      * the created {@link CancellableFuture}
      */
-    public static <T> Task<T> fromCancellableFuture(
+    public static <T extends @Nullable Object> Task<T> fromCancellableFuture(
         final DelayedFun<CancellableFuture<? extends T>> builder
     ) {
         return new Task<>(new TaskFromCancellableFuture<>(builder));
@@ -456,6 +455,17 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
         if (!isDone.getAndSet(true)) {
             interrupted = new InterruptedException("Task was cancelled");
             releaseShared(1);
+        }
+    }
+
+    @Override
+    public void onOutcome(Outcome<T> outcome) {
+        if (outcome instanceof Outcome.Success<T> success) {
+            onSuccess(success.value());
+        } else if (outcome instanceof Outcome.Failure<T> failure) {
+            onFailure(failure.exception());
+        } else {
+            onCancellation();
         }
     }
 

@@ -2,7 +2,6 @@ package org.funfix.tasks.jvm;
 
 import lombok.EqualsAndHashCode;
 import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -12,14 +11,14 @@ import java.util.function.Predicate;
 
 @ApiStatus.Internal
 @NullMarked
-sealed interface ImmutableStack<T> extends Iterable<T>
+sealed abstract class ImmutableStack<T> implements Iterable<T>
     permits ImmutableStack.Cons, ImmutableStack.Nil {
 
-    default ImmutableStack<T> prepend(T value) {
+    final ImmutableStack<T> prepend(T value) {
         return new Cons<>(value, this);
     }
 
-    default ImmutableStack<T> prependAll(Iterable<? extends T> values) {
+    final ImmutableStack<T> prependAll(Iterable<? extends T> values) {
         ImmutableStack<T> result = this;
         for (T t : values) {
             result = result.prepend(t);
@@ -28,7 +27,7 @@ sealed interface ImmutableStack<T> extends Iterable<T>
     }
 
     @Nullable
-    default T head() {
+    final T head() {
         if (this instanceof Cons) {
             return ((Cons<T>) this).head;
         } else {
@@ -36,7 +35,7 @@ sealed interface ImmutableStack<T> extends Iterable<T>
         }
     }
 
-    default ImmutableStack<T> tail() {
+    final ImmutableStack<T> tail() {
         if (this instanceof Cons) {
             return ((Cons<T>) this).tail;
         } else {
@@ -44,11 +43,11 @@ sealed interface ImmutableStack<T> extends Iterable<T>
         }
     }
 
-    default boolean isEmpty() {
+    final boolean isEmpty() {
         return this instanceof Nil;
     }
 
-    ImmutableStack<T> reverse() {
+    final ImmutableStack<T> reverse() {
         ImmutableStack<T> result = empty();
         for (T t : this) {
             result = result.prepend(t);
@@ -57,7 +56,7 @@ sealed interface ImmutableStack<T> extends Iterable<T>
     }
 
     @EqualsAndHashCode(callSuper = false)
-    private static final class Cons<T> extends ImmutableStack<T> {
+    static final class Cons<T> extends ImmutableStack<T> {
         final T head;
         final ImmutableStack<T> tail;
 
@@ -68,7 +67,7 @@ sealed interface ImmutableStack<T> extends Iterable<T>
     }
 
     @EqualsAndHashCode(callSuper = false)
-    private static final class Nil<T> extends ImmutableStack<T> {
+    static final class Nil<T> extends ImmutableStack<T> {
         Nil() {}
     }
 
@@ -89,8 +88,7 @@ sealed interface ImmutableStack<T> extends Iterable<T>
 
             @Override
             public T next() {
-                if (current instanceof Cons) {
-                    final var cons = (Cons<T>) current;
+                if (current instanceof Cons<T> cons) {
                     current = cons.tail;
                     return cons.head;
                 } else {
@@ -118,7 +116,8 @@ sealed interface ImmutableStack<T> extends Iterable<T>
     }
 }
 
-final class ImmutableQueue<T> implements Iterable<T> {
+@NullMarked
+final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
     private final ImmutableStack<T> toEnqueue;
     private final ImmutableStack<T> toDequeue;
 
@@ -128,6 +127,7 @@ final class ImmutableQueue<T> implements Iterable<T> {
     }
 
     ImmutableQueue<T> enqueue(T value) {
+        //noinspection DataFlowIssue
         return new ImmutableQueue<>(toEnqueue.prepend(value), toDequeue);
     }
 
@@ -139,6 +139,7 @@ final class ImmutableQueue<T> implements Iterable<T> {
         if (toDequeue.isEmpty()) {
             return new ImmutableQueue<>(ImmutableStack.empty(), toEnqueue.reverse());
         } else {
+            //noinspection NullableProblems
             return this;
         }
     }
@@ -159,6 +160,7 @@ final class ImmutableQueue<T> implements Iterable<T> {
         } else if (!toEnqueue.isEmpty()) {
             return new ImmutableQueue<>(ImmutableStack.empty(), toEnqueue.reverse().tail());
         } else {
+            //noinspection NullableProblems
             return this;
         }
     }
@@ -177,7 +179,6 @@ final class ImmutableQueue<T> implements Iterable<T> {
         return result;
     }
 
-    @NotNull
     @Override
     public Iterator<T> iterator() {
         return new Iterator<>() {
@@ -221,8 +222,7 @@ final class ImmutableQueue<T> implements Iterable<T> {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof ImmutableQueue) {
-            final var that = (ImmutableQueue<?>) obj;
+        if (obj instanceof ImmutableQueue<?> that) {
             return toList().equals(that.toList());
         } else {
             return false;
