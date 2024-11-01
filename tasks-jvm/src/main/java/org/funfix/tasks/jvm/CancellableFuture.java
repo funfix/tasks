@@ -14,6 +14,10 @@ import java.util.function.Function;
  * asynchronous task and cannot be cancelled. Thus, if we want to cancel
  * a task, we need to keep a reference to a {@link Cancellable} object that
  * can do the job.
+ * <p>
+ * {@code CancellableFuture} is similar to {@link Fiber}, which should
+ * be preferred because it's more principled. {@code CancellableFuture}
+ * is useful more for interoperability with Java code.
  */
 @NullMarked
 public record CancellableFuture<T extends @Nullable Object>(

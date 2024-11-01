@@ -25,8 +25,19 @@ public sealed interface Outcome<out T> {
                 is Cancellation -> throw TaskCancellationException("Task was cancelled")
             }
 
+    /**
+     * Returned in case the task was successful.
+     */
     public data class Success<out T>(val value: T): Outcome<T>
+
+    /**
+     * Returned in case the task failed with an exception.
+     */
     public data class Failure(val exception: Throwable): Outcome<Nothing>
+
+    /**
+     * Returned in case the task was cancelled.
+     */
     public data object Cancellation: Outcome<Nothing>
 
     public companion object {

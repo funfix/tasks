@@ -1,18 +1,17 @@
 package org.funfix.tests
 
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.fail
 import org.funfix.tasks.jvm.TaskCancellationException
 import org.funfix.tasks.kotlin.Outcome
 import org.funfix.tasks.kotlin.Task
 import org.funfix.tasks.kotlin.fromBlockingIO
 import org.funfix.tasks.kotlin.runAsync
 import org.junit.jupiter.api.Assertions.assertTrue
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.ThreadFactory
-import java.util.concurrent.atomic.AtomicReference
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.fail
 
 class TaskRunAsyncTest {
     @Test

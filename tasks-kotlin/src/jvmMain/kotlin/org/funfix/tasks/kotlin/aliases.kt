@@ -5,13 +5,19 @@ package org.funfix.tasks.kotlin
 
 public actual typealias Cancellable = org.funfix.tasks.jvm.Cancellable
 
+/**
+ * A `CancellableFuture` is a tuple of a `CompletableFuture` and a `Cancellable`
+ * reference.
+ *
+ * It's used to model the result of asynchronous computations that can be
+ * cancelled. Needed because `CompletableFuture` doesn't actually support
+ * cancellation. It's similar to [Fiber], which should be preferred, because
+ * it's more principled. `CancellableFuture` is useful for interop with
+ * Java libraries that use `CompletableFuture`.
+ */
 public typealias CancellableFuture<T> = org.funfix.tasks.jvm.CancellableFuture<out T>
 
-public typealias CompletionCallback<T> = org.funfix.tasks.jvm.CompletionCallback<T>
-
 public actual typealias TaskCancellationException = org.funfix.tasks.jvm.TaskCancellationException
-
-public typealias UncaughtExceptionHandler = org.funfix.tasks.jvm.UncaughtExceptionHandler
 
 public actual typealias FiberNotCompletedException = org.funfix.tasks.jvm.Fiber.NotCompletedException
 

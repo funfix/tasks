@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
 class TaskEnsureRunningOnExecutorTest {
     @Test
     @Suppress("DEPRECATION")
-    fun `ensureRunningOnExecutorWorks`() {
+    fun ensureRunningOnExecutorWorks() {
         val ex = Executors.newCachedThreadPool { r ->
             val th = Thread(r)
             th.name = "my-thread-" + th.id

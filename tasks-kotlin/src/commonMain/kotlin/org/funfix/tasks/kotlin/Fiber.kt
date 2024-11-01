@@ -2,6 +2,9 @@
 
 package org.funfix.tasks.kotlin
 
+/**
+ * An alias for a platform-specific implementation that powers [Fiber].
+ */
 public expect interface PlatformFiber<T>
 
 /**

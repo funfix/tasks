@@ -25,7 +25,7 @@ public actual fun <T> Task<T>.runAsync(
     val protected = callback.protect()
     try {
         return asPlatform.invoke(
-            executor ?: BlockingIOExecutor,
+            executor ?: SharedIOExecutor,
             protected
         )
     } catch (e: Throwable) {

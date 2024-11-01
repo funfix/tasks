@@ -13,7 +13,7 @@ public actual fun interface Executor {
     public actual fun execute(command: Runnable)
 }
 
-public actual val BlockingIOExecutor: Executor
+public actual val SharedIOExecutor: Executor
     get() = JSExecutor
 
 public actual val TrampolineExecutor: Executor
@@ -118,12 +118,12 @@ private object Trampoline: Executor {
     }
 }
 
-public object UncaughtExceptionHandler {
-    public fun rethrowIfFatal(e: Throwable) {
+public actual object UncaughtExceptionHandler {
+    public actual fun rethrowIfFatal(e: Throwable) {
         // Can we do something here?
     }
 
-    public fun logOrRethrow(e: Throwable) {
+    public actual fun logOrRethrow(e: Throwable) {
         console.error(e)
     }
 }

@@ -92,7 +92,7 @@ public fun <T> Task<T>.runBlocking(executor: Executor? = null): T =
  * throwing a [TimeoutException].
  *
  * @param executor the [Executor] that may be used to run the task. If one isn't
- * provided, the execution will use [BlockingIOExecutor] as the default.
+ * provided, the execution will use [SharedIOExecutor] as the default.
  *
  * @return the successful result of the task.
  *

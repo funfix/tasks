@@ -3,8 +3,7 @@
 package org.funfix.tasks.kotlin
 
 /**
- * Definition that provides the platform-specific implementation of a task.
- * I.e., on the JVM, this is `org.funfix.tasks.jvm.Task`.
+ * An alias for a platform-specific implementation that powers [Task].
  */
 public expect class PlatformTask<T>
 
@@ -60,6 +59,22 @@ public fun <T> PlatformTask<out T>.asKotlin(): Task<T> =
  * }.ensureRunningOnExecutor(
  *     BlockingIOExecutor
  * )
+ * ```
+ *
+ * Another use-case is for ensuring that the task runs asynchronously, on
+ * another thread. Otherwise, tasks may be able to execute on the current thread:
+ *
+ * ```kotlin
+ * val task = Task.fromBlockingIO {
+ *    // Reads a file from disk
+ *    Files.readString(Paths.get("file.txt"))
+ * }
+ *
+ * task
+ *   // Ensuring the task runs on a different thread
+ *   .ensureRunningOnExecutor()
+ *   // Blocking the current thread for the result (JVM API)
+ *   .runBlocking()
  * ```
  *
  * @param executor is the [Executor] used as an override. If `null`, then

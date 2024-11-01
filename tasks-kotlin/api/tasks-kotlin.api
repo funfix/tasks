@@ -1,5 +1,5 @@
 public final class org/funfix/tasks/kotlin/ExecutorsJvmKt {
-	public static final fun getBlockingIOExecutor ()Ljava/util/concurrent/Executor;
+	public static final fun getSharedIOExecutor ()Ljava/util/concurrent/Executor;
 	public static final fun getTrampolineExecutor ()Ljava/util/concurrent/Executor;
 }
 
@@ -113,5 +113,11 @@ public final class org/funfix/tasks/kotlin/TaskJvmKt {
 
 public final class org/funfix/tasks/kotlin/TaskKt {
 	public static final fun asKotlin (Lorg/funfix/tasks/jvm/Task;)Lorg/funfix/tasks/jvm/Task;
+}
+
+public final class org/funfix/tasks/kotlin/UncaughtExceptionHandler {
+	public static final field INSTANCE Lorg/funfix/tasks/kotlin/UncaughtExceptionHandler;
+	public final fun logOrRethrow (Ljava/lang/Throwable;)V
+	public final fun rethrowIfFatal (Ljava/lang/Throwable;)V
 }
 

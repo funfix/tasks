@@ -2,9 +2,12 @@
 
 package org.funfix.tasks.kotlin
 
+import org.funfix.tasks.jvm.CompletionCallback
+
+
 internal typealias KotlinCallback<T> = (Outcome<T>) -> Unit
 
-internal fun <T> CompletionCallback<T>.asKotlin(): KotlinCallback<T> =
+internal fun <T> CompletionCallback<in T>.asKotlin(): KotlinCallback<T> =
     { outcome ->
         when (outcome) {
             is Outcome.Success -> this.onSuccess(outcome.value)
@@ -13,7 +16,7 @@ internal fun <T> CompletionCallback<T>.asKotlin(): KotlinCallback<T> =
         }
     }
 
-internal fun <T> KotlinCallback<T>.asJava(): CompletionCallback<T> =
+internal fun <T> KotlinCallback<T>.asJava(): CompletionCallback<in T> =
     CompletionCallback { outcome ->
         when (outcome) {
             is org.funfix.tasks.jvm.Outcome.Success -> this@asJava(Outcome.Success(outcome.value))

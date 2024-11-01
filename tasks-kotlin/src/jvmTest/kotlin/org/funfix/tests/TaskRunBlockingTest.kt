@@ -1,6 +1,6 @@
 package org.funfix.tests
 
-import org.funfix.tasks.kotlin.BlockingIOExecutor
+import org.funfix.tasks.kotlin.SharedIOExecutor
 import org.funfix.tasks.kotlin.Task
 import org.funfix.tasks.kotlin.fromBlockingIO
 import org.funfix.tasks.kotlin.runBlocking
@@ -16,7 +16,7 @@ class TaskRunBlockingTest {
         val task = Task.fromBlockingIO { 1 }
 
         assertEquals(1, task.runBlocking())
-        assertEquals(1, task.runBlocking(BlockingIOExecutor))
+        assertEquals(1, task.runBlocking(SharedIOExecutor))
     }
 
     @Test
@@ -31,7 +31,7 @@ class TaskRunBlockingTest {
         }
 
         try {
-            task.runBlocking(BlockingIOExecutor)
+            task.runBlocking(SharedIOExecutor)
         } catch (e: RuntimeException) {
             assertEquals(ex, e)
         }
@@ -48,7 +48,7 @@ class TaskRunBlockingTest {
             // expected
         }
         try {
-            task.runBlocking(BlockingIOExecutor)
+            task.runBlocking(SharedIOExecutor)
         } catch (e: InterruptedException) {
             // expected
         }
@@ -63,7 +63,7 @@ class TaskRunBlockingTest {
         ))
         assertEquals(1, task.runBlockingTimed(
             TimedAwait.TIMEOUT.toKotlinDuration(),
-            BlockingIOExecutor
+            SharedIOExecutor
         ))
     }
 
@@ -79,7 +79,7 @@ class TaskRunBlockingTest {
         }
 
         try {
-            task.runBlockingTimed(TimedAwait.TIMEOUT.toKotlinDuration(), BlockingIOExecutor)
+            task.runBlockingTimed(TimedAwait.TIMEOUT.toKotlinDuration(), SharedIOExecutor)
         } catch (e: RuntimeException) {
             assertEquals(ex, e)
         }
@@ -97,7 +97,7 @@ class TaskRunBlockingTest {
             // expected
         }
         try {
-            task.runBlockingTimed(TimedAwait.TIMEOUT.toKotlinDuration(), BlockingIOExecutor)
+            task.runBlockingTimed(TimedAwait.TIMEOUT.toKotlinDuration(), SharedIOExecutor)
             fail("Expected exception")
         } catch (e: InterruptedException) {
             // expected

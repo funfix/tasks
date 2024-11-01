@@ -7,7 +7,8 @@ package org.funfix.tasks.kotlin
  * event-loop, used for running tasks.
  *
  * On the JVM, this is an alias for the `java.util.concurrent.Executor`
- * interface.
+ * interface. On top of JavaScript, one way to implement this is via
+ * `setTimeout`.
  */
 public expect fun interface Executor {
     public fun execute(command: Runnable)
@@ -23,13 +24,17 @@ public expect fun interface Runnable {
 }
 
 /**
- * the global executor, used for running tasks that don't specify an
+ * The global executor, used for running tasks that don't specify an
  * explicit executor.
  *
  * On top of the JVM, this is powered by "virtual threads" (project loom), if
- * the runtime supports it. Otherwise, it's an unlimited "cached" thread-pool.
+ * the runtime supports it (Java 21+). Otherwise, it's an unlimited "cached"
+ * thread-pool. On top of JavaScript, blocking I/O operations are not possible
+ * in the browser, and discouraged in Node.js. JS runtimes don't have
+ * multi-threading with shared-memory concurrency, so this will be just a plain
+ * executor.
  */
-public expect val BlockingIOExecutor: Executor
+public expect val SharedIOExecutor: Executor
 
 /**
  * An [Executor] that runs tasks on the current thread.
@@ -38,5 +43,7 @@ public expect val BlockingIOExecutor: Executor
  * to ensure that recursive calls don't blow the stack.
  *
  * Using this executor is useful for making asynchronous callbacks stack-safe.
+ * Note, however, that the tasks get executed on the current thread, immediately,
+ * even if the implementation guards against stack overflows.
  */
 public expect val TrampolineExecutor: Executor
