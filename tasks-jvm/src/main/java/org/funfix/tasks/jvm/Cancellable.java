@@ -149,7 +149,7 @@ final class MutableCancellable implements Cancellable {
         }
     }
 
-    static abstract class State {
+    static sealed abstract class State {
         @Data
         @EqualsAndHashCode(callSuper = false)
         static final class Active extends State {

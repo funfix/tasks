@@ -1,8 +1,9 @@
 package org.funfix.tasks.jvm;
 
-import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.NonBlocking;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -21,6 +22,7 @@ public sealed interface Outcome<T extends @Nullable Object>
      * @throws ExecutionException        if the task failed with an exception
      * @throws TaskCancellationException if the task was cancelled
      */
+    @NonBlocking
     T getOrThrow() throws ExecutionException, TaskCancellationException;
 
     /**
