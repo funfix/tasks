@@ -34,6 +34,7 @@ public class CompletionCallbackTest {
         final var called = new AtomicInteger(0);
         final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.protect(
+            TaskExecutor.from(TaskExecutors.trampoline()),
             new CompletionCallback<String>() {
                 @Override
                 @SuppressWarnings("NullableProblems")
@@ -51,7 +52,8 @@ public class CompletionCallbackTest {
                     onOutcome(Outcome.cancellation());
                 }
 
-                private void onOutcome(Outcome<String> outcome) {
+                @Override
+                public void onOutcome(Outcome<String> outcome) {
                     outcomeRef.set(outcome);
                     called.incrementAndGet();
                 }
@@ -71,6 +73,7 @@ public class CompletionCallbackTest {
         final var called = new AtomicInteger(0);
         final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.protect(
+            TaskExecutor.from(TaskExecutors.trampoline()),
             new CompletionCallback<String>() {
                 @Override
                 @SuppressWarnings("NullableProblems")
@@ -88,7 +91,8 @@ public class CompletionCallbackTest {
                     onOutcome(Outcome.cancellation());
                 }
 
-                private void onOutcome(Outcome<String> outcome) {
+                @Override
+                public void onOutcome(Outcome<String> outcome) {
                     outcomeRef.set(outcome);
                     called.incrementAndGet();
                 }
@@ -117,6 +121,7 @@ public class CompletionCallbackTest {
         final var called = new AtomicInteger(0);
         final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var cb = ProtectedCompletionCallback.protect(
+            TaskExecutor.from(TaskExecutors.trampoline()),
             new CompletionCallback<String>() {
                 @Override
                 @SuppressWarnings("NullableProblems")
@@ -134,7 +139,8 @@ public class CompletionCallbackTest {
                     onOutcome(Outcome.cancellation());
                 }
 
-                private void onOutcome(Outcome<String> outcome) {
+                @Override
+                public void onOutcome(Outcome<String> outcome) {
                     outcomeRef.set(outcome);
                     called.incrementAndGet();
                 }

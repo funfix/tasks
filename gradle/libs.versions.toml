@@ -1,14 +1,14 @@
 [versions]
-kotlin = "2.0.0"
-kover = "0.8.2"
-dokka = "1.9.20"
+kotlin = "2.1.20"
+kover = "0.9.1"
+dokka = "2.0.0"
 gradleVersions = "0.51.0"
-kotlinx-coroutines = "1.9.0-RC"
-jetbrains-annotations = "24.1.0"
+kotlinx-coroutines = "1.10.1"
+jetbrains-annotations = "26.0.2"
 junit-jupiter = "5.10.3"
 publish = "0.29.0"
 jspecify = "1.0.0"
-lombok = "1.18.34"
+lombok = "1.18.36"
 binary-compatibility-validator = "0.16.2"
 
 [libraries]

@@ -13,10 +13,17 @@ repositories {
 
 buildscript {
     dependencies {
-        classpath("org.jetbrains.dokka:dokka-base:1.9.20")
-        // classpath("org.jetbrains.dokka:kotlin-as-java-plugin:1.9.20")
+        classpath("org.jetbrains.dokka:dokka-base:2.0.0")
+        // classpath("org.jetbrains.dokka:kotlin-as-java-plugin:2.0.0")
     }
 }
+
+//dokka {
+//    dokkaPublications.html {
+//        outputDirectory.set(rootDir.resolve("build/dokka"))
+//        outputDirectory.set(file("build/dokka"))
+//    }
+//}
 
 tasks.dokkaHtmlMultiModule {
     outputDirectory.set(file("build/dokka"))

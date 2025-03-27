@@ -27,7 +27,7 @@ public final class TaskExecutors {
      * which will use virtual threads on Java 21+, or a plain
      * {@code Executors.newCachedThreadPool()} on older JVM versions.
      */
-    public static Executor global() {
+    public static Executor sharedBlockingIO() {
         if (VirtualThreads.areVirtualThreadsSupported()) {
             return sharedVirtualIO();
         } else {
@@ -50,7 +50,7 @@ public final class TaskExecutors {
         if (sharedPlatformIORef == null) {
             synchronized (TaskExecutors.class) {
                 if (sharedPlatformIORef == null) {
-                    sharedPlatformIORef = unlimitedThreadPoolForIO("tasks-io");
+                    sharedPlatformIORef = TaskExecutor.from(unlimitedThreadPoolForIO("tasks-io"));
                 }
             }
         }
@@ -62,7 +62,7 @@ public final class TaskExecutors {
         if (sharedVirtualIORef == null) {
             synchronized (TaskExecutors.class) {
                 if (sharedVirtualIORef == null) {
-                    sharedVirtualIORef = unlimitedThreadPoolForIO("tasks-io");
+                    sharedVirtualIORef = TaskExecutor.from(unlimitedThreadPoolForIO("tasks-io"));
                 }
             }
         }
@@ -99,7 +99,6 @@ public final class TaskExecutors {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@SuppressWarnings("JavaLangInvokeHandleSignature")
 @NullMarked
 final class VirtualThreads {
     private static final @Nullable MethodHandle newThreadPerTaskExecutorMethodHandle;
@@ -153,10 +152,6 @@ final class VirtualThreads {
         final var e2 = new NotSupportedException("Executors.newThreadPerTaskExecutor");
         if (thrown != null) e2.addSuppressed(thrown);
         throw e2;
-    }
-
-    public static ThreadFactory factory() throws NotSupportedException {
-        return factory(VIRTUAL_THREAD_NAME_PREFIX);
     }
 
     public static ThreadFactory factory(final String prefix) throws NotSupportedException {
@@ -217,7 +212,4 @@ final class VirtualThreads {
                 || "disabled".equalsIgnoreCase(sp);
         return !disableFeature && isVirtualMethodHandle != null && newThreadPerTaskExecutorMethodHandle != null;
     }
-
-    public static final String VIRTUAL_THREAD_NAME_PREFIX =
-            "tasks-io-virtual-";
 }

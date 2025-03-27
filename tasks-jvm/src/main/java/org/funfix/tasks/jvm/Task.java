@@ -1,6 +1,7 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.NonBlocking;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -22,7 +23,63 @@ public final class Task<T extends @Nullable Object> {
     }
 
     /**
+     * Ensures that the task starts asynchronously and runs on the given executor,
+     * regardless of the `run` method that is used, or the injected executor in
+     * any of those methods.
+     * <p>
+     * One example where this is useful is for blocking I/O operations, for
+     * ensuring that the task runs on the thread-pool meant for blocking I/O,
+     * regardless of what executor is passed to {@code runAsync}.
+     * <pre>{@code
+     * Task.fromBlockingIO(() -> {
+     *     // Reads a file from disk
+     *     return Files.readString(Paths.get("file.txt"));
+     * }).ensureRunningOnExecutor(
+     *     TaskExecutors.sharedBlockingIO()
+     * );
+     * }</pre>
+     */
+    public Task<T> ensureRunningOnExecutor(final Executor executor) {
+        return new Task<>((cont) -> {
+            final var taskExecutor = TaskExecutor.from(executor);
+            final var cont2 = cont.withExecutorOverride(taskExecutor);
+            taskExecutor.resumeOnExecutor(() -> createFun.invoke(cont2));
+        });
+    }
+
+    /**
+     * Ensure that the task will start execution on the injected {@link Executor}.
+     * <p>
+     * The execution model is set by the "run" methods, e.g.,
+     * {@link #runAsync(Executor, CompletionCallback)} will create a new thread,
+     * but {@link #runBlocking(Executor)} will not, trying to execute the task
+     * on the current thread. Thus, it may be useful to instruct the task to
+     * always run on a thread managed by the given executor.
+     *
+     * <pre>{@code
+     * Task.fromBlockingIO(() -> {
+     *   // Reads a file from disk
+     *   return Files.readString(Paths.get("file.txt"));
+     * }).ensureRunningOnExecutor().runBlocking(
+     *   TaskExecutors.sharedBlockingIO()
+     * );
+     * }</pre>
+     *
+     * In the above example we are reading a file from disk. Normally, the
+     * execution via {@code runBlocking} would start this task on the current
+     *
+     */
+    public Task<T> ensureRunningOnExecutor() {
+        return new Task<>((cont) ->
+            cont.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont))
+        );
+    }
+
+    /**
      * Executes the task asynchronously.
+     * <p>
+     * This method ensures that the start starts execution on a different thread,
+     * managed by the given executor.
      *
      * @param callback will be invoked when the task completes
      * @param executor is the {@link Executor} that may be used to run the task
@@ -32,87 +89,121 @@ public final class Task<T extends @Nullable Object> {
         final Executor executor,
         final CompletionCallback<? super T> callback
     ) {
+        final var taskExecutor = TaskExecutor.from(executor);
         final var cont = new CancellableContinuation<>(
-            executor,
-            ProtectedCompletionCallback.protect(callback)
+            taskExecutor,
+            ProtectedCompletionCallback.protect(taskExecutor, callback)
         );
-        try {
-            createFun.invoke(cont);
-            //noinspection FunctionalExpressionCanBeFolded
-            return cont::cancel;
-        } catch (final Throwable e) {
-            UncaughtExceptionHandler.rethrowIfFatal(e);
-            cont.onFailure(e);
-            return Cancellable.getEmpty();
-        }
+        taskExecutor.execute(() -> {
+            try {
+                createFun.invoke(cont);
+            } catch (final Throwable e) {
+                UncaughtExceptionHandler.rethrowIfFatal(e);
+                cont.onFailure(e);
+            }
+        });
+        return cont;
     }
 
     /**
      * Overload of {@link #runAsync(Executor, CompletionCallback)} that
-     * uses {@link TaskExecutors#global()} as the executor.
+     * uses {@link TaskExecutors#sharedBlockingIO()} as the executor.
+     * <p>
+     * Starts asynchronous execution, on a different thread.
      *
      * @param callback will be invoked when the task completes
      * @return a {@link Cancellable} that can be used to cancel a running task
      */
     public Cancellable runAsync(final CompletionCallback<? super T> callback) {
-        return runAsync(TaskExecutors.global(), callback);
+        return runAsync(TaskExecutors.sharedBlockingIO(), callback);
     }
 
     /**
      * Executes the task concurrently and returns a [Fiber] that can be
      * used to wait for the result or cancel the task.
+     * <p>
+     * Similar to {@link #runAsync(Executor, CompletionCallback)}, this method
+     * starts the execution on a different thread.
      *
      * @param executor is the {@link Fiber} that may be used to run the task
      * @return a {@link Fiber} that can be used to wait for the outcome,
      * or to cancel the running fiber.
      */
+    @NonBlocking
     public Fiber<T> runFiber(final Executor executor) {
         return ExecutedFiber.start(executor, createFun);
     }
 
     /**
      * Overload of {@link #runFiber(Executor)} that
-     * uses {@link TaskExecutors#global()} as the executor.
+     * uses {@link TaskExecutors#sharedBlockingIO()} as the executor.
+     * <p>
+     * Similar to {@link #runAsync(CompletionCallback)}, this method
+     * starts the execution on a different thread.
      *
      * @return a {@link Fiber} that can be used to wait for the outcome,
      * or to cancel the running fiber.
      */
+    @NonBlocking
     public Fiber<T> runFiber() {
-        return runFiber(TaskExecutors.global());
+        return runFiber(TaskExecutors.sharedBlockingIO());
     }
 
     /**
      * Executes the task and blocks until it completes, or the current
      * thread gets interrupted (in which case the task is also cancelled).
+     * <p>
+     * Given that the intention is to block the current thread for the result,
+     * the task starts execution on the current thread.
      *
      * @param executor is the {@link Executor} that may be used to run the task
      * @return the successful result of the task
-     * @throws ExecutionException   if the task fails with an exception
-     * @throws InterruptedException if the current thread is interrupted,
-     *                              which also cancels the running task. Note that on interruption,
-     *                              the running concurrent task must also be interrupted, as this method
-     *                              always blocks for its interruption or completion.
+     *
+     * @throws ExecutionException if the task fails with an exception
+     *
+     * @throws InterruptedException if the current thread is interrupted, which
+     * also cancels the running task. Note that on interruption, the running
+     * concurrent task must also be interrupted, as this method always blocks
+     * for its interruption or completion.
      */
     public T runBlocking(final Executor executor)
         throws ExecutionException, InterruptedException {
 
         final var blockingCallback = new BlockingCompletionCallback<T>();
-        final var cont = new CancellableContinuation<>(executor, blockingCallback);
+        final var taskExecutor = TaskExecutor.from(executor);
+        final var cont = new CancellableContinuation<>(taskExecutor, blockingCallback);
         createFun.invoke(cont);
         return blockingCallback.await(cont);
     }
 
     /**
      * Overload of {@link #runBlocking(Executor)} that uses
-     * {@link TaskExecutors#global()} as the executor.
+     * {@link TaskExecutors#sharedBlockingIO()} as the executor.
+     * <p>
+     * Given that the intention is to block the current thread for the result,
+     * the task starts execution on the current thread.
+     *
+     * @return the successful result of the task
+     *
+     * @throws ExecutionException if the task fails with an exception
+     *
+     * @throws InterruptedException if the current thread is interrupted, which
+     * also cancels the running task. Note that on interruption, the running
+     * concurrent task must also be interrupted, as this method always blocks
+     * for its interruption or completion.
      */
     public T runBlocking() throws ExecutionException, InterruptedException {
-        return runBlocking(TaskExecutors.global());
+        return runBlocking(TaskExecutors.sharedBlockingIO());
     }
 
     /**
      * Executes the task and blocks until it completes, or the timeout is reached,
      * or the current thread is interrupted.
+     * <p>
+     * <strong>EXECUTION MODEL:</strong> Execution starts on a different thread,
+     * by necessity, otherwise the execution could block the current thread
+     * indefinitely, without the possibility of interrupting the task after
+     * the timeout occurs.
      *
      * @param timeout  is the maximum time to wait for the task to complete
      *                 before throwing a {@link TimeoutException}
@@ -132,14 +223,20 @@ public final class Task<T extends @Nullable Object> {
         final Duration timeout
     ) throws ExecutionException, InterruptedException, TimeoutException {
         final var blockingCallback = new BlockingCompletionCallback<T>();
-        final var cont = new CancellableContinuation<>(executor, blockingCallback);
-        createFun.invoke(cont);
+        final var taskExecutor = TaskExecutor.from(executor);
+        final var cont = new CancellableContinuation<>(taskExecutor, blockingCallback);
+        taskExecutor.execute(() -> createFun.invoke(cont));
         return blockingCallback.await(cont, timeout);
     }
 
     /**
      * Overload of {@link #runBlockingTimed(Executor, Duration)} that
-     * uses {@link TaskExecutors#global()} as the executor.
+     * uses {@link TaskExecutors#sharedBlockingIO()} as the executor.
+     * <p>
+     * <strong>EXECUTION MODEL:</strong> Execution starts on a different thread,
+     * by necessity, otherwise the execution could block the current thread
+     * indefinitely, without the possibility of interrupting the task after
+     * the timeout occurs.
      *
      * @param timeout is the maximum time to wait for the task to complete
      * @return the successful result of the task
@@ -153,7 +250,7 @@ public final class Task<T extends @Nullable Object> {
      */
     public T runBlockingTimed(final Duration timeout)
         throws ExecutionException, InterruptedException, TimeoutException {
-        return runBlockingTimed(TaskExecutors.global(), timeout);
+        return runBlockingTimed(TaskExecutors.sharedBlockingIO(), timeout);
     }
 
     /**
@@ -166,20 +263,13 @@ public final class Task<T extends @Nullable Object> {
      *     <li>Trampolined execution to avoid stack-overflows</li>
      * </ol>
      * <p>
-     * The created task will execute the given function on the current thread, by
-     * using a "trampoline" to avoid stack overflows. This may be useful if the
-     * computation for initiating the async process is expected to be fast. However,
-     * if the computation can block the current thread, it is recommended to use
-     * {@link #fromForkedAsync(AsyncFun)} instead, which will initiate the
-     * computation on a separate thread.
      *
      * @param start is the function that will trigger the async computation,
      *              injecting a callback that will be used to signal the result,
      *              and an executor that can be used for creating additional threads.
      * @return a new task that will execute the given builder function upon execution
-     * @see #fromForkedAsync(AsyncFun)
      */
-    public static <T> Task<T> fromAsync(final AsyncFun<? extends T> start) {
+    public static <T extends @Nullable Object> Task<T> fromAsync(final AsyncFun<? extends T> start) {
         return new Task<>((cont) ->
             Trampoline.execute(() -> {
                 try {
@@ -194,45 +284,13 @@ public final class Task<T extends @Nullable Object> {
     }
 
     /**
-     * Creates a task that, from an asynchronous computation, initiated on a
-     * separate thread.
-     * <p>
-     * This is a variant of {@link #fromAsync(AsyncFun)}. The former executes
-     * the given builder function on the same thread, whereas this variant starts
-     * the computation on a separate thread.
-     * <p>
-     * NOTE: the thread is created via the injected {@link Executor} in the
-     * "execute" methods (e.g., {@link #runAsync(Executor, CompletionCallback)}).
-     * Even when using on of the overloads, then {@link TaskExecutors#global()}
-     * is assumed.
-     *
-     * @param start is the function that will trigger the async computation
-     * @return a new task that will execute the given builder function
-     * @see #fromAsync(AsyncFun)
-     */
-    public static <T> Task<T> fromForkedAsync(final AsyncFun<? extends T> start) {
-        return new Task<>((cont) -> {
-            // Starting the execution on another thread, to ensure concurrent
-            // execution; NOTE: this execution is not cancellable, to simplify
-            // the model (i.e., we are not using `executeCancellable` on purpose)
-            cont.getExecutor().execute(() -> {
-                try {
-                    cont.registerForwardCancellable().set(
-                        start.invoke(cont.getExecutor(), cont)
-                    );
-                } catch (final Throwable e) {
-                    UncaughtExceptionHandler.rethrowIfFatal(e);
-                    cont.onFailure(e);
-                }
-            });
-        });
-    }
-
-    /**
      * Creates a task from a {@link DelayedFun} executing blocking IO.
+     * <p>
+     * This uses Java's interruption protocol (i.e., {@link Thread#interrupt()})
+     * for cancelling the task.
      */
-    public static <T> Task<T> fromBlockingIO(final DelayedFun<? extends T> run) {
-        return new Task<>((cont) -> cont.getExecutor().execute(() -> {
+    public static <T extends @Nullable Object> Task<T> fromBlockingIO(final DelayedFun<? extends T> run) {
+        return new Task<>((cont) -> {
             Thread th = Thread.currentThread();
             cont.registerCancellable(th::interrupt);
             try {
@@ -242,14 +300,20 @@ public final class Task<T extends @Nullable Object> {
                 } finally {
                     cont.registerCancellable(Cancellable.getEmpty());
                 }
+                if (th.isInterrupted()) {
+                    throw new InterruptedException();
+                }
                 cont.onSuccess(result);
             } catch (final InterruptedException | TaskCancellationException e) {
                 cont.onCancellation();
             } catch (Throwable e) {
                 UncaughtExceptionHandler.rethrowIfFatal(e);
                 cont.onFailure(e);
+            } finally {
+                //noinspection ResultOfMethodCallIgnored
+                Thread.interrupted();
             }
-        }));
+        });
     }
 
     /**
@@ -271,7 +335,7 @@ public final class Task<T extends @Nullable Object> {
      * @see #fromCompletionStage(DelayedFun)
      * @see #fromCancellableFuture(DelayedFun)
      */
-    public static <T> Task<T> fromBlockingFuture(final DelayedFun<Future<? extends T>> builder) {
+    public static <T extends @Nullable Object> Task<T> fromBlockingFuture(final DelayedFun<Future<? extends T>> builder) {
         return fromBlockingIO(() -> {
             final var f = Objects.requireNonNull(builder.invoke());
             try {
@@ -315,7 +379,7 @@ public final class Task<T extends @Nullable Object> {
      * the created {@code CancellableCompletionStage}
      * @see #fromCancellableFuture(DelayedFun)
      */
-    public static <T> Task<T> fromCompletionStage(
+    public static <T extends @Nullable Object> Task<T> fromCompletionStage(
         final DelayedFun<? extends CompletionStage<? extends T>> builder
     ) {
         return fromCancellableFuture(
@@ -338,9 +402,9 @@ public final class Task<T extends @Nullable Object> {
      *                value. It's a builder because {@link Task} values are cold values
      *                (lazy, not executed yet).
      * @return a new task that upon execution will complete with the result of
-     * the created {@code CancellableCompletionStage}
+     * the created {@link CancellableFuture}
      */
-    public static <T> Task<T> fromCancellableFuture(
+    public static <T extends @Nullable Object> Task<T> fromCancellableFuture(
         final DelayedFun<CancellableFuture<? extends T>> builder
     ) {
         return new Task<>(new TaskFromCancellableFuture<>(builder));
@@ -391,6 +455,17 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
         if (!isDone.getAndSet(true)) {
             interrupted = new InterruptedException("Task was cancelled");
             releaseShared(1);
+        }
+    }
+
+    @Override
+    public void onOutcome(Outcome<T> outcome) {
+        if (outcome instanceof Outcome.Success<T> success) {
+            onSuccess(success.value());
+        } else if (outcome instanceof Outcome.Failure<T> failure) {
+            onFailure(failure.exception());
+        } else {
+            onCancellation();
         }
     }
 
@@ -485,28 +560,27 @@ final class TaskFromCancellableFuture<T extends @Nullable Object>
 
     @Override
     public void invoke(Continuation<? super T> continuation) {
-        continuation.getExecutor().execute(() -> {
-            try {
-                final var cancellableRef =
-                    continuation.registerForwardCancellable();
-                final var cancellableFuture =
-                    Objects.requireNonNull(builder.invoke());
-                final CompletableFuture<? extends T> future =
-                    getCompletableFuture(cancellableFuture, continuation);
-                final Cancellable cancellable =
-                    cancellableFuture.cancellable();
-                cancellableRef.set(() -> {
-                    try {
-                        cancellable.cancel();
-                    } finally {
-                        future.cancel(true);
-                    }
-                });
-            } catch (Throwable e) {
-                UncaughtExceptionHandler.rethrowIfFatal(e);
-                continuation.onFailure(e);
-            }
-        });
+        try {
+            final var cancellableRef =
+                continuation.registerForwardCancellable();
+            final var cancellableFuture =
+                Objects.requireNonNull(builder.invoke());
+            final CompletableFuture<? extends T> future =
+                getCompletableFuture(cancellableFuture, continuation);
+            final Cancellable cancellable =
+                cancellableFuture.cancellable();
+
+            cancellableRef.set(() -> {
+                try {
+                    cancellable.cancel();
+                } finally {
+                    future.cancel(true);
+                }
+            });
+        } catch (Throwable e) {
+            UncaughtExceptionHandler.rethrowIfFatal(e);
+            continuation.onFailure(e);
+        }
     }
 
     private static <T> CompletableFuture<? extends T> getCompletableFuture(

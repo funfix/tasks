@@ -15,5 +15,8 @@ package org.funfix.tasks.kotlin
  * MUST BE thread-safe.
  */
 public expect fun interface Cancellable {
+    /**
+     * Triggers the cancellation of the computation.
+     */
     public fun cancel()
 }

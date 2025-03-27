@@ -7,5 +7,5 @@ import org.funfix.tasks.jvm.TaskExecutors
 public actual val TrampolineExecutor: Executor
     get() = TaskExecutors.trampoline()
 
-public actual val GlobalExecutor: Executor
-    get() = TaskExecutors.global()
+public actual val SharedIOExecutor: Executor
+    get() = TaskExecutors.sharedBlockingIO()

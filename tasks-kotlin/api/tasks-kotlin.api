@@ -1,5 +1,5 @@
 public final class org/funfix/tasks/kotlin/ExecutorsJvmKt {
-	public static final fun getGlobalExecutor ()Ljava/util/concurrent/Executor;
+	public static final fun getSharedIOExecutor ()Ljava/util/concurrent/Executor;
 	public static final fun getTrampolineExecutor ()Ljava/util/concurrent/Executor;
 }
 
@@ -7,17 +7,28 @@ public final class org/funfix/tasks/kotlin/Fiber : org/funfix/tasks/jvm/Cancella
 	public static final synthetic fun box-impl (Lorg/funfix/tasks/jvm/Fiber;)Lorg/funfix/tasks/kotlin/Fiber;
 	public fun cancel ()V
 	public static fun cancel-impl (Lorg/funfix/tasks/jvm/Fiber;)V
+	public static fun constructor-impl (Lorg/funfix/tasks/jvm/Fiber;)Lorg/funfix/tasks/jvm/Fiber;
 	public fun equals (Ljava/lang/Object;)Z
 	public static fun equals-impl (Lorg/funfix/tasks/jvm/Fiber;Ljava/lang/Object;)Z
 	public static final fun equals-impl0 (Lorg/funfix/tasks/jvm/Fiber;Lorg/funfix/tasks/jvm/Fiber;)Z
 	public final fun getAsPlatform ()Lorg/funfix/tasks/jvm/Fiber;
 	public fun hashCode ()I
 	public static fun hashCode-impl (Lorg/funfix/tasks/jvm/Fiber;)I
-	public static final fun joinAsync-impl (Lorg/funfix/tasks/jvm/Fiber;Ljava/lang/Runnable;)Lorg/funfix/tasks/jvm/Cancellable;
-	public static final fun resultOrThrow-impl (Lorg/funfix/tasks/jvm/Fiber;)Ljava/lang/Object;
 	public fun toString ()Ljava/lang/String;
 	public static fun toString-impl (Lorg/funfix/tasks/jvm/Fiber;)Ljava/lang/String;
 	public final synthetic fun unbox-impl ()Lorg/funfix/tasks/jvm/Fiber;
+}
+
+public final class org/funfix/tasks/kotlin/FiberJvmKt {
+	public static final fun asKotlin (Lorg/funfix/tasks/jvm/Fiber;)Lorg/funfix/tasks/jvm/Fiber;
+	public static final fun awaitAsync-bilpdk0 (Lorg/funfix/tasks/jvm/Fiber;Lkotlin/jvm/functions/Function1;)Lorg/funfix/tasks/jvm/Cancellable;
+	public static final fun awaitBlocking-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)Ljava/lang/Object;
+	public static final fun awaitBlockingTimed-MI-qbaI (Lorg/funfix/tasks/jvm/Fiber;J)Ljava/lang/Object;
+	public static final fun getOutcomeOrNull-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)Lorg/funfix/tasks/kotlin/Outcome;
+	public static final fun getResultOrThrow-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)Ljava/lang/Object;
+	public static final fun joinAsync-bilpdk0 (Lorg/funfix/tasks/jvm/Fiber;Ljava/lang/Runnable;)Lorg/funfix/tasks/jvm/Cancellable;
+	public static final fun joinBlocking-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)V
+	public static final fun joinBlockingTimed-MI-qbaI (Lorg/funfix/tasks/jvm/Fiber;J)V
 }
 
 public abstract interface class org/funfix/tasks/kotlin/Outcome {
@@ -80,13 +91,30 @@ public final class org/funfix/tasks/kotlin/Task$Companion {
 }
 
 public final class org/funfix/tasks/kotlin/TaskJvmKt {
+	public static final fun ensureRunningOnExecutor-EZXAkWY (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;)Lorg/funfix/tasks/jvm/Task;
+	public static synthetic fun ensureRunningOnExecutor-EZXAkWY$default (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;ILjava/lang/Object;)Lorg/funfix/tasks/jvm/Task;
 	public static final fun fromAsync (Lorg/funfix/tasks/kotlin/Task$Companion;Lkotlin/jvm/functions/Function2;)Lorg/funfix/tasks/jvm/Task;
-	public static final fun fromForkedAsync (Lorg/funfix/tasks/kotlin/Task$Companion;Lkotlin/jvm/functions/Function2;)Lorg/funfix/tasks/jvm/Task;
+	public static final fun fromBlockingFuture (Lorg/funfix/tasks/kotlin/Task$Companion;Lkotlin/jvm/functions/Function0;)Lorg/funfix/tasks/jvm/Task;
+	public static final fun fromBlockingIO (Lorg/funfix/tasks/kotlin/Task$Companion;Lkotlin/jvm/functions/Function0;)Lorg/funfix/tasks/jvm/Task;
+	public static final fun fromCancellableFuture (Lorg/funfix/tasks/kotlin/Task$Companion;Lkotlin/jvm/functions/Function0;)Lorg/funfix/tasks/jvm/Task;
+	public static final fun fromCompletionStage (Lorg/funfix/tasks/kotlin/Task$Companion;Lkotlin/jvm/functions/Function0;)Lorg/funfix/tasks/jvm/Task;
 	public static final fun runAsync-A-R0woo (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/jvm/functions/Function1;)Lorg/funfix/tasks/jvm/Cancellable;
 	public static synthetic fun runAsync-A-R0woo$default (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lorg/funfix/tasks/jvm/Cancellable;
+	public static final fun runBlocking-EZXAkWY (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;)Ljava/lang/Object;
+	public static synthetic fun runBlocking-EZXAkWY$default (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;ILjava/lang/Object;)Ljava/lang/Object;
+	public static final fun runBlockingTimed-4GGJJa0 (Lorg/funfix/tasks/jvm/Task;JLjava/util/concurrent/Executor;)Ljava/lang/Object;
+	public static synthetic fun runBlockingTimed-4GGJJa0$default (Lorg/funfix/tasks/jvm/Task;JLjava/util/concurrent/Executor;ILjava/lang/Object;)Ljava/lang/Object;
+	public static final fun runFiber-EZXAkWY (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;)Lorg/funfix/tasks/jvm/Fiber;
+	public static synthetic fun runFiber-EZXAkWY$default (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;ILjava/lang/Object;)Lorg/funfix/tasks/jvm/Fiber;
 }
 
 public final class org/funfix/tasks/kotlin/TaskKt {
 	public static final fun asKotlin (Lorg/funfix/tasks/jvm/Task;)Lorg/funfix/tasks/jvm/Task;
+}
+
+public final class org/funfix/tasks/kotlin/UncaughtExceptionHandler {
+	public static final field INSTANCE Lorg/funfix/tasks/kotlin/UncaughtExceptionHandler;
+	public final fun logOrRethrow (Ljava/lang/Throwable;)V
+	public final fun rethrowIfFatal (Ljava/lang/Throwable;)V
 }
 

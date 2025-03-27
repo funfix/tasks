@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resumeWithException
+import org.funfix.tasks.jvm.Outcome
 
 public actual suspend fun <T> PlatformTask<out T>.runSuspended(executor: Executor?): T =
     run {
@@ -48,6 +49,14 @@ internal class CoroutineAsCompletionCallback<T>(
         } else {
             false
         }
+
+    override fun onOutcome(outcome: Outcome<T>) {
+        when (outcome) {
+            is Outcome.Success -> onSuccess(outcome.value)
+            is Outcome.Failure -> onFailure(outcome.exception)
+            is Outcome.Cancellation -> onCancellation()
+        }
+    }
 
     override fun onSuccess(value: T) {
         completeWith {

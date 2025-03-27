@@ -22,24 +22,9 @@ public class TaskExecuteTest {
             new AtomicReference<@Nullable Outcome<String>>(null);
 
         final var task = Task.fromBlockingIO(() -> "Hello!");
-        task.runAsync(new CompletionCallback<>() {
-            @Override
-            public void onSuccess(String value) {
-                outcomeRef.set(Outcome.success(value));
-                latch.countDown();
-            }
-
-            @Override
-            public void onFailure(Throwable e) {
-                outcomeRef.set(Outcome.failure(e));
-                latch.countDown();
-            }
-
-            @Override
-            public void onCancellation() {
-                outcomeRef.set(Outcome.cancellation());
-                latch.countDown();
-            }
+        task.runAsync(outcome -> {
+            outcomeRef.set(outcome);
+            latch.countDown();
         });
 
         TimedAwait.latchAndExpectCompletion(latch, "latch");
@@ -59,24 +44,9 @@ public class TaskExecuteTest {
         final var task = Task.<String>fromBlockingIO(() -> {
             throw expectedError;
         });
-        task.runAsync(new CompletionCallback<>() {
-            @Override
-            public void onSuccess(String value) {
-                outcomeRef.set(Outcome.success(value));
-                latch.countDown();
-            }
-
-            @Override
-            public void onFailure(Throwable e) {
-                outcomeRef.set(Outcome.failure(e));
-                latch.countDown();
-            }
-
-            @Override
-            public void onCancellation() {
-                outcomeRef.set(Outcome.cancellation());
-                latch.countDown();
-            }
+        task.runAsync(outcome -> {
+            outcomeRef.set(outcome);
+            latch.countDown();
         });
 
         TimedAwait.latchAndExpectCompletion(latch, "latch");
@@ -102,26 +72,10 @@ public class TaskExecuteTest {
             nonTermination.await();
             return "Nooo";
         });
-        final var token = task.runAsync(
-            new CompletionCallback<>() {
-                @Override
-                public void onSuccess(String value) {
-                    outcomeRef.set(Outcome.success(value));
-                    latch.countDown();
-                }
-
-                @Override
-                public void onFailure(Throwable e) {
-                    outcomeRef.set(Outcome.failure(e));
-                    latch.countDown();
-                }
-
-                @Override
-                public void onCancellation() {
-                    outcomeRef.set(Outcome.cancellation());
-                    latch.countDown();
-                }
-            });
+        final var token = task.runAsync(outcome -> {
+            outcomeRef.set(outcome);
+            latch.countDown();
+        });
 
         token.cancel();
         TimedAwait.latchAndExpectCompletion(latch, "latch");

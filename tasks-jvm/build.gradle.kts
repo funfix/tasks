@@ -1,7 +1,5 @@
 plugins {
-    `java-library`
-    jacoco
-    id("tasks.base")
+    id("tasks.java-project")
 }
 
 dependencies {
@@ -10,7 +8,7 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
 
-    testImplementation(platform("org.junit:junit-bom:5.10.2"))
+    testImplementation(platform("org.junit:junit-bom:5.12.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -25,20 +23,20 @@ tasks.jacocoTestReport {
 }
 
 tasks.withType<JavaCompile> {
-    sourceCompatibility = JavaVersion.VERSION_11.majorVersion
-    targetCompatibility = JavaVersion.VERSION_11.majorVersion
+    sourceCompatibility = JavaVersion.VERSION_17.majorVersion
+    targetCompatibility = JavaVersion.VERSION_17.majorVersion
 }
 
 tasks.register<Test>("testsOn21") {
     useJUnitPlatform()
     javaLauncher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_21.majorVersion)
     }
 }
 
-tasks.register<Test>("testsOn11") {
+tasks.register<Test>("testsOn17") {
     useJUnitPlatform()
     javaLauncher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(11)
+        languageVersion = JavaLanguageVersion.of(JavaVersion.VERSION_17.majorVersion)
     }
 }

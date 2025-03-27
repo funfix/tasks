@@ -1,45 +1,29 @@
 package org.funfix.tasks.jvm;
 
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
- * This is a wrapper around a [CompletableFuture] with a
- * [Cancellable] reference attached.
+ * This is a wrapper around a {@link CompletableFuture} with a
+ * {@link Cancellable} reference attached.
  * <p>
- * A standard Java [CompletableFuture] is not connected to its
+ * A standard Java {@link CompletableFuture} is not connected to its
  * asynchronous task and cannot be cancelled. Thus, if we want to cancel
- * a task, we need to keep a reference to a [Cancellable] object that
+ * a task, we need to keep a reference to a {@link Cancellable} object that
  * can do the job.
+ * <p>
+ * {@code CancellableFuture} is similar to {@link Fiber}, which should
+ * be preferred because it's more principled. {@code CancellableFuture}
+ * is useful more for interoperability with Java code.
  */
 @NullMarked
-@ToString
-@EqualsAndHashCode(callSuper = false)
-public class CancellableFuture<T extends @Nullable Object> {
-    private final CompletableFuture<? extends T> future;
-    private final Cancellable cancellable;
-
-    public CancellableFuture(
-        CompletableFuture<? extends T> future,
-        Cancellable cancellable
-    ) {
-        this.future = future;
-        this.cancellable = cancellable;
-    }
-
-    public CompletableFuture<? extends T> future() {
-        return future;
-    }
-
-    public Cancellable cancellable() {
-        return cancellable;
-    }
-
+public record CancellableFuture<T extends @Nullable Object>(
+    CompletableFuture<? extends T> future,
+    Cancellable cancellable
+) {
     public <U> CancellableFuture<U> transform(
         Function<? super CompletableFuture<? extends T>, ? extends CompletableFuture<? extends U>> fn
     ) {

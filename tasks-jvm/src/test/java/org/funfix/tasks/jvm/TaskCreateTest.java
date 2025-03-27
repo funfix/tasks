@@ -14,8 +14,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assumptions.assumeFalse;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @NullMarked
 abstract class BaseTaskCreateTest {
@@ -136,87 +134,5 @@ class TaskCreateSimpleCustomJavaExecutorTest extends BaseTaskCreateTest {
 
     protected <T> Task<T> fromAsyncTask(final AsyncFun<? extends T> builder) {
         return Task.fromAsync(builder);
-    }
-}
-
-@NullMarked
-abstract class BaseTaskCreateForkedAsyncTest extends BaseTaskCreateTest {
-    @Override
-    protected <T> Task<T> fromAsyncTask(final AsyncFun<? extends T> builder) {
-        return Task.fromForkedAsync(builder);
-    }
-
-    @Test
-    void java21Plus() throws ExecutionException, InterruptedException {
-        assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
-
-        final Task<String> task = fromAsyncTask((executor, cb) -> {
-            cb.onSuccess(Thread.currentThread().getName());
-            return Cancellable.getEmpty();
-        });
-
-        final var result =
-                executor != null
-                        ? task.runBlocking(executor)
-                        : task.runBlocking();
-        assertTrue(
-                Objects.requireNonNull(result).matches("tasks-io-virtual-\\d+"),
-                "result.matches(\"tasks-io-virtual-\\\\d+\")"
-        );
-    }
-
-    @Test
-    void olderJava() throws ExecutionException, InterruptedException {
-        assumeFalse(VirtualThreads.areVirtualThreadsSupported(), "Requires older Java versions");
-
-        final Task<String> task = fromAsyncTask((executor, cb) -> {
-            cb.onSuccess(Thread.currentThread().getName());
-            return Cancellable.getEmpty();
-        });
-
-        final var result =
-                executor != null
-                        ? task.runBlocking(executor)
-                        : task.runBlocking();
-        assertTrue(
-                Objects.requireNonNull(result).matches("tasks-io-platform-\\d+"),
-                "result.matches(\"tasks-io-virtual-\\\\d+\")"
-        );
-    }
-}
-
-@NullMarked
-class TaskCreateForkedAsyncDefaultExecutorJava21Test extends BaseTaskCreateForkedAsyncTest {
-    @BeforeEach
-    void setUp() {
-        closeable = SysProp.withVirtualThreads(true);
-        executor = null;
-    }
-}
-
-@NullMarked
-class TaskCreateForkedAsyncDefaultExecutorOlderJavaTest extends BaseTaskCreateForkedAsyncTest {
-    @BeforeEach
-    void setUp() {
-        closeable = SysProp.withVirtualThreads(false);
-        executor = null;
-    }
-}
-
-@NullMarked
-class TaskCreateForkedAsyncCustomExecutorOlderJavaTest extends BaseTaskCreateForkedAsyncTest {
-    @BeforeEach
-    void setUp() {
-        closeable = SysProp.withVirtualThreads(false);
-        executor = TaskExecutors.global();
-    }
-}
-
-@NullMarked
-class TaskCreateForkedAsyncCustomExecutorJava21Test extends BaseTaskCreateForkedAsyncTest {
-    @BeforeEach
-    void setUp() {
-        closeable = SysProp.withVirtualThreads(true);
-        executor = TaskExecutors.global();
     }
 }

@@ -3,8 +3,7 @@
 package org.funfix.tasks.kotlin
 
 /**
- * Definition that provides the platform-specific implementation of a task.
- * I.e., on the JVM, this is `org.funfix.tasks.jvm.Task`.
+ * An alias for a platform-specific implementation that powers [Task].
  */
 public expect class PlatformTask<T>
 
@@ -22,6 +21,10 @@ public typealias Callback<T> = (Outcome<T>) -> Unit
  * the result won't get cached (memoized). In the vocabulary of
  * "functional programming", this is a pure value, being somewhat equivalent
  * to `IO`.
+ *
+ * This is designed to be a compile-time type that's going to be erased at
+ * runtime. Therefore, for the JVM at least, when using it in your APIs, it
+ * won't pollute it with Kotlin-specific wrappers.
  */
 public expect value class Task<out T> public constructor(
     public val asPlatform: PlatformTask<out T>
@@ -36,8 +39,48 @@ public expect value class Task<out T> public constructor(
  *
  * E.g., can convert a `jvm.Task` to a `kotlin.Task`.
  */
-public fun <T> PlatformTask<T>.asKotlin(): Task<T> =
+public fun <T> PlatformTask<out T>.asKotlin(): Task<T> =
     Task(this)
+
+/**
+ * Ensures that the task starts asynchronously and runs on the given executor,
+ * regardless of the `run` method that is used, or the injected executor in
+ * any of those methods.
+ *
+ * One example where this is useful is for blocking I/O operations, for
+ * ensuring that the task runs on the thread-pool meant for blocking I/O,
+ * regardless of what executor is passed to [runAsync].
+ *
+ * Example:
+ * ```kotlin
+ * Task.fromBlockingIO {
+ *     // Reads a file from disk
+ *     Files.readString(Paths.get("file.txt"))
+ * }.ensureRunningOnExecutor(
+ *     BlockingIOExecutor
+ * )
+ * ```
+ *
+ * Another use-case is for ensuring that the task runs asynchronously, on
+ * another thread. Otherwise, tasks may be able to execute on the current thread:
+ *
+ * ```kotlin
+ * val task = Task.fromBlockingIO {
+ *    // Reads a file from disk
+ *    Files.readString(Paths.get("file.txt"))
+ * }
+ *
+ * task
+ *   // Ensuring the task runs on a different thread
+ *   .ensureRunningOnExecutor()
+ *   // Blocking the current thread for the result (JVM API)
+ *   .runBlocking()
+ * ```
+ *
+ * @param executor is the [Executor] used as an override. If `null`, then
+ * the executor injected (e.g., in [runAsync]) will be used.
+ */
+public expect fun <T> Task<T>.ensureRunningOnExecutor(executor: Executor? = null): Task<T>
 
 /**
  * Executes the task asynchronously.
@@ -73,22 +116,6 @@ public expect fun <T> Task<T>.runAsync(
  * @return a new task that will execute the given builder function upon execution
  * @see fromForkedAsync
  */
-public expect fun <T> Task.Companion.fromAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T>
-
-/**
- * Creates a task from an asynchronous computation, initiated on a
- * separate thread.
- *
- * This is a variant of [fromAsync]. The former executes the given
- * builder function on the same thread, whereas this variant starts the
- * computation on a separate thread.
- *
- * **NOTE:** The thread is created via the injected [Executor] in the
- * "execute" methods (e.g., [runAsync]). Even when using one of the
- * overloads, then [GlobalExecutor] is assumed.
- *
- * @param start is the function that will trigger the async computation.
- * @return a new task that will execute the given builder function.
- * @see fromAsync
- */
-public expect fun <T> Task.Companion.fromForkedAsync(start: (Executor, Callback<T>) -> Cancellable): Task<T>
+public expect fun <T> Task.Companion.fromAsync(
+    start: (Executor, Callback<T>) -> Cancellable
+): Task<T>

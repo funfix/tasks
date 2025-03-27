@@ -34,10 +34,11 @@ public class TaskFromBlockingFutureTest {
     }
 
     @Test
-    void happyPath() throws ExecutionException, InterruptedException {
+    void runBlockingDoesNotFork() throws ExecutionException, InterruptedException {
         Objects.requireNonNull(es);
 
         final var name = new AtomicReference<>("");
+        final var thisName = Thread.currentThread().getName();
         final var task = Task.fromBlockingFuture(() -> {
             name.set(Thread.currentThread().getName());
             return es.submit(() -> "Hello, world!");
@@ -45,11 +46,49 @@ public class TaskFromBlockingFutureTest {
 
         final var r = task.runBlocking();
         assertEquals("Hello, world!", r);
-        assertTrue(name.get().startsWith("tasks-io-"));
+        assertEquals(thisName, name.get());
     }
 
     @Test
-    void loomHappyPath() throws ExecutionException, InterruptedException {
+    void runBlockingTimedForks() throws ExecutionException, InterruptedException, TimeoutException {
+        Objects.requireNonNull(es);
+
+        final var name = new AtomicReference<>("");
+        final var thisName = Thread.currentThread().getName();
+        final var task = Task.fromBlockingFuture(() -> {
+            name.set(Thread.currentThread().getName());
+            return es.submit(() -> "Hello, world!");
+        });
+
+        final var r = task.runBlockingTimed(es, TimedAwait.TIMEOUT);
+        assertEquals("Hello, world!", r);
+        assertTrue(
+            name.get().startsWith("es-sample-"),
+            "Expected name to start with 'es-sample-', but was: " + name.get()
+        );
+    }
+
+    @Test
+    void runFiberForks() throws ExecutionException, InterruptedException, TimeoutException, TaskCancellationException {
+        Objects.requireNonNull(es);
+
+        final var name = new AtomicReference<>("");
+        final var thisName = Thread.currentThread().getName();
+        final var task = Task.fromBlockingFuture(() -> {
+            name.set(Thread.currentThread().getName());
+            return es.submit(() -> "Hello, world!");
+        });
+
+        final var r = task.runFiber(es).awaitBlockingTimed(TimedAwait.TIMEOUT);
+        assertEquals("Hello, world!", r);
+        assertTrue(
+            name.get().startsWith("es-sample-"),
+            "Expected name to start with 'es-sample-', but was: " + name.get()
+        );
+    }
+
+    @Test
+    void loomHappyPath() throws ExecutionException, InterruptedException, TimeoutException {
         assumeTrue(VirtualThreads.areVirtualThreadsSupported(), "Requires Java 21+");
         Objects.requireNonNull(es);
 
@@ -59,7 +98,7 @@ public class TaskFromBlockingFutureTest {
             return es.submit(() -> "Hello, world!");
         });
 
-        final var r = task.runBlocking();
+        final var r = task.runBlockingTimed(TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", r);
         assertTrue(name.get().startsWith("tasks-io-virtual-"));
     }

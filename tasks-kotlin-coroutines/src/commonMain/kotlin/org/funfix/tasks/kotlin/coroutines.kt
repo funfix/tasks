@@ -4,7 +4,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 /**
- * Similar with `executeBlocking`, however this is a "suspended" function,
+ * Similar with `runBlocking`, however this is a "suspended" function,
  * to be executed in the context of [kotlinx.coroutines].
  *
  * NOTES:
