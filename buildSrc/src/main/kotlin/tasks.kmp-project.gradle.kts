@@ -32,9 +32,7 @@ java {
 }
 
 kotlin {
-    jvm {
-        withJava()
-    }
+    jvm {}
 
     js(IR) {
         browser {
