@@ -20,6 +20,7 @@ public final class org/funfix/tasks/kotlin/Fiber : org/funfix/tasks/jvm/Cancella
 }
 
 public final class org/funfix/tasks/kotlin/FiberJvmKt {
+	public static final fun asKotlin (Lorg/funfix/tasks/jvm/Fiber;)Lorg/funfix/tasks/jvm/Fiber;
 	public static final fun awaitAsync-bilpdk0 (Lorg/funfix/tasks/jvm/Fiber;Lkotlin/jvm/functions/Function1;)Lorg/funfix/tasks/jvm/Cancellable;
 	public static final fun awaitBlocking-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)Ljava/lang/Object;
 	public static final fun awaitBlockingTimed-MI-qbaI (Lorg/funfix/tasks/jvm/Fiber;J)Ljava/lang/Object;
@@ -28,10 +29,6 @@ public final class org/funfix/tasks/kotlin/FiberJvmKt {
 	public static final fun joinAsync-bilpdk0 (Lorg/funfix/tasks/jvm/Fiber;Ljava/lang/Runnable;)Lorg/funfix/tasks/jvm/Cancellable;
 	public static final fun joinBlocking-eJoBjQM (Lorg/funfix/tasks/jvm/Fiber;)V
 	public static final fun joinBlockingTimed-MI-qbaI (Lorg/funfix/tasks/jvm/Fiber;J)V
-}
-
-public final class org/funfix/tasks/kotlin/FiberKt {
-	public static final fun asKotlin (Lorg/funfix/tasks/jvm/Fiber;)Lorg/funfix/tasks/jvm/Fiber;
 }
 
 public abstract interface class org/funfix/tasks/kotlin/Outcome {

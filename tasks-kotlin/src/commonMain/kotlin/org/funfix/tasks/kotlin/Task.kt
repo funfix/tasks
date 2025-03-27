@@ -95,19 +95,6 @@ public expect fun <T> Task<T>.runAsync(
 ): Cancellable
 
 /**
- * Executes the task concurrently and returns a [Fiber] that can be
- * used to wait for the result or cancel the task.
- *
- * Similar to [runAsync], this method starts the execution on a different thread.
- *
- * @param executor is the [Executor] that may be used to run the task.
- *
- * @return a [Fiber] that can be used to wait for the outcome,
- * or to cancel the running fiber.
- */
-public expect fun <T> Task<T>.runFiber(executor: Executor? = null): Fiber<T>
-
-/**
  * Creates a task from an asynchronous computation, initiated on the current thread.
  *
  * This method ensures:

@@ -44,8 +44,19 @@ public actual fun <T> Task<T>.runAsync(
         else -> asPlatform.runAsync(executor, callback.asJava())
     }
 
+/**
+ * Executes the task concurrently and returns a [Fiber] that can be
+ * used to wait for the result or cancel the task.
+ *
+ * Similar to [runAsync], this method starts the execution on a different thread.
+ *
+ * @param executor is the [Executor] that may be used to run the task.
+ *
+ * @return a [Fiber] that can be used to wait for the outcome,
+ * or to cancel the running fiber.
+ */
 @NonBlocking
-public actual fun <T> Task<T>.runFiber(executor: Executor?): Fiber<T> =
+public fun <T> Task<T>.runFiber(executor: Executor? = null): Fiber<T> =
     Fiber(when (executor) {
         null -> asPlatform.runFiber()
         else -> asPlatform.runFiber(executor)

@@ -61,10 +61,13 @@ internal fun <T> Callback<T>.protect(): Callback<T> {
     }
 }
 
-public actual fun <T> Task<T>.ensureRunningOnExecutor(executor: Executor?): Task<T> {
-    TODO("Not yet implemented")
-}
-
-public actual fun <T> Task<T>.runFiber(executor: Executor?): Fiber<T> {
-    TODO("Not yet implemented")
-}
+public actual fun <T> Task<T>.ensureRunningOnExecutor(executor: Executor?): Task<T> =
+    Task(PlatformTask { injectedExecutor, callback ->
+        val ec = executor ?: injectedExecutor
+        val cRef = MutableCancellable()
+        ec.execute {
+            val c = this@ensureRunningOnExecutor.asPlatform.invoke(ec, callback)
+            cRef.set(c)
+        }
+        cRef
+    })
