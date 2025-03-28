@@ -37,20 +37,20 @@ jobs:
             **/build/reports/
             **/build/test-results/
 
-#  test-sbt:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#      - name: Set up JDK 21
-#        uses: actions/setup-java@v4
-#        with:
-#          cache: 'sbt'
-#          java-version: 21
-#          distribution: 'temurin'
-#      - name: Setup Gradle
-#        uses: gradle/actions/setup-gradle@v3
-#      - name: Setup sbt
-#        uses: sbt/setup-sbt@v1
-#      - name: Build and test
-#        run: sbt -v publishLocalGradleDependencies ++test
-#        working-directory: ./tasks-scala
+  test-sbt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          cache: 'sbt'
+          java-version: 21
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+      - name: Build and test
+        run: sbt -v publishLocalGradleDependencies ++test
+        working-directory: ./tasks-scala
