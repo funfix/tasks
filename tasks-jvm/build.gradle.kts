@@ -2,6 +2,13 @@ plugins {
     id("tasks.java-project")
 }
 
+mavenPublishing {
+    pom {
+        name.set("Funfix Tasks (JVM)")
+        description.set("Task datatype, meant for cross-language interoperability.")
+    }
+}
+
 dependencies {
     api(libs.jspecify)
     compileOnly(libs.jetbrains.annotations)
