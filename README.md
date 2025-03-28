@@ -1,18 +1,33 @@
 # Tasks
 
+[![build](https://github.com/funfix/tasks/actions/workflows/build.yaml/badge.svg)](https://github.com/funfix/tasks/actions/workflows/build.yaml) [![maven](https://img.shields.io/maven-central/v/org.funfix/tasks-jvm.svg)](https://central.sonatype.com/artifact/org.funfix/tasks-jvm) [![javadoc](https://javadoc.io/badge2/org.funfix/tasks-jvm/javadoc.svg)](https://javadoc.io/doc/org.funfix/tasks-jvm)
+
+This is a library meant for library authors that want to build libraries that work across Java, Scala, or Kotlin, without having to worry about interoperability with whatever method of I/O that the library is using under the hood.
+
 ## Usage
 
+Read the [Javadoc](https://javadoc.io/doc/org.funfix/tasks-jvm).
+Better documentation is coming.
+
+---
+
+Maven:
 ```xml
 <dependency>
   <groupId>org.funfix</groupId>
   <artifactId>tasks-core-jvm</artifactId>
-  <version>0.0.1</version>
+  <version>0.0.3</version>
 </dependency>
 ```
 
-## Development
+Gradle:
+```kotlin
+dependencies {
+    implementation("org.funfix:tasks-core-jvm:0.0.3")
+}
+```
 
-### Important Files
-
-- [gradle.properties](./gradle.properties) configures the project's version.
-- [gradle/libs.versions.toml](./gradle/libs.versions.toml) configures the versions of the dependencies.
+sbt:
+```scala
+libraryDependencies += "org.funfix" % "tasks-core-jvm" % "0.0.3"
+```
