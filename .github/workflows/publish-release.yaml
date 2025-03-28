@@ -13,7 +13,7 @@ jobs:
           java-version: 17
           distribution: 'temurin'
       - name: Publish Snapshot
-        run: ./gradlew -PbuildRelease=true build publish --no-daemon -i
+        run: ./gradlew -PbuildRelease=true build publish --no-daemon
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_USERNAME }}
