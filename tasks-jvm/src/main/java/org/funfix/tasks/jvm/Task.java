@@ -409,6 +409,13 @@ public final class Task<T extends @Nullable Object> {
     ) {
         return new Task<>(new TaskFromCancellableFuture<>(builder));
     }
+
+    /**
+     * Creates a task that completes with the given static/pure value.
+     */
+    public static <T extends @Nullable Object> Task<T> pure(final T value) {
+        return new Task<>((cont) -> cont.onSuccess(value));
+    }
 }
 
 /**

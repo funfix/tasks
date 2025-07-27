@@ -14,7 +14,7 @@ update-gradle:
 	./gradlew wrapper --gradle-version latest
 
 test-watch:
-	./gradlew -t -i check
+	./gradlew -t check
 
 test-coverage:
 	./gradlew clean build jacocoTestReport koverHtmlReportJvm
