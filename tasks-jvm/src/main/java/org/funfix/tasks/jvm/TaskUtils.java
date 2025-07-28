@@ -10,13 +10,10 @@ import java.util.concurrent.Executor;
 @NullMarked
 @ApiStatus.Internal
 final class TaskUtils {
-    static <T extends @Nullable Object> T runBlockingUninterruptible(
-        @Nullable final Executor executor,
+    static <T extends @Nullable Object> Task<T> taskUninterruptibleBlockingIO(
         final DelayedFun<? extends T> func
-    ) throws ExecutionException, InterruptedException {
-        // Not using Task.fromBlockingIO because we don't need the
-        // cancellation logic via thread interruption here.
-        final var task = Task.<T>fromAsync((ec, callback) -> {
+    ) {
+        return Task.fromAsync((ec, callback) -> {
             try {
                 callback.onSuccess(func.invoke());
             } catch (final InterruptedException e) {
@@ -26,6 +23,13 @@ final class TaskUtils {
             }
             return () -> {};
         });
+    }
+
+    static <T extends @Nullable Object> T runBlockingUninterruptible(
+        @Nullable final Executor executor,
+        final DelayedFun<? extends T> func
+    ) throws ExecutionException, InterruptedException {
+        final var task = taskUninterruptibleBlockingIO(func);
         return runBlockingUninterruptible(null, task);
     }
 

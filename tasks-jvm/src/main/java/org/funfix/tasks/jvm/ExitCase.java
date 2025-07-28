@@ -15,7 +15,7 @@ public sealed interface ExitCase {
      * also for cases in which the outcome is unknown.
      * <br>
      * This is a catch-all result. For example, this is the value passed
-     * to {@link Resource.Allocated} in {@code releaseTask} when the resource
+     * to {@link Resource.Acquired} in {@code releaseTask} when the resource
      * is used as an {@link AutoCloseable}, as the {@code AutoCloseable} protocol
      * does not distinguish between successful completion, failure, or cancellation.
      * <br>
@@ -29,7 +29,7 @@ public sealed interface ExitCase {
     /**
      * Signals that the task failed with a known exception.
      * <br>
-     * Used in {@link Resource.Allocated} to indicate that the resource
+     * Used in {@link Resource.Acquired} to indicate that the resource
      * is being released due to an exception.
      *
      * @param error is the exception thrown
@@ -39,7 +39,7 @@ public sealed interface ExitCase {
     /**
      * Signals that the task was cancelled.
      * <br>
-     * Used in {@link Resource.Allocated} to indicate that the resource
+     * Used in {@link Resource.Acquired} to indicate that the resource
      * is being released due to a cancellation (e.g., the thread was
      * interrupted).
      */
