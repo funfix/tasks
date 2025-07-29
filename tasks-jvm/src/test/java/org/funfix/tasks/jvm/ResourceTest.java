@@ -1,11 +1,16 @@
 package org.funfix.tasks.jvm;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @NullMarked
 public class ResourceTest {
@@ -35,6 +40,47 @@ public class ResourceTest {
                 );
             }
         }
+    }
+
+    @Test
+    void useIsInterruptible() throws InterruptedException {
+        final var started = new CountDownLatch(1);
+        final var latch = new CountDownLatch(1);
+        final var wasShutdown = new CountDownLatch(1);
+        final var wasInterrupted = new AtomicInteger(0);
+        final var wasReleased = new AtomicReference<@Nullable ExitCase>(null);
+        final var resource = Resource.fromBlockingIO(() ->
+            new Resource.Closeable<>("my resource", wasReleased::set)
+        );
+
+        final var task = Task.fromBlockingFuture(() -> {
+            try {
+                resource.useBlocking(res -> {
+                    assertEquals("my resource", res);
+                    started.countDown();
+                    try {
+                        latch.await();
+                    } catch (InterruptedException e) {
+                        wasInterrupted.incrementAndGet();
+                        throw e;
+                    }
+                    return null;
+                });
+            } catch (InterruptedException e) {
+                wasInterrupted.incrementAndGet();
+                throw e;
+            } finally {
+                wasShutdown.countDown();
+            }
+            return null;
+        });
+
+        final var fiber = task.runFiber();
+        TimedAwait.latchAndExpectCompletion(started, "started");
+        fiber.cancel();
+        TimedAwait.latchAndExpectCompletion(wasShutdown, "wasShutdown");
+        assertEquals(2, wasInterrupted.get(), "wasInterrupted");
+        assertEquals(ExitCase.canceled(), wasReleased.get(), "wasReleased");
     }
 
     Resource<BufferedReader> openReader(File file) {

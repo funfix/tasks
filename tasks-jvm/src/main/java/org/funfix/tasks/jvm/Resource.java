@@ -4,6 +4,7 @@ import org.jetbrains.annotations.Blocking;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -146,6 +147,50 @@ public final class Resource<T extends @Nullable Object> {
     }
 
     /**
+     * Safely use the {@code Resource}, a method to use as an alternative to
+     * Java's try-with-resources.
+     * <p>
+     * Note that an asynchronous (Task-driven) alternative isn't provided,
+     * as that would require an asynchronous evaluation model that's outside
+     * the scope. E.g., work with Kotlin's coroutines, or Scala's Cats-Effect
+     * to achieve that.
+     *
+     * @param process is the processing function that can do I/O
+     *
+     * @return
+     * @param <R>
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
+    @SuppressWarnings("ConstantValue")
+    public <R extends @Nullable Object> R useBlocking(
+        final ProcessFun<? super T, ? extends R> process
+    ) throws IOException, InterruptedException, ExecutionException {
+        Objects.requireNonNull(process, "use");
+        var finalizerCalled = false;
+        final var acquired = acquireBlocking();
+        try {
+            return process.call(acquired.get());
+        } catch (InterruptedException e) {
+            if (!finalizerCalled) {
+                finalizerCalled = true;
+                acquired.releaseBlocking(ExitCase.canceled());
+            }
+            throw e;
+        } catch (RuntimeException | IOException | ExecutionException e) {
+            if (!finalizerCalled) {
+                finalizerCalled = true;
+                acquired.releaseBlocking(ExitCase.failed(e));
+            }
+            throw e;
+        } finally {
+            if (!finalizerCalled) {
+                acquired.releaseBlocking(ExitCase.succeeded());
+            }
+        }
+    }
+
+    /**
      * Creates a {@link Resource} from an asynchronous task that acquires the resource.
      * <p>
      * The task should return an {@link Acquired} object that contains the
@@ -196,6 +241,18 @@ public final class Resource<T extends @Nullable Object> {
             Objects.requireNonNull(resource, "Resource allocation returned null");
             return new Closeable<>(resource, CloseableFun.fromAutoCloseable(resource));
         });
+    }
+
+    /**
+     * Creates a "pure" {@code Resource}.
+     * <p>
+     * A "pure" resource is one that just wraps a known value, with no-op
+     * release logic.
+     * <p>
+     * @see Task#pure(Object)
+     */
+    public static <T extends @Nullable Object> Resource<T> pure(T value) {
+        return Resource.fromAsync(Task.pure(Acquired.pure(value)));
     }
 
     /**
@@ -259,6 +316,17 @@ public final class Resource<T extends @Nullable Object> {
         public void close() throws Exception {
             releaseBlocking(ExitCase.succeeded());
         }
+
+        /**
+         * Creates a "pure" {@code Acquired} instance with the given value —
+         * i.e., it just wraps a value with the release function being a no-op.
+         */
+        public static <T extends @Nullable Object> Acquired<T> pure(T value) {
+            return new Acquired<>(value, NOOP);
+        }
+
+        private static Function<ExitCase, Task<Void>> NOOP =
+            ignored -> Task.VOID;
     }
 
     /**
@@ -282,6 +350,14 @@ public final class Resource<T extends @Nullable Object> {
         @Override
         public void close(ExitCase exitCase) throws Exception {
             releaseFun.close(exitCase);
+        }
+
+        /**
+         * Creates a "pure" {@code Closeable} instance with the given value —
+         * i.e., it just wraps a value with the release function being a no-op.
+         */
+        public static <T extends @Nullable Object> Closeable<T> pure(T value) {
+            return new Closeable<>(value, CloseableFun.VOID);
         }
     }
 }

@@ -416,6 +416,9 @@ public final class Task<T extends @Nullable Object> {
     public static <T extends @Nullable Object> Task<T> pure(final T value) {
         return new Task<>((cont) -> cont.onSuccess(value));
     }
+
+    /** Reusable "void" task that does nothing, completing immediately. */
+    public static final Task<Void> VOID = Task.pure(null);
 }
 
 /**

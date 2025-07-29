@@ -15,4 +15,9 @@ public interface CloseableFun extends AutoCloseable {
     static CloseableFun fromAutoCloseable(AutoCloseable resource) {
         return ignored -> resource.close();
     }
+
+    /**
+     * Reusable reference for a no-op {@code CloseableFun}.
+     */
+    CloseableFun VOID = ignored -> {};
 }
