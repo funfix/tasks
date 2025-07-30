@@ -376,13 +376,5 @@ public final class Resource<T extends @Nullable Object> {
         public void close(ExitCase exitCase) throws Exception {
             releaseFun.close(exitCase);
         }
-
-        /**
-         * Creates a "pure" {@code Closeable} instance with the given value —
-         * i.e., it just wraps a value with the release function being a no-op.
-         */
-        public static <T extends @Nullable Object> Closeable<T> pure(T value) {
-            return new Closeable<>(value, CloseableFun.VOID);
-        }
     }
 }
