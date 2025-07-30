@@ -22,16 +22,17 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
-    finalizedBy(tasks.jacocoTestReport) // report is always generated after tests run
+    finalizedBy(tasks.jacocoTestReport)
 }
 
 tasks.jacocoTestReport {
-    dependsOn(tasks.test) // tests are required to run before generating the report
+    dependsOn(tasks.test)
 }
 
 tasks.withType<JavaCompile> {
     sourceCompatibility = JavaVersion.VERSION_17.majorVersion
     targetCompatibility = JavaVersion.VERSION_17.majorVersion
+    options.compilerArgs.add("-Xlint:deprecation")
 }
 
 tasks.register<Test>("testsOn21") {
