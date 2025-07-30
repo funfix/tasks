@@ -1,8 +1,6 @@
 package org.funfix.tasks.jvm;
 
 import org.jspecify.annotations.Nullable;
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 
 /**
  * The equivalent of {@code Function<In, Out>} for processing I/O that can
@@ -10,5 +8,5 @@ import java.util.concurrent.ExecutionException;
  */
 @FunctionalInterface
 public interface ProcessFun<In extends @Nullable Object, Out extends  @Nullable Object> {
-    Out call(In input) throws IOException, InterruptedException, ExecutionException;
+    Out call(In input) throws Exception;
 }

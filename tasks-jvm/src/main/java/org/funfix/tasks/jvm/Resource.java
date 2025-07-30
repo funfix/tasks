@@ -4,7 +4,6 @@ import org.jetbrains.annotations.Blocking;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
-import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -150,44 +149,70 @@ public final class Resource<T extends @Nullable Object> {
      * Safely use the {@code Resource}, a method to use as an alternative to
      * Java's try-with-resources.
      * <p>
+     * All the execution happens on the specified {@code executor}, which
+     * is used for both acquiring the resource, executing the processing
+     * function and releasing the resource.
+     * <p>
      * Note that an asynchronous (Task-driven) alternative isn't provided,
      * as that would require an asynchronous evaluation model that's outside
      * the scope. E.g., work with Kotlin's coroutines, or Scala's Cats-Effect
      * to achieve that.
      *
-     * @param process is the processing function that can do I/O
+     * @param executor is the executor to use for acquiring the resource and
+     *        for executing the processing function. If {@code null}, the
+     *        default executor for blocking I/O is used.
+     * @param process is the processing function that can do I/O.
      *
-     * @return
-     * @param <R>
-     * @throws ExecutionException
-     * @throws InterruptedException
+     * @throws ExecutionException if either the resource acquisition or the
+     *         processing function fails with an exception.
+     * @throws InterruptedException is thrown if the current thread was interrupted,
+     *         which can also interrupt the resource acquisition or the processing function.
      */
     @SuppressWarnings("ConstantValue")
     public <R extends @Nullable Object> R useBlocking(
+        @Nullable Executor executor,
         final ProcessFun<? super T, ? extends R> process
-    ) throws IOException, InterruptedException, ExecutionException {
+    ) throws InterruptedException, ExecutionException {
         Objects.requireNonNull(process, "use");
-        var finalizerCalled = false;
-        final var acquired = acquireBlocking();
-        try {
-            return process.call(acquired.get());
-        } catch (InterruptedException e) {
-            if (!finalizerCalled) {
-                finalizerCalled = true;
-                acquired.releaseBlocking(ExitCase.canceled());
+        final Task<R> task = Task.fromBlockingIO(() -> {
+            var finalizerCalled = false;
+            final var acquired = acquireBlocking(executor);
+            try {
+                return process.call(acquired.get());
+            } catch (InterruptedException e) {
+                if (!finalizerCalled) {
+                    finalizerCalled = true;
+                    acquired.releaseBlocking(ExitCase.canceled());
+                }
+                throw e;
+            } catch (Exception e) {
+                if (!finalizerCalled) {
+                    finalizerCalled = true;
+                    acquired.releaseBlocking(ExitCase.failed(e));
+                }
+                throw e;
+            } finally {
+                if (!finalizerCalled) {
+                    acquired.releaseBlocking(ExitCase.succeeded());
+                }
             }
-            throw e;
-        } catch (RuntimeException | IOException | ExecutionException e) {
-            if (!finalizerCalled) {
-                finalizerCalled = true;
-                acquired.releaseBlocking(ExitCase.failed(e));
-            }
-            throw e;
-        } finally {
-            if (!finalizerCalled) {
-                acquired.releaseBlocking(ExitCase.succeeded());
-            }
-        }
+        });
+        return task
+            .ensureRunningOnExecutor()
+            .runBlocking(executor);
+    }
+
+    /**
+     * Safely use the {@code Resource}, a method to use as an alternative to
+     * Java's try-with-resources.
+     * <p>
+     * This is an overload of {@link #useBlocking(Executor, ProcessFun)}
+     * that uses the default executor for blocking I/O.
+     */
+    public <R extends @Nullable Object> R useBlocking(
+        final ProcessFun<? super T, ? extends R> process
+    ) throws InterruptedException, ExecutionException {
+        return useBlocking(null, process);
     }
 
     /**
@@ -325,7 +350,7 @@ public final class Resource<T extends @Nullable Object> {
             return new Acquired<>(value, NOOP);
         }
 
-        private static Function<ExitCase, Task<Void>> NOOP =
+        private static final Function<ExitCase, Task<Void>> NOOP =
             ignored -> Task.VOID;
     }
 

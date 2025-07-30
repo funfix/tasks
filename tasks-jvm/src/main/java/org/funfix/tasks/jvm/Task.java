@@ -166,11 +166,13 @@ public final class Task<T extends @Nullable Object> {
      * concurrent task must also be interrupted, as this method always blocks
      * for its interruption or completion.
      */
-    public T runBlocking(final Executor executor)
+    public T runBlocking(@Nullable final Executor executor)
         throws ExecutionException, InterruptedException {
 
         final var blockingCallback = new BlockingCompletionCallback<T>();
-        final var taskExecutor = TaskExecutor.from(executor);
+        final var taskExecutor = TaskExecutor.from(
+            executor != null ? executor : TaskExecutors.sharedBlockingIO()
+        );
         final var cont = new CancellableContinuation<>(taskExecutor, blockingCallback);
         createFun.invoke(cont);
         return blockingCallback.await(cont);
@@ -193,7 +195,7 @@ public final class Task<T extends @Nullable Object> {
      * for its interruption or completion.
      */
     public T runBlocking() throws ExecutionException, InterruptedException {
-        return runBlocking(TaskExecutors.sharedBlockingIO());
+        return runBlocking(null);
     }
 
     /**
