@@ -16,18 +16,18 @@ Maven:
 <dependency>
   <groupId>org.funfix</groupId>
   <artifactId>tasks-jvm</artifactId>
-  <version>0.0.3</version>
+  <version>0.1.0</version>
 </dependency>
 ```
 
 Gradle:
 ```kotlin
 dependencies {
-    implementation("org.funfix:tasks-jvm:0.0.3")
+    implementation("org.funfix:tasks-jvm:0.1.0")
 }
 ```
 
 sbt:
 ```scala
-libraryDependencies += "org.funfix" % "tasks-jvm" % "0.0.3"
+libraryDependencies += "org.funfix" % "tasks-jvm" % "0.1.0"
 ```
