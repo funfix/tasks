@@ -5,6 +5,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * The equivalent of {@code Function<In, Out>} for processing I/O that can
  * throw exceptions.
+ *
+ * @see DelayedFun for the variant with no parameters
  */
 @FunctionalInterface
 public interface ProcessFun<In extends @Nullable Object, Out extends  @Nullable Object> {

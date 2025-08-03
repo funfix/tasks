@@ -96,8 +96,7 @@ final class MutableCancellable implements Cancellable {
         final var current = ref.get();
         if (current instanceof State.Cancelled) {
             return Cancellable::cancel;
-        } else if (current instanceof State.Active) {
-            final var active = (State.Active) current;
+        } else if (current instanceof State.Active active) {
             return cancellable -> registerOrdered(
                 active.order,
                 cancellable,
@@ -112,8 +111,7 @@ final class MutableCancellable implements Cancellable {
         Objects.requireNonNull(token, "token");
         while (true) {
             final var current = ref.get();
-            if (current instanceof State.Active) {
-                final var active = (State.Active) current;
+            if (current instanceof State.Active active) {
                 final var update = new State.Active(token, active.order + 1);
                 if (ref.compareAndSet(current, update)) { return; }
             } else if (current instanceof State.Cancelled) {
@@ -131,9 +129,8 @@ final class MutableCancellable implements Cancellable {
         State current
     ) {
         while (true) {
-            if (current instanceof State.Active) {
+            if (current instanceof State.Active active) {
                 // Double-check ordering
-                final var active = (State.Active) current;
                 if (active.order != order) { return; }
                 // Try to update
                 final var update = new State.Active(newToken, order + 1);

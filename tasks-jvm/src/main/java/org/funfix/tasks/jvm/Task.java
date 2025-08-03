@@ -39,11 +39,12 @@ public final class Task<T extends @Nullable Object> {
      * );
      * }</pre>
      */
-    public Task<T> ensureRunningOnExecutor(final Executor executor) {
+    public Task<T> ensureRunningOnExecutor(final @Nullable Executor executor) {
         return new Task<>((cont) -> {
-            final var taskExecutor = TaskExecutor.from(executor);
-            final var cont2 = cont.withExecutorOverride(taskExecutor);
-            taskExecutor.resumeOnExecutor(() -> createFun.invoke(cont2));
+            final Continuation<? super T> cont2 = executor != null
+                ? cont.withExecutorOverride(TaskExecutor.from(executor))
+                : cont;
+            cont2.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont2));
         });
     }
 
@@ -70,9 +71,7 @@ public final class Task<T extends @Nullable Object> {
      *
      */
     public Task<T> ensureRunningOnExecutor() {
-        return new Task<>((cont) ->
-            cont.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont))
-        );
+        return ensureRunningOnExecutor(null);
     }
 
     /**
@@ -86,10 +85,12 @@ public final class Task<T extends @Nullable Object> {
      * @return a {@link Cancellable} that can be used to cancel a running task
      */
     public Cancellable runAsync(
-        final Executor executor,
+        final @Nullable Executor executor,
         final CompletionCallback<? super T> callback
     ) {
-        final var taskExecutor = TaskExecutor.from(executor);
+        final var taskExecutor = TaskExecutor.from(
+            executor != null ? executor : TaskExecutors.sharedBlockingIO()
+        );
         final var cont = new CancellableContinuation<>(
             taskExecutor,
             ProtectedCompletionCallback.protect(taskExecutor, callback)
@@ -115,7 +116,7 @@ public final class Task<T extends @Nullable Object> {
      * @return a {@link Cancellable} that can be used to cancel a running task
      */
     public Cancellable runAsync(final CompletionCallback<? super T> callback) {
-        return runAsync(TaskExecutors.sharedBlockingIO(), callback);
+        return runAsync(null, callback);
     }
 
     /**
@@ -130,8 +131,11 @@ public final class Task<T extends @Nullable Object> {
      * or to cancel the running fiber.
      */
     @NonBlocking
-    public Fiber<T> runFiber(final Executor executor) {
-        return ExecutedFiber.start(executor, createFun);
+    public Fiber<T> runFiber(final @Nullable Executor executor) {
+        return ExecutedFiber.start(
+            executor != null ? executor : TaskExecutors.sharedBlockingIO(),
+            createFun
+        );
     }
 
     /**
@@ -146,7 +150,7 @@ public final class Task<T extends @Nullable Object> {
      */
     @NonBlocking
     public Fiber<T> runFiber() {
-        return runFiber(TaskExecutors.sharedBlockingIO());
+        return runFiber(null);
     }
 
     /**
@@ -166,7 +170,7 @@ public final class Task<T extends @Nullable Object> {
      * concurrent task must also be interrupted, as this method always blocks
      * for its interruption or completion.
      */
-    public T runBlocking(@Nullable final Executor executor)
+    public T runBlocking(final @Nullable Executor executor)
         throws ExecutionException, InterruptedException {
 
         final var blockingCallback = new BlockingCompletionCallback<T>();
@@ -221,11 +225,13 @@ public final class Task<T extends @Nullable Object> {
      *                              and this method does not returning until `onCancel` is signaled.
      */
     public T runBlockingTimed(
-        final Executor executor,
+        final @Nullable Executor executor,
         final Duration timeout
     ) throws ExecutionException, InterruptedException, TimeoutException {
         final var blockingCallback = new BlockingCompletionCallback<T>();
-        final var taskExecutor = TaskExecutor.from(executor);
+        final var taskExecutor = TaskExecutor.from(
+            executor != null ? executor : TaskExecutors.sharedBlockingIO()
+        );
         final var cont = new CancellableContinuation<>(taskExecutor, blockingCallback);
         taskExecutor.execute(() -> createFun.invoke(cont));
         return blockingCallback.await(cont, timeout);
@@ -252,7 +258,7 @@ public final class Task<T extends @Nullable Object> {
      */
     public T runBlockingTimed(final Duration timeout)
         throws ExecutionException, InterruptedException, TimeoutException {
-        return runBlockingTimed(TaskExecutors.sharedBlockingIO(), timeout);
+        return runBlockingTimed(null, timeout);
     }
 
     /**
