@@ -27,4 +27,5 @@ dependencies {
     implementation(libs.gradle.versions.plugin)
     implementation(libs.binary.compatibility.validator.plugin)
     implementation(libs.vanniktech.publish.plugin)
+    implementation(libs.errorprone.gradle.plugin)
 }

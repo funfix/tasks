@@ -1,13 +1,10 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
-
 import java.time.Duration;
 import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@NullMarked
 public class TimedAwait {
     public static Duration TIMEOUT;
 

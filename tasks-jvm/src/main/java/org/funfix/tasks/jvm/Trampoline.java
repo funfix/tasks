@@ -1,7 +1,6 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.util.LinkedList;
@@ -15,7 +14,6 @@ import java.util.concurrent.Executor;
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 final class Trampoline {
     private Trampoline() {}
 

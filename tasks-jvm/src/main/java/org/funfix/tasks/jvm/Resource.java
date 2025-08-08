@@ -1,7 +1,6 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.Blocking;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
@@ -88,7 +87,6 @@ import java.util.function.Function;
  *     }
  * }</pre>
  */
-@NullMarked
 public final class Resource<T extends @Nullable Object> {
     private final Task<Acquired<T>> acquireTask;
 
@@ -286,7 +284,6 @@ public final class Resource<T extends @Nullable Object> {
      * @param get is the acquired resource
      * @param releaseTask is the (async) function that can release the resource
      */
-    @NullMarked
     public record Acquired<T extends @Nullable Object>(
         T get,
         Function<ExitCase, Task<Void>> releaseTask
@@ -367,7 +364,6 @@ public final class Resource<T extends @Nullable Object> {
      * @param releaseFun is the function that eventually gets invoked for
      *        releasing the resource
      */
-    @NullMarked
     public record Closeable<T extends @Nullable Object>(
         T get,
         CloseableFun releaseFun

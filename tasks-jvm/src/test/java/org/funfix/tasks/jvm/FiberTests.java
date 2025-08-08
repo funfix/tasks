@@ -1,7 +1,6 @@
 package org.funfix.tasks.jvm;
 
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-@NullMarked
 abstract class BaseFiberTest {
     final int repeatCount = 1000;
 
@@ -530,11 +528,9 @@ abstract class BaseFiberTest {
     }
 }
 
-@NullMarked
 class FiberWithDefaultExecutorTest extends BaseFiberTest {
 }
 
-@NullMarked
 class FiberWithVirtualThreadsTest extends BaseFiberTest {
     @BeforeEach
     void setUp() {
@@ -555,7 +551,6 @@ class FiberWithVirtualThreadsTest extends BaseFiberTest {
     }
 }
 
-@NullMarked
 class FiberWithPlatformThreadsTest extends BaseFiberTest {
     @BeforeEach
     void setUp() {

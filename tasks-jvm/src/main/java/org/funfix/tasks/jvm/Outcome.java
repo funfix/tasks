@@ -11,7 +11,6 @@ import java.util.concurrent.ExecutionException;
  *
  * @param <T> is the type of the value that the task completed with
  */
-@NullMarked
 public sealed interface Outcome<T extends @Nullable Object>
     permits Outcome.Success, Outcome.Failure, Outcome.Cancellation {
 

@@ -10,6 +10,7 @@ publish = "0.29.0"
 jspecify = "1.0.0"
 lombok = "1.18.36"
 binary-compatibility-validator = "0.16.2"
+errorprone = "4.3.0"
 
 [libraries]
 # Plugins specified in buildSrc/build.gradle.kts
@@ -18,6 +19,7 @@ kover-gradle-plugin = { module = "org.jetbrains.kotlinx:kover-gradle-plugin", ve
 dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
 gradle-versions-plugin = { module = "com.github.ben-manes:gradle-versions-plugin", version.ref = "gradleVersions" }
 vanniktech-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "publish" }
+errorprone-gradle-plugin = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version.ref = "errorprone" }
 # org.jetbrains.kotlinx.binary-compatibility-validator
 binary-compatibility-validator-plugin = { module = "org.jetbrains.kotlinx.binary-compatibility-validator:org.jetbrains.kotlinx.binary-compatibility-validator.gradle.plugin", version.ref = "binary-compatibility-validator" }
 

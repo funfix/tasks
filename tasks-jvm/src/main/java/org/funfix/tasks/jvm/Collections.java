@@ -2,7 +2,6 @@ package org.funfix.tasks.jvm;
 
 import lombok.EqualsAndHashCode;
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Iterator;
@@ -10,7 +9,6 @@ import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 
 @ApiStatus.Internal
-@NullMarked
 sealed abstract class ImmutableStack<T> implements Iterable<T>
     permits ImmutableStack.Cons, ImmutableStack.Nil {
 
@@ -26,8 +24,7 @@ sealed abstract class ImmutableStack<T> implements Iterable<T>
         return result;
     }
 
-    @Nullable
-    final T head() {
+    final @Nullable T head() {
         if (this instanceof Cons) {
             return ((Cons<T>) this).head;
         } else {
@@ -117,7 +114,6 @@ sealed abstract class ImmutableStack<T> implements Iterable<T>
 }
 
 @ApiStatus.Internal
-@NullMarked
 final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
     private final ImmutableStack<T> toEnqueue;
     private final ImmutableStack<T> toDequeue;
@@ -140,7 +136,6 @@ final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
         if (toDequeue.isEmpty()) {
             return new ImmutableQueue<>(ImmutableStack.empty(), toEnqueue.reverse());
         } else {
-            //noinspection NullableProblems
             return this;
         }
     }
@@ -161,7 +156,6 @@ final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
         } else if (!toEnqueue.isEmpty()) {
             return new ImmutableQueue<>(ImmutableStack.empty(), toEnqueue.reverse().tail());
         } else {
-            //noinspection NullableProblems
             return this;
         }
     }

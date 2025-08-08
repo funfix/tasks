@@ -6,7 +6,6 @@ import lombok.ToString;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Blocking;
 import org.jetbrains.annotations.NonBlocking;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
@@ -23,7 +22,6 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  *
  * @param <T> is the result of the fiber, if successful.
  */
-@NullMarked
 public interface Fiber<T extends @Nullable Object> extends Cancellable {
     /**
      * Returns the result of the completed fiber.
@@ -261,7 +259,6 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
     private final TaskExecutor executor;
     private final Continuation<? super T> continuation;
@@ -330,7 +327,6 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         };
     }
 
-    @NullMarked
     static abstract class State<T extends @Nullable Object> {
         @ToString
         @EqualsAndHashCode(callSuper = false)
@@ -427,7 +423,6 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         return fiber;
     }
 
-    @NullMarked
     static final class FiberContinuation<T extends @Nullable Object> implements Continuation<T> {
         private final TaskExecutor executor;
         private final AtomicReference<ExecutedFiber.State<T>> stateRef;
@@ -525,7 +520,6 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 final class AwaitSignal extends AbstractQueuedSynchronizer {
     @Override
     protected int tryAcquireShared(final int arg) {

@@ -12,7 +12,6 @@ import java.util.concurrent.Executor;
  * <p>
  * This function type is what's needed to describe {@link Task} instances.
  */
-@NullMarked
 @FunctionalInterface
 @NonBlocking
 public interface AsyncFun<T extends @Nullable Object> extends Serializable {

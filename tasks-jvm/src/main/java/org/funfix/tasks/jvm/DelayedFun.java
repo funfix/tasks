@@ -1,6 +1,5 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -9,7 +8,6 @@ import org.jspecify.annotations.Nullable;
  * These functions are allowed to trigger side effects, with
  * blocking I/O and to throw exceptions.
  */
-@NullMarked
 @FunctionalInterface
 public interface DelayedFun<T extends @Nullable Object> {
     T invoke() throws Exception;

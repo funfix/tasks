@@ -1,8 +1,5 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
-
-@NullMarked
 @FunctionalInterface
 public interface CloseableFun extends AutoCloseable {
     void close(ExitCase exitCase) throws Exception;

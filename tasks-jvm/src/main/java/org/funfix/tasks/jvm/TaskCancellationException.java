@@ -1,6 +1,5 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -17,7 +16,6 @@ import org.jspecify.annotations.Nullable;
  * the current thread being interrupted, and also, the current thread
  * might be interrupted without the concurrent job being cancelled.</p>
  */
-@NullMarked
 public class TaskCancellationException extends Exception {
     public TaskCancellationException() {
         super();

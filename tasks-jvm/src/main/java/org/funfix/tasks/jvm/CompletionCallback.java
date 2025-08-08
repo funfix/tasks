@@ -1,7 +1,6 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.io.Serializable;
@@ -18,7 +17,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * @param <T> is the type of the value that the task will complete with
  */
-@NullMarked
 @FunctionalInterface
 public interface CompletionCallback<T extends @Nullable Object>
     extends Serializable {
@@ -63,7 +61,6 @@ public interface CompletionCallback<T extends @Nullable Object>
 }
 
 @ApiStatus.Internal
-@NullMarked
 final class ProtectedCompletionCallback<T extends @Nullable Object>
     implements CompletionCallback<T>, Runnable {
 

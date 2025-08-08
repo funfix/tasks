@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicReference;
  * </ol>
  */
 @FunctionalInterface
-@NullMarked
 public interface Cancellable {
     /**
      * Triggers (idempotent) cancellation.
@@ -51,7 +50,6 @@ public interface Cancellable {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 final class CancellableUtils {
     static Cancellable EMPTY = () -> {};
 }
@@ -65,7 +63,6 @@ final class CancellableUtils {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 @FunctionalInterface
 interface CancellableForwardRef {
     void set(Cancellable cancellable);
@@ -79,7 +76,6 @@ interface CancellableForwardRef {
  * between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 final class MutableCancellable implements Cancellable {
     private final AtomicReference<State> ref =
             new AtomicReference<>(new State.Active(Cancellable.getEmpty(), 0));

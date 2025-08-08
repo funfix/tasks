@@ -1,14 +1,11 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
-
 /**
  * For signaling to finalizers how a task exited.
  * <p>
  * Similar to {@link Outcome}, but without the result. Used by {@link Resource}
  * to indicate how a resource was released.
  */
-@NullMarked
 public sealed interface ExitCase {
     /**
      * Signals that the task completed. Used for successful completion, but

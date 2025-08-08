@@ -2,7 +2,6 @@ package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NonBlocking;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
@@ -14,7 +13,6 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 /**
  * Represents a function that can be executed asynchronously.
  */
-@NullMarked
 public final class Task<T extends @Nullable Object> {
     private final AsyncContinuationFun<T> createFun;
 
@@ -437,7 +435,6 @@ public final class Task<T extends @Nullable Object> {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 final class BlockingCompletionCallback<T extends @Nullable Object>
     extends AbstractQueuedSynchronizer implements CompletionCallback<T> {
 
@@ -566,7 +563,6 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 final class TaskFromCancellableFuture<T extends @Nullable Object>
     implements AsyncContinuationFun<T> {
 
