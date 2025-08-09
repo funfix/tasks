@@ -76,7 +76,7 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
                 final var result = getResultOrThrow();
                 callback.onSuccess(result);
             } catch (final ExecutionException e) {
-                callback.onFailure(e.getCause() != null ? e.getCause() : e);
+                callback.onFailure(Objects.requireNonNullElse(e.getCause(), e));
             } catch (final TaskCancellationException e) {
                 callback.onCancellation();
             } catch (final Throwable e) {
