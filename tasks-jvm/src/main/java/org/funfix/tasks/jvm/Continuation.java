@@ -1,7 +1,6 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.Executor;
@@ -18,7 +17,6 @@ import java.util.concurrent.Executor;
  * @param <T> is the type of the value that the task will complete with
  */
 @ApiStatus.Internal
-@NullMarked
 interface Continuation<T extends @Nullable Object>
     extends CompletionCallback<T> {
 
@@ -46,7 +44,6 @@ interface Continuation<T extends @Nullable Object>
  * INTERNAL API.
  */
 @ApiStatus.Internal
-@NullMarked
 @FunctionalInterface
 interface AsyncContinuationFun<T extends @Nullable Object> {
     void invoke(Continuation<? super T> continuation);
@@ -56,7 +53,6 @@ interface AsyncContinuationFun<T extends @Nullable Object> {
  * INTERNAL API.
  */
 @ApiStatus.Internal
-@NullMarked
 final class CancellableContinuation<T extends @Nullable Object>
     implements Continuation<T>, Cancellable {
 

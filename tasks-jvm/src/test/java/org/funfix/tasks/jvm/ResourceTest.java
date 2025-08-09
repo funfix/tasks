@@ -1,6 +1,5 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +11,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@NullMarked
 public class ResourceTest {
     @Test
     void readAndWriteFromFile() throws Exception {
@@ -53,6 +51,7 @@ public class ResourceTest {
             new Resource.Closeable<>("my resource", wasReleased::set)
         );
 
+        @SuppressWarnings("NullAway")
         final var task = Task.fromBlockingFuture(() -> {
             try {
                 resource.useBlocking(res -> {

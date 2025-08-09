@@ -1,7 +1,6 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.io.Serializable;
@@ -18,7 +17,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * @param <T> is the type of the value that the task will complete with
  */
-@NullMarked
 @FunctionalInterface
 public interface CompletionCallback<T extends @Nullable Object>
     extends Serializable {
@@ -51,7 +49,7 @@ public interface CompletionCallback<T extends @Nullable Object>
     }
 
     /**
-     * @return a {@code CompletionListener} that does nothing.
+     * Returns a {@code CompletionListener} that does nothing (a no-op).
      */
     static <T extends @Nullable Object> CompletionCallback<T> empty() {
         return outcome -> {
@@ -63,7 +61,6 @@ public interface CompletionCallback<T extends @Nullable Object>
 }
 
 @ApiStatus.Internal
-@NullMarked
 final class ProtectedCompletionCallback<T extends @Nullable Object>
     implements CompletionCallback<T>, Runnable {
 
@@ -92,8 +89,10 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
             listener.onFailure(this.failureCause);
         } else if (this.isCancelled) {
             listener.onCancellation();
-        } else {
+        } else if (this.successValue != null) {
             listener.onSuccess(this.successValue);
+        } else {
+            throw new IllegalStateException("No outcome, success value, failure cause, or cancellation state set");
         }
         // For GC purposes; but it doesn't really matter if we nullify these or not
         this.outcome = null;

@@ -1,18 +1,16 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opentest4j.AssertionFailedError;
 
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
+
 import static org.junit.jupiter.api.Assertions.*;
 
-@NullMarked
 abstract class TaskFromBlockingIOTestBase {
     @Nullable protected Executor executor;
     @Nullable protected AutoCloseable closeable;
@@ -52,7 +50,7 @@ abstract class TaskFromBlockingIOTestBase {
                     return "Hello, world!";
                 }).runBlockingTimed(executor, TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", r);
-        testThreadName(name.get());
+        testThreadName(Objects.requireNonNull(name.get()));
     }
 
     @Test
@@ -63,7 +61,7 @@ abstract class TaskFromBlockingIOTestBase {
                     .runBlocking(executor);
             fail("Should have thrown an exception");
         } catch (final ExecutionException ex) {
-            assertEquals("Error", ex.getCause().getMessage());
+            assertEquals("Error", Objects.requireNonNull(ex.getCause()).getMessage());
         }
     }
 
@@ -71,6 +69,7 @@ abstract class TaskFromBlockingIOTestBase {
     public void isCancellable() throws InterruptedException, ExecutionException, Fiber.NotCompletedException {
         Objects.requireNonNull(executor);
         final var latch = new CountDownLatch(1);
+        @SuppressWarnings("NullAway")
         final var task = Task.fromBlockingIO(() -> {
             latch.countDown();
             Thread.sleep(30000);
@@ -88,7 +87,6 @@ abstract class TaskFromBlockingIOTestBase {
     }
 }
 
-@NullMarked
 final class TaskFromBlockingWithExecutorIOTest extends TaskFromBlockingIOTestBase {
     @Override
     void testThreadName(final String name) {
@@ -99,6 +97,7 @@ final class TaskFromBlockingWithExecutorIOTest extends TaskFromBlockingIOTestBas
     }
 
     @BeforeEach
+    @SuppressWarnings("deprecation")
     void setup() {
         final ExecutorService es = Executors.newCachedThreadPool(r -> {
             final var th = new Thread(r);
@@ -110,7 +109,6 @@ final class TaskFromBlockingWithExecutorIOTest extends TaskFromBlockingIOTestBas
     }
 }
 
-@NullMarked
 final class TaskFromBlockingWithSharedExecutorTest extends TaskFromBlockingIOTestBase {
     @Override
     void testThreadName(String name) {}

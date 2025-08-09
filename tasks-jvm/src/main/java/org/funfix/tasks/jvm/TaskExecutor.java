@@ -1,24 +1,22 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.NullMarked;
+
 import java.util.concurrent.Executor;
 
-@NullMarked
 @ApiStatus.Internal
 interface TaskExecutor extends Executor {
     void resumeOnExecutor(Runnable runnable);
 
     static TaskExecutor from(final Executor executor) {
-        if (executor instanceof TaskExecutor) {
-            return (TaskExecutor) executor;
+        if (executor instanceof TaskExecutor te) {
+            return te;
         } else {
             return new TaskExecutorWithForkedResume(executor);
         }
     }
 }
 
-@NullMarked
 final class TaskExecutorWithForkedResume implements TaskExecutor {
     private final Executor executor;
 

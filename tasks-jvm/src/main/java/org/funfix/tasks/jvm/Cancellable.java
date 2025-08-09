@@ -1,10 +1,7 @@
 package org.funfix.tasks.jvm;
 
-import lombok.Data;
-import lombok.EqualsAndHashCode;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NonBlocking;
-import org.jspecify.annotations.NullMarked;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -27,7 +24,6 @@ import java.util.concurrent.atomic.AtomicReference;
  * </ol>
  */
 @FunctionalInterface
-@NullMarked
 public interface Cancellable {
     /**
      * Triggers (idempotent) cancellation.
@@ -51,7 +47,6 @@ public interface Cancellable {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 final class CancellableUtils {
     static Cancellable EMPTY = () -> {};
 }
@@ -65,7 +60,6 @@ final class CancellableUtils {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 @FunctionalInterface
 interface CancellableForwardRef {
     void set(Cancellable cancellable);
@@ -79,7 +73,6 @@ interface CancellableForwardRef {
  * between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 final class MutableCancellable implements Cancellable {
     private final AtomicReference<State> ref =
             new AtomicReference<>(new State.Active(Cancellable.getEmpty(), 0));
@@ -87,8 +80,8 @@ final class MutableCancellable implements Cancellable {
     @Override
     public void cancel() {
         final var prev = ref.getAndSet(State.Cancelled.INSTANCE);
-        if (prev instanceof State.Active) {
-            ((State.Active) prev).token.cancel();
+        if (prev instanceof State.Active active) {
+            active.token.cancel();
         }
     }
 
@@ -146,17 +139,13 @@ final class MutableCancellable implements Cancellable {
         }
     }
 
-    static sealed abstract class State {
-        @Data
-        @EqualsAndHashCode(callSuper = false)
-        static final class Active extends State {
-            private final Cancellable token;
-            private final long order;
-        }
+    sealed interface State {
+        record Active(
+            Cancellable token,
+            long order
+        ) implements State {}
 
-        @Data
-        @EqualsAndHashCode(callSuper = false)
-        static final class Cancelled extends State {
+        record Cancelled() implements State {
             static Cancelled INSTANCE = new Cancelled();
         }
     }

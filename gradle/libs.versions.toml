@@ -1,31 +1,21 @@
 [versions]
-kotlin = "2.1.20"
-kover = "0.9.1"
-dokka = "2.0.0"
-gradleVersions = "0.51.0"
-kotlinx-coroutines = "1.10.1"
+versions-plugin = "0.51.0"
+publish-plugin = "0.29.0"
+errorprone-plugin = "4.3.0"
+errorprone = "2.41.0"
+errorprone-nullaway = "0.12.8"
+
 jetbrains-annotations = "26.0.2"
-junit-jupiter = "5.10.3"
-publish = "0.29.0"
 jspecify = "1.0.0"
-lombok = "1.18.36"
-binary-compatibility-validator = "0.16.2"
 
 [libraries]
 # Plugins specified in buildSrc/build.gradle.kts
-kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
-kover-gradle-plugin = { module = "org.jetbrains.kotlinx:kover-gradle-plugin", version.ref = "kover" }
-dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
-gradle-versions-plugin = { module = "com.github.ben-manes:gradle-versions-plugin", version.ref = "gradleVersions" }
-vanniktech-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "publish" }
-# org.jetbrains.kotlinx.binary-compatibility-validator
-binary-compatibility-validator-plugin = { module = "org.jetbrains.kotlinx.binary-compatibility-validator:org.jetbrains.kotlinx.binary-compatibility-validator.gradle.plugin", version.ref = "binary-compatibility-validator" }
+gradle-versions-plugin = { module = "com.github.ben-manes:gradle-versions-plugin", version.ref = "versions-plugin" }
+vanniktech-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "publish-plugin" }
+errorprone-gradle-plugin = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version.ref = "errorprone-plugin" }
+errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone"}
+errorprone-nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "errorprone-nullaway" }
 
 # Actual libraries
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
-junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
-kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
-kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
-kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
-lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }

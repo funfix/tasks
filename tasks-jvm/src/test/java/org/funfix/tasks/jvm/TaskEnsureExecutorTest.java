@@ -1,6 +1,5 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +12,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@NullMarked
 public class TaskEnsureExecutorTest {
     @Test
     void testEnsureExecutorOnFiber() throws ExecutionException, InterruptedException {
@@ -36,6 +34,7 @@ public class TaskEnsureExecutorTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     void ensureRunningOnSpecificExecutor() throws ExecutionException, InterruptedException {
         final var ec = Executors.newCachedThreadPool(
             th -> {
@@ -61,6 +60,7 @@ public class TaskEnsureExecutorTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     void switchesBackOnCallbackForRunAsync() throws InterruptedException {
         final var ec1 = Executors.newCachedThreadPool(
             th -> {
@@ -68,6 +68,7 @@ public class TaskEnsureExecutorTest {
                 t.setName("executing-thread-" + t.getId());
                 return t;
             });
+        @SuppressWarnings("deprecation")
         final var ec2 = Executors.newCachedThreadPool(
             th -> {
                 final var t = new Thread(th);
@@ -125,7 +126,7 @@ public class TaskEnsureExecutorTest {
 
         TimedAwait.latchAndExpectCompletion(isComplete, "isComplete");
         //noinspection DataFlowIssue
-        final var r2Value = Objects.requireNonNull(r2.get().getOrThrow());
+        final var r2Value = Objects.requireNonNull(r2.get()).getOrThrow();
         assertTrue(
             r2Value.startsWith("tasks-io-"),
             "Expected thread name to start with 'tasks-io-', but was: " + r2Value

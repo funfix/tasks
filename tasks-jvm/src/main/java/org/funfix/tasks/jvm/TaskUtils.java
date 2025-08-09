@@ -1,13 +1,11 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
-@NullMarked
 @ApiStatus.Internal
 final class TaskUtils {
     static <T extends @Nullable Object> Task<T> taskUninterruptibleBlockingIO(
@@ -25,14 +23,7 @@ final class TaskUtils {
         });
     }
 
-    static <T extends @Nullable Object> T runBlockingUninterruptible(
-        @Nullable final Executor executor,
-        final DelayedFun<? extends T> func
-    ) throws ExecutionException, InterruptedException {
-        final var task = taskUninterruptibleBlockingIO(func);
-        return runBlockingUninterruptible(null, task);
-    }
-
+    @SuppressWarnings("UnusedReturnValue")
     static <T extends @Nullable Object> T runBlockingUninterruptible(
         @Nullable final Executor executor,
         final Task<T> task

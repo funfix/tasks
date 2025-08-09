@@ -1,15 +1,12 @@
 package org.funfix.tasks.jvm;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Blocking;
 import org.jetbrains.annotations.NonBlocking;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
@@ -23,7 +20,6 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  *
  * @param <T> is the result of the fiber, if successful.
  */
-@NullMarked
 public interface Fiber<T extends @Nullable Object> extends Cancellable {
     /**
      * Returns the result of the completed fiber.
@@ -81,7 +77,7 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
                 final var result = getResultOrThrow();
                 callback.onSuccess(result);
             } catch (final ExecutionException e) {
-                callback.onFailure(e.getCause());
+                callback.onFailure(Objects.requireNonNullElse(e.getCause(), e));
             } catch (final TaskCancellationException e) {
                 callback.onCancellation();
             } catch (final Throwable e) {
@@ -206,8 +202,9 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
      * that you need to call {@link Fiber#cancel()}.
      */
     @NonBlocking
-    default CancellableFuture<@Nullable Void> joinAsync() {
-        final var future = new CompletableFuture<@Nullable Void>();
+    default CancellableFuture<Void> joinAsync() {
+        final var future = new CompletableFuture<Void>();
+        @SuppressWarnings("DataFlowIssue")
         final var token = joinAsync(() -> future.complete(null));
         final Cancellable cRef = () -> {
             try {
@@ -261,7 +258,6 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
     private final TaskExecutor executor;
     private final Continuation<? super T> continuation;
@@ -330,46 +326,21 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         };
     }
 
-    @NullMarked
-    static abstract class State<T extends @Nullable Object> {
-        @ToString
-        @EqualsAndHashCode(callSuper = false)
-        @Getter
-        static final class Active<T extends @Nullable Object>
-            extends State<T> {
-            private final ImmutableQueue<Runnable> listeners;
-            private final MutableCancellable cancellable;
+    sealed interface State<T extends @Nullable Object> {
+        record Active<T extends @Nullable Object>(
+            ImmutableQueue<Runnable> listeners,
+            MutableCancellable cancellable
+        ) implements State<T> {}
 
-            public Active(ImmutableQueue<Runnable> listeners, MutableCancellable cancellable) {
-                this.listeners = listeners;
-                this.cancellable = cancellable;
-            }
-        }
+        record Cancelled<T extends @Nullable Object>(
+            ImmutableQueue<Runnable> listeners
+        ) implements State<T> {}
 
-        @ToString
-        @EqualsAndHashCode(callSuper = false)
-        @Getter
-        static final class Cancelled<T extends @Nullable Object>
-            extends State<T> {
-            private final ImmutableQueue<Runnable> listeners;
+        record Completed<T extends @Nullable Object>(
+            Outcome<T> outcome
+        ) implements State<T> {}
 
-            public Cancelled(ImmutableQueue<Runnable> listeners) {
-                this.listeners = listeners;
-            }
-        }
-
-        @ToString
-        @EqualsAndHashCode(callSuper = false)
-        @Getter
-        static final class Completed<T extends @Nullable Object>
-            extends State<T> {
-            private final Outcome<T> outcome;
-            public Completed(Outcome<T> outcome) {
-                this.outcome = outcome;
-            }
-        }
-
-        final void triggerListeners(TaskExecutor executor) {
+        default void triggerListeners(TaskExecutor executor) {
             if (this instanceof Active<T> ref) {
                 for (final var listener : ref.listeners) {
                     executor.resumeOnExecutor(listener);
@@ -381,7 +352,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
             }
         }
 
-        final State<T> addListener(final Runnable listener) {
+        default State<T> addListener(final Runnable listener) {
             if (this instanceof Active<T> ref) {
                 final var newQueue = ref.listeners.enqueue(listener);
                 return new Active<>(newQueue, ref.cancellable);
@@ -393,7 +364,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
             }
         }
 
-        final State<T> removeListener(final Runnable listener) {
+        default State<T> removeListener(final Runnable listener) {
             if (this instanceof Active<T> ref) {
                 final var newQueue = ref.listeners.filter(l -> l != listener);
                 return new Active<>(newQueue, ref.cancellable);
@@ -427,7 +398,6 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         return fiber;
     }
 
-    @NullMarked
     static final class FiberContinuation<T extends @Nullable Object> implements Continuation<T> {
         private final TaskExecutor executor;
         private final AtomicReference<ExecutedFiber.State<T>> stateRef;
@@ -525,7 +495,6 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
 final class AwaitSignal extends AbstractQueuedSynchronizer {
     @Override
     protected int tryAcquireShared(final int arg) {

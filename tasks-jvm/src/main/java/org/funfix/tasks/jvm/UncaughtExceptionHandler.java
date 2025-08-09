@@ -1,11 +1,8 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
-
 /**
  * Utilities for handling uncaught exceptions.
  */
-@NullMarked
 public final class UncaughtExceptionHandler {
     public static void rethrowIfFatal(final Throwable e) {
         if (e instanceof StackOverflowError) {

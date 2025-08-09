@@ -1,3 +1,6 @@
+import net.ltgt.gradle.errorprone.CheckSeverity
+import net.ltgt.gradle.errorprone.errorprone
+
 plugins {
     id("tasks.java-project")
 }
@@ -11,9 +14,11 @@ mavenPublishing {
 
 dependencies {
     api(libs.jspecify)
+
+    errorprone(libs.errorprone.core)
+    errorprone(libs.errorprone.nullaway)
+
     compileOnly(libs.jetbrains.annotations)
-    compileOnly(libs.lombok)
-    annotationProcessor(libs.lombok)
 
     testImplementation(platform("org.junit:junit-bom:5.12.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -32,7 +37,16 @@ tasks.jacocoTestReport {
 tasks.withType<JavaCompile> {
     sourceCompatibility = JavaVersion.VERSION_17.majorVersion
     targetCompatibility = JavaVersion.VERSION_17.majorVersion
-    options.compilerArgs.add("-Xlint:deprecation")
+    options.compilerArgs.addAll(listOf(
+        "-Xlint:deprecation",
+//        "-Werror"
+    ))
+
+    options.errorprone {
+        disableAllChecks.set(true)
+        check("NullAway", CheckSeverity.ERROR)
+        option("NullAway:AnnotatedPackages", "org.funfix")
+    }
 }
 
 tasks.register<Test>("testsOn21") {

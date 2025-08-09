@@ -1,6 +1,5 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
@@ -19,7 +18,6 @@ import java.util.function.Function;
  * be preferred because it's more principled. {@code CancellableFuture}
  * is useful more for interoperability with Java code.
  */
-@NullMarked
 public record CancellableFuture<T extends @Nullable Object>(
     CompletableFuture<? extends T> future,
     Cancellable cancellable

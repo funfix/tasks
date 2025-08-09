@@ -1,6 +1,5 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,7 +14,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@NullMarked
 abstract class BaseTaskCreateTest {
     @Nullable
     protected AutoCloseable closeable;
@@ -68,7 +66,10 @@ abstract class BaseTaskCreateTest {
             else
                 task.runBlockingTimed(TimedAwait.TIMEOUT);
         } catch (final ExecutionException | TimeoutException ex) {
-            assertEquals("Sample exception", ex.getCause().getMessage());
+            assertEquals(
+                "Sample exception",
+                Objects.requireNonNull(ex.getCause()).getMessage()
+            );
         }
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
         assertNotNull(reportedException.get(), "reportedException.get()");
@@ -110,7 +111,6 @@ abstract class BaseTaskCreateTest {
     }
 }
 
-@NullMarked
 class TaskCreateSimpleDefaultExecutorTest extends BaseTaskCreateTest {
     @BeforeEach
     void setUp() {
@@ -123,7 +123,6 @@ class TaskCreateSimpleDefaultExecutorTest extends BaseTaskCreateTest {
     }
 }
 
-@NullMarked
 class TaskCreateSimpleCustomJavaExecutorTest extends BaseTaskCreateTest {
     @BeforeEach
     void setUp() {
