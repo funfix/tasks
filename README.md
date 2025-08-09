@@ -6,7 +6,7 @@ This is a library meant for library authors that want to build libraries that wo
 
 ## Usage
 
-Read the [Javadoc](https://javadoc.io/doc/org.funfix/tasks-jvm).
+Read the [Javadoc](https://javadoc.io/doc/org.funfix/tasks-jvm/0.2.0/org/funfix/tasks/jvm/package-summary.html).
 Better documentation is coming.
 
 ---
