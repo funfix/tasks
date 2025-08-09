@@ -201,8 +201,8 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
      * that you need to call {@link Fiber#cancel()}.
      */
     @NonBlocking
-    default CancellableFuture<@Nullable Void> joinAsync() {
-        final var future = new CompletableFuture<@Nullable Void>();
+    default CancellableFuture<Void> joinAsync() {
+        final var future = new CompletableFuture<Void>();
         final var token = joinAsync(() -> future.complete(null));
         final Cancellable cRef = () -> {
             try {

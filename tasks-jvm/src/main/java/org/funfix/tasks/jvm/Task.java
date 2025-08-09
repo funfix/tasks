@@ -424,7 +424,7 @@ public final class Task<T extends @Nullable Object> {
     }
 
     /** Reusable "void" task that does nothing, completing immediately. */
-    @SuppressWarnings("NullAway")
+    @SuppressWarnings({"NullAway", "DataFlowIssue"})
     public static final Task<Void> VOID = Task.pure(null);
 }
 

@@ -244,7 +244,7 @@ public final class Resource<T extends @Nullable Object> {
             Objects.requireNonNull(closeable, "Resource allocation returned null");
 
             @SuppressWarnings("NullAway")
-            final Function<ExitCase, Task<@Nullable Void>> releaseFun =
+            final Function<ExitCase, Task<Void>> releaseFun =
                 exitCase -> TaskUtils.taskUninterruptibleBlockingIO(() -> {
                 closeable.close(exitCase);
                 return null;
@@ -289,7 +289,7 @@ public final class Resource<T extends @Nullable Object> {
      */
     public record Acquired<T extends @Nullable Object>(
         T get,
-        Function<ExitCase, Task<@Nullable Void>> releaseTask
+        Function<ExitCase, Task<Void>> releaseTask
     ) implements AutoCloseable {
         /**
          * Used for asynchronous resource release.
@@ -297,7 +297,7 @@ public final class Resource<T extends @Nullable Object> {
          * @param exitCase signals the context in which the resource is being released.
          * @return a {@link Task} that releases the resource upon invocation.
          */
-        public Task<@Nullable Void> releaseTask(final ExitCase exitCase) {
+        public Task<Void> releaseTask(final ExitCase exitCase) {
             return releaseTask.apply(exitCase);
         }
 
@@ -350,7 +350,7 @@ public final class Resource<T extends @Nullable Object> {
             return new Acquired<>(value, NOOP);
         }
 
-        private static final Function<ExitCase, Task<@Nullable Void>> NOOP =
+        private static final Function<ExitCase, Task<Void>> NOOP =
             ignored -> Task.VOID;
     }
 
