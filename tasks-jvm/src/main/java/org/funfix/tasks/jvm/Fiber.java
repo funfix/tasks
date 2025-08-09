@@ -204,6 +204,7 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
     @NonBlocking
     default CancellableFuture<Void> joinAsync() {
         final var future = new CompletableFuture<Void>();
+        @SuppressWarnings("DataFlowIssue")
         final var token = joinAsync(() -> future.complete(null));
         final Cancellable cRef = () -> {
             try {
