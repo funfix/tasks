@@ -512,10 +512,12 @@ final class AwaitSignal extends AbstractQueuedSynchronizer {
     }
 
     public void await() throws InterruptedException {
+        TaskLocalContext.signalTheStartOfBlockingCall();
         acquireSharedInterruptibly(1);
     }
 
     public void await(final long timeoutMillis) throws InterruptedException, TimeoutException {
+        TaskLocalContext.signalTheStartOfBlockingCall();
         if (!tryAcquireSharedNanos(1, TimeUnit.MILLISECONDS.toNanos(timeoutMillis))) {
             throw new TimeoutException("Timed out after " + timeoutMillis + " millis");
         }

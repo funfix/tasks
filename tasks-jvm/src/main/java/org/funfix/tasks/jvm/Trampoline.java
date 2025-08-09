@@ -63,6 +63,22 @@ final class Trampoline {
             }
         };
 
+    public static void forkAll(final @Nullable Executor executor) {
+        final var current = queue.get();
+        while (current != null && !current.isEmpty()) {
+            final var next = current.pollFirst();
+            if (executor != null) {
+                executor.execute(next);
+            } else {
+                try {
+                    next.run();
+                } catch (final Throwable e) {
+                    UncaughtExceptionHandler.logOrRethrow(e);
+                }
+            }
+        }
+    }
+
     public static void execute(final Runnable command) {
         INSTANCE.execute(command);
     }

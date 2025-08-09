@@ -66,7 +66,7 @@ public class ResourceTest {
                     return null;
                 });
             } catch (InterruptedException e) {
-                wasInterrupted.incrementAndGet();
+                wasInterrupted.addAndGet(2);
                 throw e;
             } finally {
                 wasShutdown.countDown();
@@ -78,7 +78,8 @@ public class ResourceTest {
         TimedAwait.latchAndExpectCompletion(started, "started");
         fiber.cancel();
         TimedAwait.latchAndExpectCompletion(wasShutdown, "wasShutdown");
-        assertEquals(2, wasInterrupted.get(), "wasInterrupted");
+        TimedAwait.fiberAndExpectCancellation(fiber);
+        assertEquals(3, wasInterrupted.get(), "wasInterrupted");
         assertEquals(ExitCase.canceled(), wasReleased.get(), "wasReleased");
     }
 

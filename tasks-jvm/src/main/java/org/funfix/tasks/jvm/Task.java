@@ -177,6 +177,7 @@ public final class Task<T extends @Nullable Object> {
         );
         final var cont = new CancellableContinuation<>(taskExecutor, blockingCallback);
         createFun.invoke(cont);
+        TaskLocalContext.signalTheStartOfBlockingCall();
         return blockingCallback.await(cont);
     }
 
@@ -302,6 +303,7 @@ public final class Task<T extends @Nullable Object> {
             try {
                 T result;
                 try {
+                    TaskLocalContext.signalTheStartOfBlockingCall();
                     result = run.invoke();
                 } finally {
                     cont.registerCancellable(Cancellable.getEmpty());
@@ -345,6 +347,7 @@ public final class Task<T extends @Nullable Object> {
         return fromBlockingIO(() -> {
             final var f = Objects.requireNonNull(builder.invoke());
             try {
+                TaskLocalContext.signalTheStartOfBlockingCall();
                 return f.get();
             } catch (final ExecutionException e) {
                 if (e.getCause() instanceof RuntimeException)
@@ -505,6 +508,7 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
     private T awaitInline(final Cancellable cancelToken, final AwaitFunction await)
         throws InterruptedException, ExecutionException, TimeoutException {
 
+        TaskLocalContext.signalTheStartOfBlockingCall();
         var isCancelled = false;
         TimeoutException timedOut = null;
         while (true) {

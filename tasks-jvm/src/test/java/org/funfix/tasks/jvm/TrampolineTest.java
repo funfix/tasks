@@ -16,6 +16,17 @@ public class TrampolineTest {
     }
 
     @Test
+    void tasksAreExecutedInFIFOOrder() {
+        final int[] calls = { 0 };
+        Trampoline.execute(() -> {
+            for (int i = 0; i < 100; i++) {
+                Trampoline.execute(() -> calls[0]++);
+            }
+        });
+        assertEquals(100, calls[0]);
+    }
+
+    @Test
     void testDepth() {
         final boolean[] wasExecuted = { false };
         Trampoline.execute(recursiveRunnable(

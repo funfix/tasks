@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class TimedAwait {
     public static Duration TIMEOUT;
@@ -35,6 +36,19 @@ public class TimedAwait {
         try {
             future.get(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
         } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static void fiberAndExpectCancellation(final Fiber<?> fiber)
+        throws InterruptedException {
+        try {
+            fiber.awaitBlockingTimed(TimedAwait.TIMEOUT);
+            fail("Fiber should have been cancelled");
+        } catch (final TaskCancellationException ignored) {
+        } catch (final TimeoutException e) {
+            fail("Fiber should have been cancelled", e);
+        } catch (final ExecutionException e) {
             throw new RuntimeException(e);
         }
     }

@@ -1,6 +1,7 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.Executor;
 
@@ -17,36 +18,55 @@ interface TaskExecutor extends Executor {
     }
 }
 
+@ApiStatus.Internal
+final class TaskLocalContext {
+    static void signalTheStartOfBlockingCall() {
+        // clears the trampoline first
+        final var executor = localExecutor.get();
+        Trampoline.forkAll(executor);
+    }
+
+    static boolean isCurrentExecutor(final TaskExecutor executor) {
+        final var currentExecutor = localExecutor.get();
+        return currentExecutor == executor;
+    }
+
+    static @Nullable TaskExecutor getAndSetExecutor(@Nullable final TaskExecutor executor) {
+        final var oldExecutor = localExecutor.get();
+        localExecutor.set(executor);
+        return oldExecutor;
+    }
+
+    private static final ThreadLocal<@Nullable TaskExecutor> localExecutor =
+        ThreadLocal.withInitial(() -> null);
+}
+
+@ApiStatus.Internal
 final class TaskExecutorWithForkedResume implements TaskExecutor {
     private final Executor executor;
 
-    TaskExecutorWithForkedResume(Executor executor) {
+    TaskExecutorWithForkedResume(final Executor executor) {
         this.executor = executor;
     }
 
     @Override
-    public void execute(Runnable command) {
+    public void execute(final Runnable command) {
         executor.execute(() -> {
-            final int oldLocalHash = localExecutor.get();
-            localExecutor.set(System.identityHashCode(executor));
+            final var oldExecutor = TaskLocalContext.getAndSetExecutor(this);
             try {
                 command.run();
             } finally {
-                localExecutor.set(oldLocalHash);
+                TaskLocalContext.getAndSetExecutor(oldExecutor);
             }
         });
     }
 
     @Override
-    public void resumeOnExecutor(Runnable runnable) {
-        final int localHash = localExecutor.get();
-        if (localHash == System.identityHashCode(executor)) {
+    public void resumeOnExecutor(final Runnable runnable) {
+        if (TaskLocalContext.isCurrentExecutor(this)) {
             Trampoline.INSTANCE.execute(runnable);
         } else {
             execute(runnable);
         }
     }
-
-    private static final ThreadLocal<Integer> localExecutor =
-        ThreadLocal.withInitial(() -> 0);
 }
