@@ -3,7 +3,6 @@ package org.funfix.tasks.jvm;
 import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.Delayed;
-
 /**
  * Represents a delayed computation (a thunk).
  * <p>
