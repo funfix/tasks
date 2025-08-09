@@ -1,7 +1,6 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.NonBlocking;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.ExecutionException;
@@ -48,6 +47,7 @@ public sealed interface Outcome<T extends @Nullable Object>
     record Failure<T extends @Nullable Object>(Throwable exception)
         implements Outcome<T> {
 
+        @Override
         public T getOrThrow() throws ExecutionException {
             throw new ExecutionException(exception);
         }

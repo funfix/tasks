@@ -51,6 +51,7 @@ public class ResourceTest {
             new Resource.Closeable<>("my resource", wasReleased::set)
         );
 
+        @SuppressWarnings("NullAway")
         final var task = Task.fromBlockingFuture(() -> {
             try {
                 resource.useBlocking(res -> {

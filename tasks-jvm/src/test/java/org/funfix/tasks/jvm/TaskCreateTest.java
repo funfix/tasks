@@ -66,7 +66,10 @@ abstract class BaseTaskCreateTest {
             else
                 task.runBlockingTimed(TimedAwait.TIMEOUT);
         } catch (final ExecutionException | TimeoutException ex) {
-            assertEquals("Sample exception", ex.getCause().getMessage());
+            assertEquals(
+                "Sample exception",
+                Objects.requireNonNull(ex.getCause()).getMessage()
+            );
         }
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
         assertNotNull(reportedException.get(), "reportedException.get()");

@@ -1,15 +1,15 @@
 package org.funfix.tasks.jvm;
 
-import lombok.EqualsAndHashCode;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 @ApiStatus.Internal
-sealed abstract class ImmutableStack<T> implements Iterable<T>
+sealed abstract class ImmutableStack<T extends @Nullable Object> implements Iterable<T>
     permits ImmutableStack.Cons, ImmutableStack.Nil {
 
     final ImmutableStack<T> prepend(T value) {
@@ -52,8 +52,7 @@ sealed abstract class ImmutableStack<T> implements Iterable<T>
         return result;
     }
 
-    @EqualsAndHashCode(callSuper = false)
-    static final class Cons<T> extends ImmutableStack<T> {
+    static final class Cons<T extends @Nullable Object> extends ImmutableStack<T> {
         final T head;
         final ImmutableStack<T> tail;
 
@@ -61,11 +60,31 @@ sealed abstract class ImmutableStack<T> implements Iterable<T>
             this.head = head;
             this.tail = tail;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof Cons<?> cons)) return false;
+            return Objects.equals(head, cons.head) && Objects.equals(tail, cons.tail);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(head, tail);
+        }
     }
 
-    @EqualsAndHashCode(callSuper = false)
     static final class Nil<T> extends ImmutableStack<T> {
         Nil() {}
+
+        @Override
+        public int hashCode() {
+            return -2938;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Nil<?>;
+        }
     }
 
     static <T> ImmutableStack<T> empty() {
@@ -124,7 +143,6 @@ final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
     }
 
     ImmutableQueue<T> enqueue(T value) {
-        //noinspection DataFlowIssue
         return new ImmutableQueue<>(toEnqueue.prepend(value), toDequeue);
     }
 
@@ -140,6 +158,7 @@ final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
         }
     }
 
+    @SuppressWarnings("NullAway")
     T peek() throws NoSuchElementException {
         if (!toDequeue.isEmpty()) {
             return toDequeue.head();

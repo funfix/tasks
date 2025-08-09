@@ -1,6 +1,5 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -105,13 +104,13 @@ abstract class BaseFiberTest {
             fiber.getResultOrThrow();
             fail("Should have thrown an exception");
         } catch (final ExecutionException ex) {
-            assertEquals("My Error", ex.getCause().getMessage());
+            assertEquals("My Error", Objects.requireNonNull(ex.getCause()).getMessage());
         }
     }
 
     @Test
     public void resultIsMemoized() throws InterruptedException, TaskCancellationException, ExecutionException, Fiber.NotCompletedException {
-        final Fiber<@NonNull Integer> fiber = startFiber(
+        final Fiber<Integer> fiber = startFiber(
             Task.fromBlockingIO(() -> ThreadLocalRandom.current().nextInt())
         );
 
@@ -128,7 +127,7 @@ abstract class BaseFiberTest {
     public void joinCanBeInterrupted() throws InterruptedException, ExecutionException, TaskCancellationException, Fiber.NotCompletedException {
         final var latch = new CountDownLatch(1);
         final var started = new CountDownLatch(1);
-        final Fiber<@NonNull Boolean> fiber = startFiber(
+        final Fiber<Boolean> fiber = startFiber(
             Task.fromBlockingIO(() -> {
                 TimedAwait.latchNoExpectations(latch);
                 return true;

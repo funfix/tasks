@@ -424,6 +424,7 @@ public final class Task<T extends @Nullable Object> {
     }
 
     /** Reusable "void" task that does nothing, completing immediately. */
+    @SuppressWarnings("NullAway")
     public static final Task<Void> VOID = Task.pure(null);
 }
 
@@ -500,6 +501,7 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
         void apply(boolean isCancelled) throws InterruptedException, TimeoutException;
     }
 
+    @SuppressWarnings("NullAway")
     private T awaitInline(final Cancellable cancelToken, final AwaitFunction await)
         throws InterruptedException, ExecutionException, TimeoutException {
 

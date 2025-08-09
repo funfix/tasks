@@ -9,8 +9,8 @@ interface TaskExecutor extends Executor {
     void resumeOnExecutor(Runnable runnable);
 
     static TaskExecutor from(final Executor executor) {
-        if (executor instanceof TaskExecutor) {
-            return (TaskExecutor) executor;
+        if (executor instanceof TaskExecutor te) {
+            return te;
         } else {
             return new TaskExecutorWithForkedResume(executor);
         }

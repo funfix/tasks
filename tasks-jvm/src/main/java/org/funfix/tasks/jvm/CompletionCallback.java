@@ -49,7 +49,7 @@ public interface CompletionCallback<T extends @Nullable Object>
     }
 
     /**
-     * @return a {@code CompletionListener} that does nothing.
+     * Returns a {@code CompletionListener} that does nothing (a no-op).
      */
     static <T extends @Nullable Object> CompletionCallback<T> empty() {
         return outcome -> {
@@ -89,8 +89,10 @@ final class ProtectedCompletionCallback<T extends @Nullable Object>
             listener.onFailure(this.failureCause);
         } else if (this.isCancelled) {
             listener.onCancellation();
-        } else {
+        } else if (this.successValue != null) {
             listener.onSuccess(this.successValue);
+        } else {
+            throw new IllegalStateException("No outcome, success value, failure cause, or cancellation state set");
         }
         // For GC purposes; but it doesn't really matter if we nullify these or not
         this.outcome = null;

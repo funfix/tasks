@@ -17,6 +17,7 @@ public class TaskFromBlockingFutureTest {
     ExecutorService es;
 
     @BeforeEach
+    @SuppressWarnings("deprecation")
     void setup() {
         es = Executors.newCachedThreadPool(r -> {
             final var th = new Thread(r);
@@ -39,7 +40,7 @@ public class TaskFromBlockingFutureTest {
         final var thisName = Thread.currentThread().getName();
         final var task = Task.fromBlockingFuture(() -> {
             name.set(Thread.currentThread().getName());
-            return es.submit(() -> "Hello, world!");
+            return Objects.requireNonNull(es).submit(() -> "Hello, world!");
         });
 
         final var r = task.runBlocking();
@@ -52,16 +53,15 @@ public class TaskFromBlockingFutureTest {
         Objects.requireNonNull(es);
 
         final var name = new AtomicReference<>("");
-        final var thisName = Thread.currentThread().getName();
         final var task = Task.fromBlockingFuture(() -> {
             name.set(Thread.currentThread().getName());
-            return es.submit(() -> "Hello, world!");
+            return Objects.requireNonNull(es).submit(() -> "Hello, world!");
         });
 
         final var r = task.runBlockingTimed(es, TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", r);
         assertTrue(
-            name.get().startsWith("es-sample-"),
+            Objects.requireNonNull(name.get()).startsWith("es-sample-"),
             "Expected name to start with 'es-sample-', but was: " + name.get()
         );
     }
@@ -71,16 +71,15 @@ public class TaskFromBlockingFutureTest {
         Objects.requireNonNull(es);
 
         final var name = new AtomicReference<>("");
-        final var thisName = Thread.currentThread().getName();
         final var task = Task.fromBlockingFuture(() -> {
             name.set(Thread.currentThread().getName());
-            return es.submit(() -> "Hello, world!");
+            return Objects.requireNonNull(es).submit(() -> "Hello, world!");
         });
 
         final var r = task.runFiber(es).awaitBlockingTimed(TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", r);
         assertTrue(
-            name.get().startsWith("es-sample-"),
+            Objects.requireNonNull(name.get()).startsWith("es-sample-"),
             "Expected name to start with 'es-sample-', but was: " + name.get()
         );
     }
@@ -93,12 +92,12 @@ public class TaskFromBlockingFutureTest {
         final var name = new AtomicReference<>("");
         final var task = Task.fromBlockingFuture(() -> {
             name.set(Thread.currentThread().getName());
-            return es.submit(() -> "Hello, world!");
+            return Objects.requireNonNull(es).submit(() -> "Hello, world!");
         });
 
         final var r = task.runBlockingTimed(TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", r);
-        assertTrue(name.get().startsWith("tasks-io-virtual-"));
+        assertTrue(Objects.requireNonNull(name.get()).startsWith("tasks-io-virtual-"));
     }
 
     @Test
@@ -110,7 +109,7 @@ public class TaskFromBlockingFutureTest {
                 throw new RuntimeException("Error");
             }).runBlocking();
         } catch (final ExecutionException ex) {
-            assertEquals("Error", ex.getCause().getMessage());
+            assertEquals("Error", Objects.requireNonNull(ex.getCause()).getMessage());
         }
     }
 
@@ -118,12 +117,12 @@ public class TaskFromBlockingFutureTest {
     void throwExceptionInFuture() throws InterruptedException {
         Objects.requireNonNull(es);
         try {
-            Task.fromBlockingFuture(() -> es.submit(() -> {
+            Task.fromBlockingFuture(() -> Objects.requireNonNull(es).submit(() -> {
                         throw new RuntimeException("Error");
                     }))
                     .runBlocking();
         } catch (final ExecutionException ex) {
-            assertEquals("Error", ex.getCause().getMessage());
+            assertEquals("Error", Objects.requireNonNull(ex.getCause()).getMessage());
         }
     }
 
@@ -135,6 +134,7 @@ public class TaskFromBlockingFutureTest {
         final var wasStarted = new CountDownLatch(1);
         final var latch = new CountDownLatch(1);
 
+        @SuppressWarnings("NullAway")
         final var fiber = Task
                 .fromBlockingFuture(() -> {
                     wasStarted.countDown();
@@ -167,7 +167,7 @@ public class TaskFromBlockingFutureTest {
         final var wasStarted = new CountDownLatch(1);
 
         final var fiber = Task
-                .fromBlockingFuture(() -> es.submit(() -> {
+                .fromBlockingFuture(() -> Objects.requireNonNull(es).submit(() -> {
                     wasStarted.countDown();
                     try {
                         Thread.sleep(10000);

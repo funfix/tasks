@@ -23,6 +23,7 @@ final class TaskUtils {
         });
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     static <T extends @Nullable Object> T runBlockingUninterruptible(
         @Nullable final Executor executor,
         final Task<T> task

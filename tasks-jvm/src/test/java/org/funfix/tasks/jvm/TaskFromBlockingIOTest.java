@@ -50,7 +50,7 @@ abstract class TaskFromBlockingIOTestBase {
                     return "Hello, world!";
                 }).runBlockingTimed(executor, TimedAwait.TIMEOUT);
         assertEquals("Hello, world!", r);
-        testThreadName(name.get());
+        testThreadName(Objects.requireNonNull(name.get()));
     }
 
     @Test
@@ -61,7 +61,7 @@ abstract class TaskFromBlockingIOTestBase {
                     .runBlocking(executor);
             fail("Should have thrown an exception");
         } catch (final ExecutionException ex) {
-            assertEquals("Error", ex.getCause().getMessage());
+            assertEquals("Error", Objects.requireNonNull(ex.getCause()).getMessage());
         }
     }
 
@@ -69,6 +69,7 @@ abstract class TaskFromBlockingIOTestBase {
     public void isCancellable() throws InterruptedException, ExecutionException, Fiber.NotCompletedException {
         Objects.requireNonNull(executor);
         final var latch = new CountDownLatch(1);
+        @SuppressWarnings("NullAway")
         final var task = Task.fromBlockingIO(() -> {
             latch.countDown();
             Thread.sleep(30000);
@@ -96,6 +97,7 @@ final class TaskFromBlockingWithExecutorIOTest extends TaskFromBlockingIOTestBas
     }
 
     @BeforeEach
+    @SuppressWarnings("deprecation")
     void setup() {
         final ExecutorService es = Executors.newCachedThreadPool(r -> {
             final var th = new Thread(r);
