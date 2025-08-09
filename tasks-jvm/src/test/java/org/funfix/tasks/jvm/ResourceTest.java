@@ -48,7 +48,7 @@ public class ResourceTest {
         final var wasInterrupted = new AtomicInteger(0);
         final var wasReleased = new AtomicReference<@Nullable ExitCase>(null);
         final var resource = Resource.fromBlockingIO(() ->
-            new Resource.Closeable<>("my resource", wasReleased::set)
+            Resource.Acquired.fromBlockingIO("my resource", wasReleased::set)
         );
 
         @SuppressWarnings("NullAway")
@@ -108,7 +108,7 @@ public class ResourceTest {
         return Resource.fromBlockingIO(() -> {
             File tempFile = File.createTempFile(prefix, suffix);
             tempFile.deleteOnExit(); // Ensure it gets deleted on exit
-            return new Resource.Closeable<>(
+            return Resource.Acquired.fromBlockingIO(
                 tempFile,
                 ignored -> tempFile.delete()
             );

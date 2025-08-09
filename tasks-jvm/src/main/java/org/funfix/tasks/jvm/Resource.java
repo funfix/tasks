@@ -231,26 +231,15 @@ public final class Resource<T extends @Nullable Object> {
      * <p>
      * This method is useful for resources that are acquired via blocking I/O,
      * such as file handles, database connections, etc.
-     * <p>
-     * @param acquire is a function that returns a {@link Resource.Closeable} object
-     *        that contains the acquired resource and the logic to release it.
      */
     public static <T extends @Nullable Object> Resource<T> fromBlockingIO(
-        final DelayedFun<? extends Resource.Closeable<T>> acquire
+        final DelayedFun<? extends Resource.Acquired<T>> acquire
     ) {
         Objects.requireNonNull(acquire, "acquire");
         return Resource.fromAsync(Task.fromBlockingIO(() -> {
-            final Closeable<T> closeable = acquire.invoke();
+            final Acquired<T> closeable = acquire.invoke();
             Objects.requireNonNull(closeable, "Resource allocation returned null");
-
-            @SuppressWarnings("NullAway")
-            final Function<ExitCase, Task<Void>> releaseFun =
-                exitCase -> TaskUtils.taskUninterruptibleBlockingIO(() -> {
-                closeable.close(exitCase);
-                return null;
-            });
-
-            return new Acquired<>(closeable.get(), releaseFun);
+            return closeable;
         }));
     }
 
@@ -265,7 +254,7 @@ public final class Resource<T extends @Nullable Object> {
         return Resource.fromBlockingIO(() -> {
             final T resource = acquire.invoke();
             Objects.requireNonNull(resource, "Resource allocation returned null");
-            return new Closeable<>(resource, CloseableFun.fromAutoCloseable(resource));
+            return Acquired.fromBlockingIO(resource, CloseableFun.fromAutoCloseable(resource));
         });
     }
 
@@ -350,30 +339,24 @@ public final class Resource<T extends @Nullable Object> {
             return new Acquired<>(value, NOOP);
         }
 
-        private static final Function<ExitCase, Task<Void>> NOOP =
-            ignored -> Task.VOID;
-    }
-
-    /**
-     * This is the equivalent of {@link Acquired}, but it is used for
-     * resources that are used via Java's {@link AutoCloseable} in a
-     * try-with-resources context.
-     * <p>
-     * Note that acquiring this resource was probably a blocking operation,
-     * and its release may also block the current thread (perfectly acceptable
-     * in a Java {@link AutoCloseable} context).
-     * <p>
-     * @param get is the acquired resource
-     * @param releaseFun is the function that eventually gets invoked for
-     *        releasing the resource
-     */
-    public record Closeable<T extends @Nullable Object>(
-        T get,
-        CloseableFun releaseFun
-    ) implements CloseableFun {
-        @Override
-        public void close(ExitCase exitCase) throws Exception {
-            releaseFun.close(exitCase);
+        /**
+         * Creates an {@link Acquired} instance with a {@link CloseableFun}
+         * release function that may do blocking I/O.
+         *
+         * @see Resource#fromBlockingIO(DelayedFun)
+         */
+        public static <T extends @Nullable Object> Acquired<T> fromBlockingIO(
+            T resource,
+            CloseableFun release
+        ) {
+            Objects.requireNonNull(resource, "resource");
+            Objects.requireNonNull(release, "release");
+            @SuppressWarnings("NullAway")
+            final var acquired = new Acquired<>(resource, release.toAsync());
+            return acquired;
         }
+
+        private static final Function<ExitCase, Task<Void>> NOOP =
+            ignored -> Task.NOOP;
     }
 }
