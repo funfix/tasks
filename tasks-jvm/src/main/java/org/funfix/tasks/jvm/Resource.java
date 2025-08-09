@@ -28,7 +28,7 @@ import java.util.function.Function;
  *         return Resource.fromBlockingIO(() -> {
  *             File tempFile = File.createTempFile(prefix, suffix);
  *             tempFile.deleteOnExit(); // Ensure it gets deleted on exit
- *             return new Resource.Closeable<>(
+ *             return Resource.Acquired.fromBlockingIO(
  *                 tempFile,
  *                 ignored -> tempFile.delete()
  *             );
