@@ -23,7 +23,9 @@ final class TaskLocalContext {
     static void signalTheStartOfBlockingCall() {
         // clears the trampoline first
         final var executor = localExecutor.get();
-        Trampoline.forkAll(executor);
+        Trampoline.forkAll(
+            executor != null ? executor : TaskExecutors.sharedBlockingIO()
+        );
     }
 
     static boolean isCurrentExecutor(final TaskExecutor executor) {
@@ -64,7 +66,7 @@ final class TaskExecutorWithForkedResume implements TaskExecutor {
     @Override
     public void resumeOnExecutor(final Runnable runnable) {
         if (TaskLocalContext.isCurrentExecutor(this)) {
-            Trampoline.INSTANCE.execute(runnable);
+            Trampoline.execute(runnable);
         } else {
             execute(runnable);
         }

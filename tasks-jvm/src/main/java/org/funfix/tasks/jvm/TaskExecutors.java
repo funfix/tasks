@@ -76,7 +76,7 @@ public final class TaskExecutors {
      * On Java 21 and above, the created {@code Executor} will run tasks on virtual threads.
      * On older JVM versions, it returns a plain {@code Executors.newCachedThreadPool}.
      */
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "EmptyCatch"})
     public static ExecutorService unlimitedThreadPoolForIO(final String prefix) {
         if (VirtualThreads.areVirtualThreadsSupported())
             try {

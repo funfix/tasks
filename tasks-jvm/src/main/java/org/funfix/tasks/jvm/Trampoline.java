@@ -3,7 +3,7 @@ package org.funfix.tasks.jvm;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 import java.util.concurrent.Executor;
 
 /**
@@ -17,7 +17,7 @@ import java.util.concurrent.Executor;
 final class Trampoline {
     private Trampoline() {}
 
-    private static final ThreadLocal<@Nullable LinkedList<Runnable>> queue =
+    private static final ThreadLocal<@Nullable ArrayDeque<Runnable>> queue =
             new ThreadLocal<>();
 
     private static void eventLoop() {
@@ -49,7 +49,7 @@ final class Trampoline {
             public void execute(Runnable command) {
                 var current = queue.get();
                 if (current == null) {
-                    current = new LinkedList<>();
+                    current = new ArrayDeque<>();
                     current.add(command);
                     queue.set(current);
                     try {
@@ -63,20 +63,17 @@ final class Trampoline {
             }
         };
 
-    public static void forkAll(final @Nullable Executor executor) {
+    public static void forkAll(final Executor executor) {
         final var current = queue.get();
-        while (current != null && !current.isEmpty()) {
-            final var next = current.pollFirst();
-            if (executor != null) {
-                executor.execute(next);
-            } else {
-                try {
-                    next.run();
-                } catch (final Throwable e) {
-                    UncaughtExceptionHandler.logOrRethrow(e);
-                }
+        if (current == null) return;
+
+        final var copy = new ArrayDeque<>(current);
+        executor.execute(() -> Trampoline.execute(() -> {
+            while (!copy.isEmpty()) {
+                final var next = copy.pollFirst();
+                Trampoline.execute(next);
             }
-        }
+        }));
     }
 
     public static void execute(final Runnable command) {

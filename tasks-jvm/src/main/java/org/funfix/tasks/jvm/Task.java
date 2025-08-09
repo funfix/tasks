@@ -518,8 +518,8 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
             } catch (final TimeoutException | InterruptedException e) {
                 if (!isCancelled) {
                     isCancelled = true;
-                    if (e instanceof TimeoutException)
-                        timedOut = (TimeoutException) e;
+                    if (e instanceof TimeoutException te)
+                        timedOut = te;
                     cancelToken.cancel();
                 }
             }

@@ -10,8 +10,8 @@ public final class UncaughtExceptionHandler {
             // the process
             return;
         }
-        if (e instanceof Error) {
-            throw (Error) e;
+        if (e instanceof Error error) {
+            throw error;
         }
     }
 
