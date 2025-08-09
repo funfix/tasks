@@ -1,6 +1,7 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Blocking;
 import org.jetbrains.annotations.NonBlocking;
 import org.jspecify.annotations.Nullable;
 
@@ -168,6 +169,7 @@ public final class Task<T extends @Nullable Object> {
      * concurrent task must also be interrupted, as this method always blocks
      * for its interruption or completion.
      */
+    @Blocking
     public T runBlocking(final @Nullable Executor executor)
         throws ExecutionException, InterruptedException {
 
@@ -197,6 +199,7 @@ public final class Task<T extends @Nullable Object> {
      * concurrent task must also be interrupted, as this method always blocks
      * for its interruption or completion.
      */
+    @Blocking
     public T runBlocking() throws ExecutionException, InterruptedException {
         return runBlocking(null);
     }

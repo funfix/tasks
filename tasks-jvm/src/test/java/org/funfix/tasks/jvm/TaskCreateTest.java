@@ -12,6 +12,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.funfix.tasks.jvm.TestSettings.TIMEOUT;
 import static org.junit.jupiter.api.Assertions.*;
 
 abstract class BaseTaskCreateTest {
@@ -42,7 +43,7 @@ abstract class BaseTaskCreateTest {
             return Cancellable.getEmpty();
         });
 
-        final String result = task.runBlockingTimed(TimedAwait.TIMEOUT);
+        final String result = task.runBlockingTimed(TIMEOUT);
         assertEquals("Hello, world!", result);
         TimedAwait.latchAndExpectCompletion(noErrors, "noErrors");
         assertNull(reportedException.get(), "reportedException.get()");
@@ -62,9 +63,9 @@ abstract class BaseTaskCreateTest {
         });
         try {
             if (executor != null)
-                task.runBlockingTimed(executor, TimedAwait.TIMEOUT);
+                task.runBlockingTimed(executor, TIMEOUT);
             else
-                task.runBlockingTimed(TimedAwait.TIMEOUT);
+                task.runBlockingTimed(TIMEOUT);
         } catch (final ExecutionException | TimeoutException ex) {
             assertEquals(
                 "Sample exception",

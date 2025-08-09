@@ -42,45 +42,47 @@ public class ResourceTest {
 
     @Test
     void useIsInterruptible() throws InterruptedException {
-        final var started = new CountDownLatch(1);
-        final var latch = new CountDownLatch(1);
-        final var wasShutdown = new CountDownLatch(1);
-        final var wasInterrupted = new AtomicInteger(0);
-        final var wasReleased = new AtomicReference<@Nullable ExitCase>(null);
-        final var resource = Resource.fromBlockingIO(() ->
-            Resource.Acquired.fromBlockingIO("my resource", wasReleased::set)
-        );
+        for (int i = 0; i < TestSettings.CONCURRENCY_REPEATS; i++) {
+            final var started = new CountDownLatch(1);
+            final var latch = new CountDownLatch(1);
+            final var wasShutdown = new CountDownLatch(1);
+            final var wasInterrupted = new AtomicInteger(0);
+            final var wasReleased = new AtomicReference<@Nullable ExitCase>(null);
+            final var resource = Resource.fromBlockingIO(() ->
+                Resource.Acquired.fromBlockingIO("my resource", wasReleased::set)
+            );
 
-        @SuppressWarnings("NullAway")
-        final var task = Task.fromBlockingFuture(() -> {
-            try {
-                resource.useBlocking(res -> {
-                    assertEquals("my resource", res);
-                    started.countDown();
-                    try {
-                        latch.await();
-                    } catch (InterruptedException e) {
-                        wasInterrupted.incrementAndGet();
-                        throw e;
-                    }
-                    return null;
-                });
-            } catch (InterruptedException e) {
-                wasInterrupted.addAndGet(2);
-                throw e;
-            } finally {
-                wasShutdown.countDown();
-            }
-            return null;
-        });
+            @SuppressWarnings("NullAway")
+            final var task = Task.fromBlockingFuture(() -> {
+                try {
+                    resource.useBlocking(res -> {
+                        assertEquals("my resource", res);
+                        started.countDown();
+                        try {
+                            latch.await();
+                        } catch (InterruptedException e) {
+                            wasInterrupted.incrementAndGet();
+                            throw e;
+                        }
+                        return null;
+                    });
+                } catch (InterruptedException e) {
+                    wasInterrupted.addAndGet(2);
+                    throw e;
+                } finally {
+                    wasShutdown.countDown();
+                }
+                return null;
+            });
 
-        final var fiber = task.runFiber();
-        TimedAwait.latchAndExpectCompletion(started, "started");
-        fiber.cancel();
-        TimedAwait.latchAndExpectCompletion(wasShutdown, "wasShutdown");
-        TimedAwait.fiberAndExpectCancellation(fiber);
-        assertEquals(3, wasInterrupted.get(), "wasInterrupted");
-        assertEquals(ExitCase.canceled(), wasReleased.get(), "wasReleased");
+            final var fiber = task.runFiber();
+            TimedAwait.latchAndExpectCompletion(started, "started");
+            fiber.cancel();
+            TimedAwait.latchAndExpectCompletion(wasShutdown, "wasShutdown");
+            TimedAwait.fiberAndExpectCancellation(fiber);
+            assertEquals(3, wasInterrupted.get(), "wasInterrupted");
+            assertEquals(ExitCase.canceled(), wasReleased.get(), "wasReleased");
+        }
     }
 
     Resource<BufferedReader> openReader(File file) {

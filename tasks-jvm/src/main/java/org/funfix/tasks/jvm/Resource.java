@@ -166,6 +166,7 @@ public final class Resource<T extends @Nullable Object> {
      * @throws InterruptedException is thrown if the current thread was interrupted,
      *         which can also interrupt the resource acquisition or the processing function.
      */
+    @Blocking
     @SuppressWarnings("ConstantValue")
     public <R extends @Nullable Object> R useBlocking(
         @Nullable Executor executor,
@@ -207,6 +208,7 @@ public final class Resource<T extends @Nullable Object> {
      * This is an overload of {@link #useBlocking(Executor, ProcessFun)}
      * that uses the default executor for blocking I/O.
      */
+    @Blocking
     public <R extends @Nullable Object> R useBlocking(
         final ProcessFun<? super T, ? extends R> process
     ) throws InterruptedException, ExecutionException {
@@ -326,6 +328,7 @@ public final class Resource<T extends @Nullable Object> {
          * This being part of {@link AutoCloseable} means it can be used via a
          * try-with-resources block.
          */
+        @Blocking
         @Override
         public void close() throws Exception {
             releaseBlocking(ExitCase.succeeded());

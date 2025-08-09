@@ -11,13 +11,13 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.funfix.tasks.jvm.TestSettings.CONCURRENCY_REPEATS;
+import static org.funfix.tasks.jvm.TestSettings.TIMEOUT;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 abstract class BaseFiberTest {
-    final int repeatCount = 1000;
-
     protected @Nullable Executor executor = null;
     protected @Nullable AutoCloseable closeable = null;
 
@@ -115,10 +115,10 @@ abstract class BaseFiberTest {
         );
 
         fiber.joinBlocking();
-        final int result = fiber.getResultOrThrow();
+        final Integer result = fiber.getResultOrThrow();
 
         fiber.joinBlocking();
-        final int result2 = fiber.getResultOrThrow();
+        final Integer result2 = fiber.getResultOrThrow();
 
         assertEquals(result, result2);
     }
@@ -152,12 +152,13 @@ abstract class BaseFiberTest {
 
         latch.countDown();
         fiber.joinBlocking();
+        //noinspection DataFlowIssue
         assertTrue(fiber.getResultOrThrow());
     }
 
     @Test
     void concurrencyHappyPathExecuteThenJoinAsync() throws InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var latch = new CountDownLatch(1);
             final boolean[] wasExecuted = {false};
             final var fiber = startFiber(
@@ -171,17 +172,17 @@ abstract class BaseFiberTest {
 
     @Test
     void happyPathExecuteThenJoinBlockingTimed() throws InterruptedException, TimeoutException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final boolean[] wasExecuted = {false};
             final var fiber = startFiber(Task.fromBlockingIO(() -> wasExecuted[0] = true));
-            fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
+            fiber.joinBlockingTimed(TIMEOUT);
             assertTrue(wasExecuted[0], "wasExecuted");
         }
     }
 
     @Test
     void concurrencyHappyPathExecuteThenJoin() throws InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final boolean[] wasExecuted = {false};
             final var fiber = startFiber(() -> wasExecuted[0] = true);
             fiber.joinBlocking();
@@ -191,7 +192,7 @@ abstract class BaseFiberTest {
 
     @Test
     void happyPathExecuteThenJoinFuture() throws InterruptedException, TimeoutException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final boolean[] wasExecuted = {false};
             final var fiber = startFiber(() -> wasExecuted[0] = true);
             TimedAwait.future(fiber.joinAsync().future());
@@ -201,7 +202,7 @@ abstract class BaseFiberTest {
 
     @Test
     void concurrencyInterruptedThenJoinAsync() throws InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var awaitCancellation = new CountDownLatch(1);
             final var onCompletion = new CountDownLatch(1);
             final var hits = new AtomicInteger(0);
@@ -223,7 +224,7 @@ abstract class BaseFiberTest {
 
     @Test
     void joinAsyncIsInterruptible() throws InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var onComplete = new CountDownLatch(2);
             final var awaitCancellation = new CountDownLatch(1);
             final var fiber = startFiber(() -> {
@@ -248,7 +249,7 @@ abstract class BaseFiberTest {
 
     @Test
     void joinFutureIsInterruptible() throws InterruptedException, TimeoutException, ExecutionException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var onComplete = new CountDownLatch(2);
             final var awaitCancellation = new CountDownLatch(1);
             final var fiber = startFiber(() -> {
@@ -266,7 +267,7 @@ abstract class BaseFiberTest {
 
             token.cancellable().cancel();
             try {
-                token.future().get(TimedAwait.TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                token.future().get(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
                 fail("Should have been interrupted");
             } catch (java.util.concurrent.CancellationException ignored) {
             }
@@ -279,7 +280,7 @@ abstract class BaseFiberTest {
 
     @Test
     void cancelAfterExecution() throws InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var latch = new CountDownLatch(1);
             final var fiber = startFiber(() -> 0);
             fiber.joinAsync(latch::countDown);
@@ -290,7 +291,7 @@ abstract class BaseFiberTest {
 
     @Test
     void awaitAsyncHappyPath() throws InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var latch = new CountDownLatch(1);
             final var fiber = startFiber(() -> 1);
             final var result = new AtomicInteger(0);
@@ -311,7 +312,7 @@ abstract class BaseFiberTest {
 
     @Test
     void awaitAsyncCanFail() throws InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var latch = new CountDownLatch(1);
             final var ex = new RuntimeException("My Error");
             final Fiber<Integer> fiber = startFiber(() -> {
@@ -334,7 +335,7 @@ abstract class BaseFiberTest {
 
     @Test
     void awaitAsyncSignalsCancellation() throws InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var fiberLatch = new CountDownLatch(1);
             final var wasInterrupted = new AtomicInteger(0);
             final var wasStarted = new CountDownLatch(1);
@@ -369,7 +370,7 @@ abstract class BaseFiberTest {
 
     @Test
     void awaitBlockingHappyPath() throws TaskCancellationException, ExecutionException, InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var fiber = startFiber(() -> 1);
             final var r = fiber.awaitBlocking();
             assertEquals(1, r);
@@ -378,7 +379,7 @@ abstract class BaseFiberTest {
 
     @Test
     void awaitBlockingFailure() throws TaskCancellationException, InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var ex = new RuntimeException("My Error");
             final Fiber<String> fiber = startFiber(() -> { throw ex; });
             try {
@@ -392,7 +393,7 @@ abstract class BaseFiberTest {
 
     @Test
     void awaitBlockingSignalsCancellation() throws InterruptedException, ExecutionException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var latch = new CountDownLatch(1);
             final Fiber<String> fiber = startFiber(() -> {
                 TimedAwait.latchNoExpectations(latch);
@@ -412,20 +413,20 @@ abstract class BaseFiberTest {
     void awaitBlockingTimedHappyPath() throws TaskCancellationException, ExecutionException,
         InterruptedException, TimeoutException {
 
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var fiber = startFiber(() -> 1);
-            final var r = fiber.awaitBlockingTimed(TimedAwait.TIMEOUT);
+            final var r = fiber.awaitBlockingTimed(TIMEOUT);
             assertEquals(1, r);
         }
     }
 
     @Test
     void awaitBlockingTimedFailure() throws TaskCancellationException, InterruptedException, TimeoutException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var ex = new RuntimeException("My Error");
             final Fiber<String> fiber = startFiber(() -> { throw ex; });
             try {
-                fiber.awaitBlockingTimed(TimedAwait.TIMEOUT);
+                fiber.awaitBlockingTimed(TIMEOUT);
                 fail("Should have failed");
             } catch (ExecutionException e) {
                 assertEquals(ex, e.getCause());
@@ -436,7 +437,7 @@ abstract class BaseFiberTest {
 
     @Test
     void awaitBlockingTimedSignalsCancellation() throws InterruptedException, ExecutionException, TimeoutException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var latch = new CountDownLatch(1);
             final Fiber<String> fiber = startFiber(() -> {
                 TimedAwait.latchNoExpectations(latch);
@@ -445,7 +446,7 @@ abstract class BaseFiberTest {
 
             fiber.cancel();
             try {
-                fiber.awaitBlockingTimed(TimedAwait.TIMEOUT);
+                fiber.awaitBlockingTimed(TIMEOUT);
                 fail("Should have failed");
             } catch (TaskCancellationException ignored) {
             }
@@ -466,7 +467,7 @@ abstract class BaseFiberTest {
         } finally {
             fiber.cancel();
             try {
-                fiber.awaitBlockingTimed(TimedAwait.TIMEOUT);
+                fiber.awaitBlockingTimed(TIMEOUT);
                 fail("Should have been cancelled");
             } catch (TimeoutException e) {
                 //noinspection ThrowFromFinallyBlock
@@ -478,7 +479,7 @@ abstract class BaseFiberTest {
 
     @Test
     void awaitAsyncFutureHappyPath() {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var fiber = startFiber(() -> 1);
             final var future = fiber.awaitAsync().future();
             try {
@@ -491,7 +492,7 @@ abstract class BaseFiberTest {
 
     @Test
     void awaitAsyncFutureFailure() throws InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var ex = new RuntimeException("My Error");
             final var fiber = startFiber(() -> {
                 throw ex;
@@ -508,7 +509,7 @@ abstract class BaseFiberTest {
 
     @Test
     void awaitAsyncFutureCanSignalCancellation() throws InterruptedException {
-        for (int i = 0; i < repeatCount; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var latch = new CountDownLatch(1);
             final var fiber = startFiber(() -> {
                 TimedAwait.latchNoExpectations(latch);
@@ -543,7 +544,7 @@ class FiberWithVirtualThreadsTest extends BaseFiberTest {
         final var task = Task
             .fromBlockingIO(() -> Thread.currentThread().getName());
         assertTrue(
-            Objects.requireNonNull(task.runBlockingTimed(TimedAwait.TIMEOUT))
+            Objects.requireNonNull(task.runBlockingTimed(TIMEOUT))
                 .matches("tasks-io-virtual-\\d+"),
             "currentThread.name.matches(\"tasks-io-virtual-\\\\d+\")"
         );
@@ -563,7 +564,7 @@ class FiberWithPlatformThreadsTest extends BaseFiberTest {
         final var task =
             Task.fromBlockingIO(() -> Thread.currentThread().getName());
         assertTrue(
-            Objects.requireNonNull(task.runBlockingTimed(TimedAwait.TIMEOUT))
+            Objects.requireNonNull(task.runBlockingTimed(TIMEOUT))
                 .matches("tasks-io-platform-\\d+"),
             "currentThread.name.matches(\"tasks-io-platform-\\\\d+\")"
         );

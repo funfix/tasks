@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.funfix.tasks.jvm.TestSettings.TIMEOUT;
 import static org.junit.jupiter.api.Assertions.*;
 
 abstract class TaskFromBlockingIOTestBase {
@@ -48,7 +49,7 @@ abstract class TaskFromBlockingIOTestBase {
                 Task.fromBlockingIO(() -> {
                     name.set(Thread.currentThread().getName());
                     return "Hello, world!";
-                }).runBlockingTimed(executor, TimedAwait.TIMEOUT);
+                }).runBlockingTimed(executor, TIMEOUT);
         assertEquals("Hello, world!", r);
         testThreadName(Objects.requireNonNull(name.get()));
     }
@@ -58,7 +59,7 @@ abstract class TaskFromBlockingIOTestBase {
         Objects.requireNonNull(executor);
         try {
             Task.fromBlockingIO(() -> { throw new RuntimeException("Error"); })
-                    .runBlocking(executor);
+                .runBlocking(executor);
             fail("Should have thrown an exception");
         } catch (final ExecutionException ex) {
             assertEquals("Error", Objects.requireNonNull(ex.getCause()).getMessage());

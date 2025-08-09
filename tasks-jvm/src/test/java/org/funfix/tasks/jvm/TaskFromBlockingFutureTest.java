@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.funfix.tasks.jvm.TestSettings.TIMEOUT;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -58,7 +59,7 @@ public class TaskFromBlockingFutureTest {
             return Objects.requireNonNull(es).submit(() -> "Hello, world!");
         });
 
-        final var r = task.runBlockingTimed(es, TimedAwait.TIMEOUT);
+        final var r = task.runBlockingTimed(es, TIMEOUT);
         assertEquals("Hello, world!", r);
         assertTrue(
             Objects.requireNonNull(name.get()).startsWith("es-sample-"),
@@ -76,7 +77,7 @@ public class TaskFromBlockingFutureTest {
             return Objects.requireNonNull(es).submit(() -> "Hello, world!");
         });
 
-        final var r = task.runFiber(es).awaitBlockingTimed(TimedAwait.TIMEOUT);
+        final var r = task.runFiber(es).awaitBlockingTimed(TIMEOUT);
         assertEquals("Hello, world!", r);
         assertTrue(
             Objects.requireNonNull(name.get()).startsWith("es-sample-"),
@@ -95,7 +96,7 @@ public class TaskFromBlockingFutureTest {
             return Objects.requireNonNull(es).submit(() -> "Hello, world!");
         });
 
-        final var r = task.runBlockingTimed(TimedAwait.TIMEOUT);
+        final var r = task.runBlockingTimed(TIMEOUT);
         assertEquals("Hello, world!", r);
         assertTrue(Objects.requireNonNull(name.get()).startsWith("tasks-io-virtual-"));
     }
@@ -118,9 +119,9 @@ public class TaskFromBlockingFutureTest {
         Objects.requireNonNull(es);
         try {
             Task.fromBlockingFuture(() -> Objects.requireNonNull(es).submit(() -> {
-                        throw new RuntimeException("Error");
-                    }))
-                    .runBlocking();
+                    throw new RuntimeException("Error");
+                }))
+                .runBlocking();
         } catch (final ExecutionException ex) {
             assertEquals("Error", Objects.requireNonNull(ex.getCause()).getMessage());
         }
@@ -149,7 +150,7 @@ public class TaskFromBlockingFutureTest {
 
         TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");
         fiber.cancel();
-        fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
+        fiber.joinBlockingTimed(TIMEOUT);
 
         try {
             fiber.getResultOrThrow();
@@ -178,7 +179,7 @@ public class TaskFromBlockingFutureTest {
 
         wasStarted.await();
         fiber.cancel();
-        fiber.joinBlockingTimed(TimedAwait.TIMEOUT);
+        fiber.joinBlockingTimed(TIMEOUT);
 
         try {
             fiber.getResultOrThrow();

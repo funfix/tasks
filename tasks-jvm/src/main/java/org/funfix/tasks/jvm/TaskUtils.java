@@ -1,6 +1,7 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Blocking;
 import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.ExecutionException;
@@ -23,6 +24,7 @@ final class TaskUtils {
         });
     }
 
+    @Blocking
     @SuppressWarnings("UnusedReturnValue")
     static <T extends @Nullable Object> T runBlockingUninterruptible(
         @Nullable final Executor executor,
