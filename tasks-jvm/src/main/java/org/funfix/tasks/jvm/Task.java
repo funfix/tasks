@@ -74,6 +74,30 @@ public final class Task<T extends @Nullable Object> {
     }
 
     /**
+     * Guarantees that the task will complete with the given callback.
+     * <p>
+     * This method is useful for releasing resources or performing
+     * cleanup operations when the task completes.
+     * <p>
+     * This callback will be invoked in addition to whatever the client
+     * provides as a callback to {@link #runAsync(CompletionCallback)}
+     * or similar methods, and will also be invoked before it, i.e.,
+     * callbacks get added and executed in LIFO order.
+     */
+    public Task<T> onCompletion(final CompletionCallback<? extends T> callback) {
+        return new Task<>((cont) -> {
+            @SuppressWarnings("unchecked")
+            final Continuation<T> cont2 = cont.withExtraCallback(
+                ProtectedCompletionCallback.protect(
+                    cont.getExecutor(),
+                    (CompletionCallback<T>) callback
+                )
+            );
+            cont2.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont2));
+        });
+    }
+
+    /**
      * Executes the task asynchronously.
      * <p>
      * This method ensures that the start starts execution on a different thread,
@@ -91,7 +115,7 @@ public final class Task<T extends @Nullable Object> {
             executor != null ? executor : TaskExecutors.sharedBlockingIO()
         );
         @SuppressWarnings("unchecked")
-        final var cont = new CancellableContinuation<T>(
+        final var cont = new CancellableContinuation<>(
             taskExecutor,
             ProtectedCompletionCallback.protect(
                 taskExecutor,
