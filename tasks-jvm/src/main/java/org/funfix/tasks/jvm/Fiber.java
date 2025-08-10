@@ -484,6 +484,14 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         public Continuation<T> withExecutorOverride(TaskExecutor executor) {
             return new FiberContinuation<>(executor, stateRef);
         }
+
+        @Override
+        public Continuation<T> withExtraCallback(CompletionCallback<T> extraCallback) {
+            return new CancellableContinuation<>(
+                executor,
+                CompletionCallback.compose(extraCallback, this)
+            );
+        }
     }
 }
 

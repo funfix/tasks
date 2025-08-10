@@ -38,6 +38,8 @@ interface Continuation<T extends @Nullable Object>
     CancellableForwardRef registerForwardCancellable();
 
     Continuation<T> withExecutorOverride(TaskExecutor executor);
+
+    Continuation<T> withExtraCallback(CompletionCallback<T> extraCallback);
 }
 
 /**
@@ -126,6 +128,16 @@ final class CancellableContinuation<T extends @Nullable Object>
         return new CancellableContinuation<>(
             executor,
             callback,
+            cancellable
+        );
+    }
+
+    @Override
+    public Continuation<T> withExtraCallback(CompletionCallback<T> extraCallback) {
+        final var callback2 = CompletionCallback.compose(extraCallback, callback);
+        return new CancellableContinuation<>(
+            executor,
+            callback2,
             cancellable
         );
     }

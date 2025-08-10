@@ -58,6 +58,90 @@ public interface CompletionCallback<T extends @Nullable Object>
             }
         };
     }
+
+    /**
+     * Composes multiple {@code CompletionCallback} instances into a single
+     * {@code CompletionCallback} that will invoke all the listeners in order.
+     */
+    @SafeVarargs
+    static <T extends @Nullable Object> CompletionCallback<T> compose(
+        final CompletionCallback<T>... listeners
+    ) {
+        Objects.requireNonNull(listeners, "listeners");
+        if (listeners.length == 0) {
+            return empty();
+        } else if (listeners.length == 1) {
+            return listeners[0];
+        } else {
+            return new ManyCompletionCallback<>(listeners);
+        }
+    }
+}
+
+@ApiStatus.Internal
+final class ManyCompletionCallback<T extends @Nullable Object>
+    implements CompletionCallback<T> {
+
+    private final CompletionCallback<T>[] listeners;
+
+    @SafeVarargs
+    ManyCompletionCallback(final CompletionCallback<T>... listeners) {
+        Objects.requireNonNull(listeners, "listeners");
+        this.listeners = listeners;
+    }
+
+    @Override
+    public void onOutcome(Outcome<T> outcome) {
+        Trampoline.execute(() -> {
+            for (final CompletionCallback<T> listener : listeners) {
+                try {
+                    listener.onOutcome(outcome);
+                } catch (Throwable e) {
+                    UncaughtExceptionHandler.logOrRethrow(e);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onSuccess(T value) {
+        Trampoline.execute(() -> {
+            for (final CompletionCallback<T> listener : listeners) {
+                try {
+                    listener.onSuccess(value);
+                } catch (Throwable e) {
+                    UncaughtExceptionHandler.logOrRethrow(e);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onFailure(Throwable e) {
+        Objects.requireNonNull(e, "e");
+        Trampoline.execute(() -> {
+            for (final CompletionCallback<T> listener : listeners) {
+                try {
+                    listener.onFailure(e);
+                } catch (Throwable ex) {
+                    UncaughtExceptionHandler.logOrRethrow(ex);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onCancellation() {
+        Trampoline.execute(() -> {
+            for (final CompletionCallback<T> listener : listeners) {
+                try {
+                    listener.onCancellation();
+                } catch (Throwable e) {
+                    UncaughtExceptionHandler.logOrRethrow(e);
+                }
+            }
+        });
+    }
 }
 
 @ApiStatus.Internal
