@@ -46,7 +46,7 @@ interface Continuation<T extends @Nullable Object>
 @ApiStatus.Internal
 @FunctionalInterface
 interface AsyncContinuationFun<T extends @Nullable Object> {
-    void invoke(Continuation<? super T> continuation);
+    void invoke(Continuation<T> continuation);
 }
 
 /**

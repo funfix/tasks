@@ -260,7 +260,7 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
 @ApiStatus.Internal
 final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
     private final TaskExecutor executor;
-    private final Continuation<? super T> continuation;
+    private final Continuation<T> continuation;
     private final AtomicReference<State<T>> stateRef =
         new AtomicReference<>(State.start());
 

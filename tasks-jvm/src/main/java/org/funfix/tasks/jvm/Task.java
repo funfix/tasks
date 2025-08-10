@@ -40,7 +40,7 @@ public final class Task<T extends @Nullable Object> {
      */
     public Task<T> ensureRunningOnExecutor(final @Nullable Executor executor) {
         return new Task<>((cont) -> {
-            final Continuation<? super T> cont2 = executor != null
+            final Continuation<T> cont2 = executor != null
                 ? cont.withExecutorOverride(TaskExecutor.from(executor))
                 : cont;
             cont2.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont2));
@@ -90,9 +90,13 @@ public final class Task<T extends @Nullable Object> {
         final var taskExecutor = TaskExecutor.from(
             executor != null ? executor : TaskExecutors.sharedBlockingIO()
         );
-        final var cont = new CancellableContinuation<>(
+        @SuppressWarnings("unchecked")
+        final var cont = new CancellableContinuation<T>(
             taskExecutor,
-            ProtectedCompletionCallback.protect(taskExecutor, callback)
+            ProtectedCompletionCallback.protect(
+                taskExecutor,
+                (CompletionCallback<T>) callback
+            )
         );
         taskExecutor.execute(() -> {
             try {
@@ -314,6 +318,7 @@ public final class Task<T extends @Nullable Object> {
                 if (th.isInterrupted()) {
                     throw new InterruptedException();
                 }
+                //noinspection DataFlowIssue
                 cont.onSuccess(result);
             } catch (final InterruptedException | TaskCancellationException e) {
                 cont.onCancellation();
@@ -426,6 +431,7 @@ public final class Task<T extends @Nullable Object> {
      * Creates a task that completes with the given static/pure value.
      */
     public static <T extends @Nullable Object> Task<T> pure(final T value) {
+        //noinspection DataFlowIssue
         return new Task<>((cont) -> cont.onSuccess(value));
     }
 
@@ -582,7 +588,7 @@ final class TaskFromCancellableFuture<T extends @Nullable Object>
     }
 
     @Override
-    public void invoke(Continuation<? super T> continuation) {
+    public void invoke(Continuation<T> continuation) {
         try {
             final var cancellableRef =
                 continuation.registerForwardCancellable();
