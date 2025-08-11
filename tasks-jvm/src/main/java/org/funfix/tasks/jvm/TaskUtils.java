@@ -34,19 +34,11 @@ final class TaskUtils {
             ? task.runFiber(executor)
             : task.runFiber();
 
-        InterruptedException wasInterrupted = null;
-        T result;
-        while (true) {
-            try {
-                result = fiber.awaitBlocking();
-                break;
-            } catch (final InterruptedException e) {
-                if (wasInterrupted == null) wasInterrupted = e;
-            } catch (TaskCancellationException e) {
-                throw new RuntimeException(e);
-            }
+        fiber.joinBlockingUninterruptible();
+        try {
+            return fiber.getResultOrThrow();
+        } catch (TaskCancellationException | Fiber.NotCompletedException e) {
+            throw new ExecutionException(e);
         }
-        if (wasInterrupted != null) throw wasInterrupted;
-        return result;
     }
 }

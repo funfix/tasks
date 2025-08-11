@@ -162,6 +162,47 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
     }
 
     /**
+     * Blocks the current thread until the fiber completes.
+     * <p>
+     * Version of {@link #joinBlocking()} that ignores thread interruptions.
+     * This is most useful after cancelling a fiber, as it ensures that
+     * processing will back-pressure on the fiber's completion.
+     * <p>
+     * <strong>WARNING:</strong> This method guarantees that upon its return
+     * the fiber is completed, however, it still throws {@link InterruptedException}
+     * because it can't swallow interruptions.
+     * <p>
+     * Sample:
+     * <pre>{@code
+     *   final var fiber = Task
+     *     .fromBlockingIO(() -> {
+     *       Thread.sleep(10000);
+     *     })
+     *     .runFiber();
+     *   // ...
+     *   fiber.cancel();
+     *   fiber.joinBlockingUninterruptible();
+     * }</pre>
+     */
+    @Blocking
+    default void joinBlockingUninterruptible() throws InterruptedException {
+        boolean wasInterrupted = Thread.interrupted();
+        while (true) {
+            try {
+                joinBlocking();
+                break;
+            } catch (final InterruptedException e) {
+                wasInterrupted = true;
+            }
+        }
+        if (wasInterrupted) {
+            throw new InterruptedException(
+                "Thread was interrupted in #joinBlockingUninterruptible"
+            );
+        }
+    }
+
+    /**
      * Blocks the current thread until the fiber completes, then returns the
      * result of the fiber.
      *

@@ -50,8 +50,7 @@ public class TaskWithOnCompletionTest {
     }
 
     @Test
-    void guaranteeOnSuccessWithBlockingIO() throws ExecutionException, InterruptedException,
-        TaskCancellationException {
+    void guaranteeOnSuccessWithBlockingIO() throws ExecutionException, InterruptedException, TimeoutException {
         for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
             final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
             final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
@@ -59,7 +58,7 @@ public class TaskWithOnCompletionTest {
                 .fromBlockingIO(() -> "Success")
                 .withOnComplete(ref1::set)
                 .withOnComplete(ref2::set)
-                .runBlocking();
+                .runBlockingTimed(TIMEOUT);
 
             assertEquals("Success", r);
             assertEquals(Outcome.success("Success"), ref1.get());
@@ -118,7 +117,7 @@ public class TaskWithOnCompletionTest {
     }
 
     @Test
-    void guaranteeOnFailureBlockingIO() throws InterruptedException, TaskCancellationException {
+    void guaranteeOnFailureBlockingIO() throws InterruptedException {
         for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
             final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
             final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
@@ -130,9 +129,9 @@ public class TaskWithOnCompletionTest {
                     })
                     .withOnComplete(ref1::set)
                     .withOnComplete(ref2::set)
-                    .runBlocking();
+                    .runBlockingTimed(TIMEOUT);
                 fail("Expected ExecutionException");
-            } catch (ExecutionException e) {
+            } catch (ExecutionException | TimeoutException e) {
                 assertEquals(error, e.getCause());
             }
 
