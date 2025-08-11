@@ -5,7 +5,6 @@ import org.jspecify.annotations.Nullable;
 
 import java.io.Serializable;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -70,18 +69,29 @@ public interface CompletionCallback<T extends @Nullable Object>
 final class ManyCompletionCallback<T extends @Nullable Object>
     implements CompletionCallback<T> {
 
-    private final CompletionCallback<T>[] listeners;
+    private final ImmutableStack<CompletionCallback<T>> listeners;
 
     @SafeVarargs
     ManyCompletionCallback(final CompletionCallback<T>... listeners) {
+        Objects.requireNonNull(listeners, "listeners");
+        ImmutableStack<CompletionCallback<T>> stack = ImmutableStack.empty();
+        for (final CompletionCallback<T> listener : listeners) {
+            Objects.requireNonNull(listener, "listener");
+            stack = stack.prepend(listener);
+        }
+        this.listeners = stack;
+    }
+
+    private ManyCompletionCallback(
+        final ImmutableStack<CompletionCallback<T>> listeners
+    ) {
         Objects.requireNonNull(listeners, "listeners");
         this.listeners = listeners;
     }
 
     ManyCompletionCallback<T> withExtraListener(CompletionCallback<T> extraListener) {
         Objects.requireNonNull(extraListener, "extraListener");
-        final var newListeners = Arrays.copyOf(listeners, listeners.length + 1);
-        newListeners[newListeners.length - 1] = extraListener;
+        final var newListeners = this.listeners.prepend(extraListener);
         return new ManyCompletionCallback<>(newListeners);
     }
 
@@ -174,10 +184,8 @@ final class AsyncContinuationCallback<T extends @Nullable Object>
             listenerRef.get().onFailure(this.failureCause);
         } else if (this.isCancelled) {
             listenerRef.get().onCancellation();
-        } else if (this.successValue != null) {
-            listenerRef.get().onSuccess(this.successValue);
         } else {
-            throw new IllegalStateException("No outcome, success value, failure cause, or cancellation state set");
+            listenerRef.get().onSuccess(this.successValue);
         }
         // For GC purposes; but it doesn't really matter if we nullify these or not
         this.outcome = null;

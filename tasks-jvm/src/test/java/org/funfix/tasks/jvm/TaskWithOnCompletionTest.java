@@ -18,40 +18,15 @@ public class TaskWithOnCompletionTest {
     @Test
     void guaranteeOnSuccess() throws ExecutionException, InterruptedException {
         for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
-            final var latch = new CountDownLatch(2);
             final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
             final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
             final var outcome1 = Task
                 .fromBlockingIO(() -> "Success")
-                .withOnComplete(o -> {
-                    ref1.set(o);
-                    latch.countDown();
-                })
-                .withOnComplete(o -> {
-                    ref2.set(o);
-                    latch.countDown();
-                })
+                .withOnComplete(ref1::set)
+                .withOnComplete(ref2::set)
                 .runBlocking();
 
             assertEquals("Success", outcome1);
-            TimedAwait.latchAndExpectCompletion(latch, "latch");
-            assertEquals(Outcome.success("Success"), ref1.get());
-            assertEquals(Outcome.success("Success"), ref2.get());
-        }
-    }
-
-    @Test
-    void guaranteeOnSuccessViaFiber() throws ExecutionException, InterruptedException, TaskCancellationException, TimeoutException {
-        for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
-            final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
-            final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
-            final var fiber = Task
-                .fromBlockingIO(() -> "Success")
-                .withOnComplete(ref1::set)
-                .withOnComplete(ref2::set)
-                .runFiber();
-
-            assertEquals("Success", fiber.awaitBlockingTimed(TIMEOUT));
             assertEquals(Outcome.success("Success"), ref1.get());
             assertEquals(Outcome.success("Success"), ref2.get());
         }
@@ -73,6 +48,25 @@ public class TaskWithOnCompletionTest {
             assertEquals(Outcome.success("Success"), ref2.get());
         }
     }
+
+    @Test
+    void guaranteeOnSuccessWithBlockingIO() throws ExecutionException, InterruptedException,
+        TaskCancellationException {
+        for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
+            final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var r = Task
+                .fromBlockingIO(() -> "Success")
+                .withOnComplete(ref1::set)
+                .withOnComplete(ref2::set)
+                .runBlocking();
+
+            assertEquals("Success", r);
+            assertEquals(Outcome.success("Success"), ref1.get());
+            assertEquals(Outcome.success("Success"), ref2.get());
+        }
+    }
+
 
     @Test
     void guaranteeOnFailure() throws InterruptedException {
@@ -113,6 +107,30 @@ public class TaskWithOnCompletionTest {
                     .withOnComplete(ref2::set)
                     .runFiber()
                     .awaitBlocking();
+                fail("Expected ExecutionException");
+            } catch (ExecutionException e) {
+                assertEquals(error, e.getCause());
+            }
+
+            assertEquals(Outcome.failure(error), ref1.get());
+            assertEquals(Outcome.failure(error), ref2.get());
+        }
+    }
+
+    @Test
+    void guaranteeOnFailureBlockingIO() throws InterruptedException, TaskCancellationException {
+        for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
+            final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var error = new RuntimeException("Failure");
+
+            try {
+                Task.<String>fromBlockingIO(() -> {
+                        throw error;
+                    })
+                    .withOnComplete(ref1::set)
+                    .withOnComplete(ref2::set)
+                    .runBlocking();
                 fail("Expected ExecutionException");
             } catch (ExecutionException e) {
                 assertEquals(error, e.getCause());
@@ -180,4 +198,25 @@ public class TaskWithOnCompletionTest {
             }
         }
     }
+
+    @Test
+    void callOrderingViaFibers() throws Exception {
+        for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
+            final var ref = new ConcurrentLinkedQueue<Integer>();
+
+            final var fiber = Task.fromBlockingIO(() -> 0)
+                .ensureRunningOnExecutor()
+                .withOnComplete((ignored) -> ref.add(1))
+                .withOnComplete((ignored) -> ref.add(2))
+                .runFiber();
+
+            assertEquals(0, fiber.awaitBlockingTimed(TIMEOUT));
+            assertEquals(2, ref.size(), "Expected 2 calls to onCompletion");
+            final var arr = ref.toArray(new Integer[0]);
+            for (int i = 0; i < arr.length; i++) {
+                assertEquals(i + 1, arr[i]);
+            }
+        }
+    }
+
 }
