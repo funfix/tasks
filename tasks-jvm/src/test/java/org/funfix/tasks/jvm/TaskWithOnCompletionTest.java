@@ -18,15 +18,23 @@ public class TaskWithOnCompletionTest {
     @Test
     void guaranteeOnSuccess() throws ExecutionException, InterruptedException {
         for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
+            final var latch = new CountDownLatch(2);
             final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
             final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
             final var outcome1 = Task
                 .fromBlockingIO(() -> "Success")
-                .withOnComplete(ref1::set)
-                .withOnComplete(ref2::set)
+                .withOnComplete(o -> {
+                    ref1.set(o);
+                    latch.countDown();
+                })
+                .withOnComplete(o -> {
+                    ref2.set(o);
+                    latch.countDown();
+                })
                 .runBlocking();
 
             assertEquals("Success", outcome1);
+            TimedAwait.latchAndExpectCompletion(latch, "latch");
             assertEquals(Outcome.success("Success"), ref1.get());
             assertEquals(Outcome.success("Success"), ref2.get());
         }

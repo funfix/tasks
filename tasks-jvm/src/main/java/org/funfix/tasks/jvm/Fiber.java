@@ -270,7 +270,10 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         this.executor = executor;
         this.continuation = new CancellableContinuation<>(
             executor,
-            new FiberCallback<>(executor, stateRef),
+            new AsyncContinuationCallback<>(
+                new FiberCallback<>(executor, stateRef),
+                executor
+            ),
             cancellableRef
         );
     }

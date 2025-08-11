@@ -39,7 +39,7 @@ interface Continuation<T extends @Nullable Object>
 
     Continuation<T> withExecutorOverride(TaskExecutor executor);
 
-    Continuation<T> withExtraCallback(CompletionCallback<T> extraCallback);
+    void registerExtraCallback(CompletionCallback<T> extraCallback);
 }
 
 /**
@@ -58,13 +58,13 @@ interface AsyncContinuationFun<T extends @Nullable Object> {
 final class CancellableContinuation<T extends @Nullable Object>
     implements Continuation<T>, Cancellable {
 
-    private final CompletionCallback<T> callback;
+    private final ContinuationCallback<T> callback;
     private final MutableCancellable cancellableRef;
     private final TaskExecutor executor;
 
     public CancellableContinuation(
         final TaskExecutor executor,
-        final CompletionCallback<T> callback
+        final ContinuationCallback<T> callback
     ) {
         this(
             executor,
@@ -75,7 +75,7 @@ final class CancellableContinuation<T extends @Nullable Object>
 
     CancellableContinuation(
         final TaskExecutor executor,
-        final CompletionCallback<T> callback,
+        final ContinuationCallback<T> callback,
         final MutableCancellable cancellable
     ) {
         this.executor = executor;
@@ -133,12 +133,7 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
-    public Continuation<T> withExtraCallback(CompletionCallback<T> extraCallback) {
-        final var updatedCallback = CompletionCallback.compose(extraCallback, callback);
-        return new CancellableContinuation<>(
-            executor,
-            updatedCallback,
-            cancellableRef
-        );
+    public void registerExtraCallback(CompletionCallback<T> extraCallback) {
+        callback.registerExtraCallback(extraCallback);
     }
 }
