@@ -18,7 +18,7 @@ public class PureTest {
     }
 
     @Test
-    void pureResource() throws IOException, ExecutionException, InterruptedException {
+    void pureResource() throws ExecutionException, InterruptedException {
         final var resource = Resource.pure(42);
         for (int i = 0; i < 100; i++) {
             final var outcome = resource.useBlocking(value -> value);

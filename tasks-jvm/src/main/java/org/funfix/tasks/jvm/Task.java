@@ -84,7 +84,7 @@ public final class Task<T extends @Nullable Object> {
      * or similar methods, and will also be invoked before it, i.e.,
      * callbacks get added and executed in LIFO order.
      */
-    public Task<T> onCompletion(final CompletionCallback<? extends T> callback) {
+    public Task<T> withOnComplete(final CompletionCallback<? extends T> callback) {
         return new Task<>((cont) -> {
             @SuppressWarnings("unchecked")
             final Continuation<T> cont2 = cont.withExtraCallback(
@@ -94,6 +94,18 @@ public final class Task<T extends @Nullable Object> {
                 )
             );
             cont2.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont2));
+        });
+    }
+
+    /**
+     * Registers a {@link Cancellable} that can be used to cancel the running task.
+     */
+    public Task<T> withCancellation(
+        final Cancellable cancellable
+    ) {
+        return new Task<>((cont) -> {
+            cont.registerCancellable(cancellable);
+            cont.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont));
         });
     }
 
@@ -330,14 +342,18 @@ public final class Task<T extends @Nullable Object> {
     public static <T extends @Nullable Object> Task<T> fromBlockingIO(final DelayedFun<? extends T> run) {
         return new Task<>((cont) -> {
             Thread th = Thread.currentThread();
-            cont.registerCancellable(th::interrupt);
+            final var registration = cont.registerCancellable(th::interrupt);
+            if (registration == null) {
+                cont.onCancellation();
+                return;
+            }
             try {
                 T result;
                 try {
                     TaskLocalContext.signalTheStartOfBlockingCall();
                     result = run.invoke();
                 } finally {
-                    cont.registerCancellable(Cancellable.getEmpty());
+                    registration.cancel();
                 }
                 if (th.isInterrupted()) {
                     throw new InterruptedException();

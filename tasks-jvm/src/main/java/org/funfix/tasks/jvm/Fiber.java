@@ -261,12 +261,31 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
 final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
     private final TaskExecutor executor;
     private final Continuation<T> continuation;
-    private final AtomicReference<State<T>> stateRef =
-        new AtomicReference<>(State.start());
+    private final MutableCancellable cancellableRef;
+    private final AtomicReference<State<T>> stateRef;
 
     private ExecutedFiber(final TaskExecutor executor) {
+        this.cancellableRef = new MutableCancellable(this::fiberCancel);
+        this.stateRef = new AtomicReference<>(State.start());
         this.executor = executor;
-        this.continuation = new FiberContinuation<>(executor, stateRef);
+        this.continuation = new CancellableContinuation<>(
+            executor,
+            new FiberCallback<>(executor, stateRef),
+            cancellableRef
+        );
+    }
+
+    private void fiberCancel() {
+        while (true) {
+            final var current = stateRef.get();
+            if (current instanceof State.Active<T> active) {
+                if (stateRef.compareAndSet(current, new State.Cancelled<>(active.listeners))) {
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
     }
 
     @Override
@@ -297,17 +316,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
 
     @Override
     public void cancel() {
-        while (true) {
-            final var current = stateRef.get();
-            if (current instanceof State.Active<T> active) {
-                if (stateRef.compareAndSet(current, new State.Cancelled<>(active.listeners))) {
-                    active.cancellable.cancel();
-                    return;
-                }
-            } else {
-                return;
-            }
-        }
+        this.cancellableRef.cancel();
     }
 
     private Cancellable removeListenerCancellable(final Runnable listener) {
@@ -328,8 +337,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
 
     sealed interface State<T extends @Nullable Object> {
         record Active<T extends @Nullable Object>(
-            ImmutableQueue<Runnable> listeners,
-            MutableCancellable cancellable
+            ImmutableQueue<Runnable> listeners
         ) implements State<T> {}
 
         record Cancelled<T extends @Nullable Object>(
@@ -355,7 +363,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         default State<T> addListener(final Runnable listener) {
             if (this instanceof Active<T> ref) {
                 final var newQueue = ref.listeners.enqueue(listener);
-                return new Active<>(newQueue, ref.cancellable);
+                return new Active<>(newQueue);
             } else if (this instanceof Cancelled<T> ref) {
                 final var newQueue = ref.listeners.enqueue(listener);
                 return new Cancelled<>(newQueue);
@@ -367,7 +375,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         default State<T> removeListener(final Runnable listener) {
             if (this instanceof Active<T> ref) {
                 final var newQueue = ref.listeners.filter(l -> l != listener);
-                return new Active<>(newQueue, ref.cancellable);
+                return new Active<>(newQueue);
             } else if (this instanceof Cancelled<T> ref) {
                 final var newQueue = ref.listeners.filter(l -> l != listener);
                 return new Cancelled<>(newQueue);
@@ -377,7 +385,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         }
 
         static <T extends @Nullable Object> State<T> start() {
-            return new Active<>(ImmutableQueue.empty(), new MutableCancellable());
+            return new Active<>(ImmutableQueue.empty() );
         }
     }
 
@@ -398,45 +406,16 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         return fiber;
     }
 
-    static final class FiberContinuation<T extends @Nullable Object> implements Continuation<T> {
+    static final class FiberCallback<T extends @Nullable Object> implements CompletionCallback<T> {
         private final TaskExecutor executor;
         private final AtomicReference<ExecutedFiber.State<T>> stateRef;
 
-        FiberContinuation(
+        FiberCallback(
             final TaskExecutor executor,
             final AtomicReference<ExecutedFiber.State<T>> stateRef
         ) {
             this.executor = executor;
             this.stateRef = stateRef;
-        }
-
-        @Override
-        public TaskExecutor getExecutor() {
-            return executor;
-        }
-
-        @Override
-        public CancellableForwardRef registerForwardCancellable() {
-            final var current = stateRef.get();
-            if (current instanceof State.Completed) {
-                return (cancellable) -> {};
-            } else if (current instanceof State.Cancelled) {
-                return Cancellable::cancel;
-            } else if (current instanceof State.Active<T> active) {
-                return active.cancellable.newCancellableRef();
-            } else {
-                throw new IllegalStateException("Invalid state: " + current);
-            }
-        }
-
-        @Override
-        public void registerCancellable(Cancellable cancellable) {
-            final var current = stateRef.get();
-            if (current instanceof State.Active<T> active) {
-                active.cancellable.register(cancellable);
-            } else if (current instanceof State.Cancelled) {
-                cancellable.cancel();
-            }
         }
 
         @Override
@@ -478,19 +457,6 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
                     throw new IllegalStateException("Invalid state: " + current);
                 }
             }
-        }
-
-        @Override
-        public Continuation<T> withExecutorOverride(TaskExecutor executor) {
-            return new FiberContinuation<>(executor, stateRef);
-        }
-
-        @Override
-        public Continuation<T> withExtraCallback(CompletionCallback<T> extraCallback) {
-            return new CancellableContinuation<>(
-                executor,
-                CompletionCallback.compose(extraCallback, this),
-            );
         }
     }
 }

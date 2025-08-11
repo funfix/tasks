@@ -1,5 +1,6 @@
 package org.funfix.tasks.jvm;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.util.Objects;
@@ -20,7 +21,7 @@ public class LoomTest {
         try {
             final var latch = new CountDownLatch(1);
             final var isVirtual = new AtomicBoolean(false);
-            final var name = new AtomicReference<String>();
+            final var name = new AtomicReference<@Nullable String>();
 
             commonPool.execute(() -> {
                 isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
@@ -48,7 +49,7 @@ public class LoomTest {
 
         final var latch = new CountDownLatch(1);
         final var isVirtual = new AtomicBoolean(false);
-        final var name = new AtomicReference<String>();
+        final var name = new AtomicReference<@Nullable String>();
 
         f.newThread(() -> {
             isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
@@ -73,7 +74,7 @@ public class LoomTest {
         try {
             final var latch = new CountDownLatch(1);
             final var isVirtual = new AtomicBoolean(false);
-            final var name = new AtomicReference<String>();
+            final var name = new AtomicReference<@Nullable String>();
             executor.execute(() -> {
                 isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
                 name.set(Thread.currentThread().getName());
@@ -120,7 +121,7 @@ public class LoomTest {
 
             final var latch = new CountDownLatch(1);
             final var isVirtual = new AtomicBoolean(true);
-            final var name = new AtomicReference<String>();
+            final var name = new AtomicReference<@Nullable String>();
 
             commonPool.execute(() -> {
                 isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
