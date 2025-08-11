@@ -32,7 +32,7 @@ public class CompletionCallbackTest {
     void protectedCallbackForSuccess() {
         final var called = new AtomicInteger(0);
         final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
-        final var cb = ProtectedCompletionCallback.protect(
+        final var cb = AsyncContinuationCallback.protect(
             TaskExecutor.from(TaskExecutors.trampoline()),
             new CompletionCallback<String>() {
                 @Override
@@ -71,7 +71,7 @@ public class CompletionCallbackTest {
     void protectedCallbackForRuntimeFailure() throws InterruptedException {
         final var called = new AtomicInteger(0);
         final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
-        final var cb = ProtectedCompletionCallback.protect(
+        final var cb = AsyncContinuationCallback.protect(
             TaskExecutor.from(TaskExecutors.trampoline()),
             new CompletionCallback<String>() {
                 @Override
@@ -119,7 +119,7 @@ public class CompletionCallbackTest {
     void protectedCallbackForCancellation() {
         final var called = new AtomicInteger(0);
         final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
-        final var cb = ProtectedCompletionCallback.protect(
+        final var cb = AsyncContinuationCallback.protect(
             TaskExecutor.from(TaskExecutors.trampoline()),
             new CompletionCallback<String>() {
                 @Override

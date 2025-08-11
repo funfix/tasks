@@ -8,8 +8,6 @@ import org.jspecify.annotations.Nullable;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
 /**
  * Represents a function that can be executed asynchronously.
@@ -40,7 +38,7 @@ public final class Task<T extends @Nullable Object> {
      */
     public Task<T> ensureRunningOnExecutor(final @Nullable Executor executor) {
         return new Task<>((cont) -> {
-            final Continuation<? super T> cont2 = executor != null
+            final Continuation<T> cont2 = executor != null
                 ? cont.withExecutorOverride(TaskExecutor.from(executor))
                 : cont;
             cont2.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont2));
@@ -74,6 +72,42 @@ public final class Task<T extends @Nullable Object> {
     }
 
     /**
+     * Guarantees that the task will complete with the given callback.
+     * <p>
+     * This method is useful for releasing resources or performing
+     * cleanup operations when the task completes.
+     * <p>
+     * This callback will be invoked in addition to whatever the client
+     * provides as a callback to {@link #runAsync(CompletionCallback)}
+     * or similar methods.
+     * <p>
+     * <strong>WARNING:</strong> The invocation of this method is concurrent
+     * with the task's completion, meaning that ordering isn't guaranteed
+     * (i.e., a callback installed with this method may be called before or
+     * after the callback provided to {@link #runAsync(CompletionCallback)}).
+     */
+    public Task<T> withOnComplete(final CompletionCallback<? extends T> callback) {
+        return new Task<>((cont) -> {
+            @SuppressWarnings("unchecked")
+            final var extraCallback = (CompletionCallback<T>) Objects.requireNonNull(callback);
+            cont.registerExtraCallback(extraCallback);
+            cont.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont));
+        });
+    }
+
+    /**
+     * Registers a {@link Cancellable} that can be used to cancel the running task.
+     */
+    public Task<T> withCancellation(
+        final Cancellable cancellable
+    ) {
+        return new Task<>((cont) -> {
+            cont.registerCancellable(cancellable);
+            cont.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont));
+        });
+    }
+
+    /**
      * Executes the task asynchronously.
      * <p>
      * This method ensures that the start starts execution on a different thread,
@@ -90,9 +124,13 @@ public final class Task<T extends @Nullable Object> {
         final var taskExecutor = TaskExecutor.from(
             executor != null ? executor : TaskExecutors.sharedBlockingIO()
         );
+        @SuppressWarnings("unchecked")
         final var cont = new CancellableContinuation<>(
             taskExecutor,
-            ProtectedCompletionCallback.protect(taskExecutor, callback)
+            new AsyncContinuationCallback<>(
+                (CompletionCallback<T>) callback,
+                taskExecutor
+            )
         );
         taskExecutor.execute(() -> {
             try {
@@ -302,18 +340,23 @@ public final class Task<T extends @Nullable Object> {
     public static <T extends @Nullable Object> Task<T> fromBlockingIO(final DelayedFun<? extends T> run) {
         return new Task<>((cont) -> {
             Thread th = Thread.currentThread();
-            cont.registerCancellable(th::interrupt);
+            final var registration = cont.registerCancellable(th::interrupt);
+            if (registration == null) {
+                cont.onCancellation();
+                return;
+            }
             try {
                 T result;
                 try {
                     TaskLocalContext.signalTheStartOfBlockingCall();
                     result = run.invoke();
                 } finally {
-                    cont.registerCancellable(Cancellable.getEmpty());
+                    registration.cancel();
                 }
                 if (th.isInterrupted()) {
                     throw new InterruptedException();
                 }
+                //noinspection DataFlowIssue
                 cont.onSuccess(result);
             } catch (final InterruptedException | TaskCancellationException e) {
                 cont.onCancellation();
@@ -426,142 +469,13 @@ public final class Task<T extends @Nullable Object> {
      * Creates a task that completes with the given static/pure value.
      */
     public static <T extends @Nullable Object> Task<T> pure(final T value) {
+        //noinspection DataFlowIssue
         return new Task<>((cont) -> cont.onSuccess(value));
     }
 
     /** Reusable "void" task that does nothing, completing immediately. */
     @SuppressWarnings({"NullAway", "DataFlowIssue"})
     public static final Task<Void> NOOP = Task.pure(null);
-}
-
-/**
- * INTERNAL API.
- * <p>
- * <strong>INTERNAL API:</strong> Internal apis are subject to change or removal
- * without any notice. When code depends on internal APIs, it is subject to
- * breakage between minor version updates.
- */
-@ApiStatus.Internal
-final class BlockingCompletionCallback<T extends @Nullable Object>
-    extends AbstractQueuedSynchronizer implements CompletionCallback<T> {
-
-    private final AtomicBoolean isDone = new AtomicBoolean(false);
-    @Nullable
-    private T result = null;
-    @Nullable
-    private Throwable error = null;
-    @Nullable
-    private InterruptedException interrupted = null;
-
-    @Override
-    public void onSuccess(final T value) {
-        if (!isDone.getAndSet(true)) {
-            result = value;
-            releaseShared(1);
-        }
-    }
-
-    @Override
-    public void onFailure(final Throwable e) {
-        UncaughtExceptionHandler.rethrowIfFatal(e);
-        if (!isDone.getAndSet(true)) {
-            error = e;
-            releaseShared(1);
-        } else {
-            UncaughtExceptionHandler.logOrRethrow(e);
-        }
-    }
-
-    @Override
-    public void onCancellation() {
-        if (!isDone.getAndSet(true)) {
-            interrupted = new InterruptedException("Task was cancelled");
-            releaseShared(1);
-        }
-    }
-
-    @Override
-    public void onOutcome(Outcome<T> outcome) {
-        if (outcome instanceof Outcome.Success<T> success) {
-            onSuccess(success.value());
-        } else if (outcome instanceof Outcome.Failure<T> failure) {
-            onFailure(failure.exception());
-        } else {
-            onCancellation();
-        }
-    }
-
-    @Override
-    protected int tryAcquireShared(final int arg) {
-        return getState() != 0 ? 1 : -1;
-    }
-
-    @Override
-    protected boolean tryReleaseShared(final int arg) {
-        setState(1);
-        return true;
-    }
-
-    @FunctionalInterface
-    interface AwaitFunction {
-        void apply(boolean isCancelled) throws InterruptedException, TimeoutException;
-    }
-
-    @SuppressWarnings("NullAway")
-    private T awaitInline(final Cancellable cancelToken, final AwaitFunction await)
-        throws InterruptedException, ExecutionException, TimeoutException {
-
-        TaskLocalContext.signalTheStartOfBlockingCall();
-        var isCancelled = false;
-        TimeoutException timedOut = null;
-        while (true) {
-            try {
-                await.apply(isCancelled);
-                break;
-            } catch (final TimeoutException | InterruptedException e) {
-                if (!isCancelled) {
-                    isCancelled = true;
-                    if (e instanceof TimeoutException te)
-                        timedOut = te;
-                    cancelToken.cancel();
-                }
-            }
-            // Clearing the interrupted flag may not be necessary,
-            // but doesn't hurt, and we should have a cleared flag before
-            // re-throwing the exception
-            //
-            // noinspection ResultOfMethodCallIgnored
-            Thread.interrupted();
-        }
-        if (timedOut != null) throw timedOut;
-        if (interrupted != null) throw interrupted;
-        if (error != null) throw new ExecutionException(error);
-        return result;
-    }
-
-    public T await(final Cancellable cancelToken) throws InterruptedException, ExecutionException {
-        try {
-            return awaitInline(cancelToken, isCancelled -> acquireSharedInterruptibly(1));
-        } catch (final TimeoutException e) {
-            throw new IllegalStateException("Unexpected timeout", e);
-        }
-    }
-
-    public T await(final Cancellable cancelToken, final Duration timeout)
-        throws ExecutionException, InterruptedException, TimeoutException {
-
-        return awaitInline(cancelToken, isCancelled -> {
-            if (!isCancelled) {
-                if (!tryAcquireSharedNanos(1, timeout.toNanos())) {
-                    throw new TimeoutException("Task timed-out after " + timeout);
-                }
-            } else {
-                // Waiting without a timeout, since at this point it's waiting
-                // on the cancelled task to finish
-                acquireSharedInterruptibly(1);
-            }
-        });
-    }
 }
 
 /**
@@ -582,7 +496,7 @@ final class TaskFromCancellableFuture<T extends @Nullable Object>
     }
 
     @Override
-    public void invoke(Continuation<? super T> continuation) {
+    public void invoke(Continuation<T> continuation) {
         try {
             final var cancellableRef =
                 continuation.registerForwardCancellable();

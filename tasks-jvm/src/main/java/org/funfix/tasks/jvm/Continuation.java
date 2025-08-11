@@ -33,11 +33,13 @@ interface Continuation<T extends @Nullable Object>
      * @param cancellable is the reference to the cancellable object that this
      *                    continuation will register.
      */
-    void registerCancellable(Cancellable cancellable);
+    @Nullable Cancellable registerCancellable(Cancellable cancellable);
 
     CancellableForwardRef registerForwardCancellable();
 
-    CancellableContinuation<T> withExecutorOverride(TaskExecutor executor);
+    Continuation<T> withExecutorOverride(TaskExecutor executor);
+
+    void registerExtraCallback(CompletionCallback<T> extraCallback);
 }
 
 /**
@@ -46,7 +48,7 @@ interface Continuation<T extends @Nullable Object>
 @ApiStatus.Internal
 @FunctionalInterface
 interface AsyncContinuationFun<T extends @Nullable Object> {
-    void invoke(Continuation<? super T> continuation);
+    void invoke(Continuation<T> continuation);
 }
 
 /**
@@ -56,13 +58,13 @@ interface AsyncContinuationFun<T extends @Nullable Object> {
 final class CancellableContinuation<T extends @Nullable Object>
     implements Continuation<T>, Cancellable {
 
-    private final CompletionCallback<T> callback;
-    private final MutableCancellable cancellable;
+    private final ContinuationCallback<T> callback;
+    private final MutableCancellable cancellableRef;
     private final TaskExecutor executor;
 
     public CancellableContinuation(
         final TaskExecutor executor,
-        final CompletionCallback<T> callback
+        final ContinuationCallback<T> callback
     ) {
         this(
             executor,
@@ -71,14 +73,14 @@ final class CancellableContinuation<T extends @Nullable Object>
         );
     }
 
-    private CancellableContinuation(
+    CancellableContinuation(
         final TaskExecutor executor,
-        final CompletionCallback<T> callback,
+        final ContinuationCallback<T> callback,
         final MutableCancellable cancellable
     ) {
         this.executor = executor;
         this.callback = callback;
-        this.cancellable = cancellable;
+        this.cancellableRef = cancellable;
     }
 
     @Override
@@ -88,17 +90,17 @@ final class CancellableContinuation<T extends @Nullable Object>
 
     @Override
     public void cancel() {
-        cancellable.cancel();
+        cancellableRef.cancel();
     }
 
     @Override
     public CancellableForwardRef registerForwardCancellable() {
-        return cancellable.newCancellableRef();
+        return cancellableRef.newCancellableRef();
     }
 
     @Override
-    public void registerCancellable(Cancellable cancellable) {
-        this.cancellable.register(cancellable);
+    public @Nullable Cancellable registerCancellable(Cancellable cancellable) {
+        return this.cancellableRef.register(cancellable);
     }
 
     @Override
@@ -122,11 +124,16 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
-    public CancellableContinuation<T> withExecutorOverride(TaskExecutor executor) {
+    public Continuation<T> withExecutorOverride(TaskExecutor executor) {
         return new CancellableContinuation<>(
             executor,
             callback,
-            cancellable
+            cancellableRef
         );
+    }
+
+    @Override
+    public void registerExtraCallback(CompletionCallback<T> extraCallback) {
+        callback.registerExtraCallback(extraCallback);
     }
 }

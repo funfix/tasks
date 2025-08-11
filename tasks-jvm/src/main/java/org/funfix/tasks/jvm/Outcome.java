@@ -24,11 +24,6 @@ public sealed interface Outcome<T extends @Nullable Object>
     T getOrThrow() throws ExecutionException, TaskCancellationException;
 
     /**
-     * Converts this task outcome to an {@link ExitCase}.
-     */
-    ExitCase toTaskExitCase();
-
-    /**
      * Signals a successful result of the task.
      */
     record Success<T extends @Nullable Object>(T value)
@@ -37,8 +32,6 @@ public sealed interface Outcome<T extends @Nullable Object>
         @Override
         public T getOrThrow() { return value; }
 
-        @Override
-        public ExitCase toTaskExitCase() { return ExitCase.succeeded(); }
     }
 
     /**
@@ -52,8 +45,6 @@ public sealed interface Outcome<T extends @Nullable Object>
             throw new ExecutionException(exception);
         }
 
-        @Override
-        public ExitCase toTaskExitCase() { return ExitCase.failed(exception); }
     }
 
     /**
@@ -66,9 +57,6 @@ public sealed interface Outcome<T extends @Nullable Object>
         public T getOrThrow() throws TaskCancellationException {
             throw new TaskCancellationException();
         }
-
-        @Override
-        public ExitCase toTaskExitCase() { return ExitCase.canceled(); }
 
         private static final Cancellation<?> INSTANCE =
             new Cancellation<>();
