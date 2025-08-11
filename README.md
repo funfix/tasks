@@ -6,7 +6,7 @@ This is a library meant for library authors that want to build libraries that wo
 
 ## Usage
 
-Read the [Javadoc](https://javadoc.io/doc/org.funfix/tasks-jvm/0.3.0/org/funfix/tasks/jvm/package-summary.html).
+Read the [Javadoc](https://javadoc.io/doc/org.funfix/tasks-jvm/0.3.1/org/funfix/tasks/jvm/package-summary.html).
 Better documentation is coming.
 
 ---
@@ -16,18 +16,18 @@ Maven:
 <dependency>
   <groupId>org.funfix</groupId>
   <artifactId>tasks-jvm</artifactId>
-  <version>0.3.0</version>
+  <version>0.3.1</version>
 </dependency>
 ```
 
 Gradle:
 ```kotlin
 dependencies {
-    implementation("org.funfix:tasks-jvm:0.3.0")
+    implementation("org.funfix:tasks-jvm:0.3.1")
 }
 ```
 
 sbt:
 ```scala
-libraryDependencies += "org.funfix" % "tasks-jvm" % "0.3.0"
+libraryDependencies += "org.funfix" % "tasks-jvm" % "0.3.1"
 ```
