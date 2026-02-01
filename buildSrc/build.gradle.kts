@@ -18,14 +18,15 @@ val props = run {
 }
 
 fun version(k: String) =
-    props.getProperty("versions.$k")?.toString()
+    props.getProperty("versions.$k")
 
 dependencies {
+    implementation(libs.gradle.versions.plugin)
+    implementation(libs.vanniktech.publish.plugin)
+    implementation(libs.errorprone.gradle.plugin)
+    // Provide plugins used by precompiled script plugins so their ids are available
     implementation(libs.kotlin.gradle.plugin)
     implementation(libs.kover.gradle.plugin)
     implementation(libs.dokka.gradle.plugin)
-    implementation(libs.gradle.versions.plugin)
     implementation(libs.binary.compatibility.validator.plugin)
-    implementation(libs.vanniktech.publish.plugin)
-    implementation(libs.errorprone.gradle.plugin)
 }
