@@ -223,33 +223,32 @@ class CoroutinesJvmTest {
 
     @Test
     fun `suspendAsTask cancels when coroutine is cancelled while blocked`() = runTest {
-        val started = CountDownLatch(1)
+        val started = CompletableDeferred<Unit>()
         val latch = CountDownLatch(1)
-        val wasTriggered = CountDownLatch(1)
+        val wasTriggered = CompletableDeferred<Unit>()
         val task = suspendAsTask {
             runInterruptible {
-                started.countDown()
+                started.complete(Unit)
                 try {
                     assertFalse("Should have been cancelled") {
                         latch.await(10, TimeUnit.SECONDS)
                     }
                 } catch (_: InterruptedException) {
-                    wasTriggered.countDown()
+                    wasTriggered.complete(Unit)
                 }
             }
         }
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            val job = async {
+                task.runSuspending(executor)
+            }
 
-        val job = async {
-            task.runSuspending()
-        }
-
-        assertTrue("coroutine not started") {
-            started.await(10, TimeUnit.SECONDS)
-        }
-
-        job.cancel()
-        assertTrue("cancellation not triggered") {
-            wasTriggered.await(10, TimeUnit.SECONDS)
+            started.await()
+            job.cancel()
+            wasTriggered.await()
+        } finally {
+            executor.shutdown()
         }
     }
 }
