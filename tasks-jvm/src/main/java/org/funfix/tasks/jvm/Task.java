@@ -509,9 +509,9 @@ final class TaskFromCancellableFuture<T extends @Nullable Object>
 
             cancellableRef.set(() -> {
                 try {
-                    cancellable.cancel();
-                } finally {
                     future.cancel(true);
+                } finally {
+                    cancellable.cancel();
                 }
             });
         } catch (Throwable e) {
@@ -526,7 +526,7 @@ final class TaskFromCancellableFuture<T extends @Nullable Object>
     ) {
         CompletableFuture<? extends T> future = cancellableFuture.future();
         future.whenComplete((value, error) -> {
-            if (error instanceof InterruptedException || error instanceof TaskCancellationException) {
+            if (error instanceof InterruptedException || error instanceof TaskCancellationException || error instanceof CancellationException) {
                 callback.onCancellation();
             } else if (error instanceof ExecutionException) {
                 callback.onFailure(error.getCause() != null ? error.getCause() : error);
