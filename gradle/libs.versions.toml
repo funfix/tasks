@@ -1,8 +1,8 @@
 [versions]
 binary-compatibility-validator = "0.16.2"
 dokka = "2.1.0"
-errorprone = "2.41.0"
-errorprone-nullaway = "0.12.8"
+errorprone = "2.46.0"
+errorprone-nullaway = "0.13.1"
 errorprone-plugin = "4.3.0"
 jetbrains-annotations = "26.0.2"
 jspecify = "1.0.0"
