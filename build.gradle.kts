@@ -29,6 +29,15 @@ dokka {
     dokkaPublications.html {
         outputDirectory.set(file("build/dokka"))
     }
+
+    pluginsConfiguration.html {
+        customAssets.from(
+            "docs/funfix-512.png",
+            "docs/favicon.ico"
+        )
+        customStyleSheets.from("docs/logo-styles.css")
+        footerMessage.set("© Alexandru Nedelcu")
+    }
 }
 
 dependencies {

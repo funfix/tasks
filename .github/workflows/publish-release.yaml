@@ -2,6 +2,9 @@ name: Publish Release
 
 on: workflow_dispatch
 
+permissions:
+  contents: write
+
 jobs:
   publish-release:
     runs-on: ubuntu-latest
@@ -12,6 +15,21 @@ jobs:
         with:
           java-version: 17
           distribution: 'temurin'
+      - name: Generate API docs
+        run: ./gradlew -PbuildRelease=true dokkaGeneratePublicationHtml --no-daemon
+      - name: Prepare GitHub Pages content
+        run: |
+          VERSION=$(grep -E '^project\.version=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')
+          mkdir -p "site/api/$VERSION"
+          cp -R build/dokka/. "site/api/$VERSION/"
+          ln -sfn "$VERSION" "site/api/current"
+      - name: Publish API docs to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: site
+          keep_files: true
       - name: Publish Snapshot
         run: ./gradlew -PbuildRelease=true build publish --no-daemon
         env:
