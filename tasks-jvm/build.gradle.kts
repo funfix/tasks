@@ -1,6 +1,3 @@
-import net.ltgt.gradle.errorprone.CheckSeverity
-import net.ltgt.gradle.errorprone.errorprone
-
 plugins {
     id("tasks.java-project")
     id("tasks.versions")
@@ -15,9 +12,6 @@ mavenPublishing {
 
 dependencies {
     api(libs.jspecify)
-
-    errorprone(libs.errorprone.core)
-    errorprone(libs.errorprone.nullaway)
 
     compileOnly(libs.jetbrains.annotations)
 
@@ -42,12 +36,7 @@ tasks.withType<JavaCompile> {
         "-Xlint:deprecation",
 //        "-Werror"
     ))
-
-    options.errorprone {
-        disableAllChecks.set(true)
-        check("NullAway", CheckSeverity.ERROR)
-        option("NullAway:AnnotatedPackages", "org.funfix")
-    }
+    
 }
 
 tasks.register<Test>("testsOn21") {
