@@ -1,9 +1,7 @@
 public final class org/funfix/tasks/kotlin/CoroutinesJvmKt {
-	public static final fun fromSuspended (Lorg/funfix/tasks/kotlin/Task$Companion;Lkotlin/coroutines/CoroutineContext;Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public static synthetic fun fromSuspended$default (Lorg/funfix/tasks/kotlin/Task$Companion;Lkotlin/coroutines/CoroutineContext;Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
-	public static final fun runSuspended (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public static synthetic fun runSuspended$default (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
-	public static final fun runSuspended-A-R0woo (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public static synthetic fun runSuspended-A-R0woo$default (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static final fun runSuspending (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun runSuspending$default (Lorg/funfix/tasks/jvm/Task;Ljava/util/concurrent/Executor;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static final fun suspendAsTask (Lkotlin/coroutines/CoroutineContext;Lkotlin/jvm/functions/Function1;)Lorg/funfix/tasks/jvm/Task;
+	public static synthetic fun suspendAsTask$default (Lkotlin/coroutines/CoroutineContext;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lorg/funfix/tasks/jvm/Task;
 }
 

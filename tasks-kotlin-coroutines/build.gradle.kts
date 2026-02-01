@@ -17,25 +17,6 @@ mavenPublishing {
 
 kotlin {
     sourceSets {
-        val commonMain by getting {
-            compilerOptions {
-                explicitApi = ExplicitApiMode.Strict
-                allWarningsAsErrors = true
-            }
-
-            dependencies {
-                implementation(project(":tasks-kotlin"))
-                implementation(libs.kotlinx.coroutines.core)
-            }
-        }
-
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.kotlin.test)
-                implementation(libs.kotlinx.coroutines.test)
-            }
-        }
-
         val jvmMain by getting {
             compilerOptions {
                 explicitApi = ExplicitApiMode.Strict
@@ -44,7 +25,6 @@ kotlin {
 
             dependencies {
                 implementation(project(":tasks-jvm"))
-                implementation(project(":tasks-kotlin"))
                 implementation(libs.kotlinx.coroutines.core)
             }
         }
@@ -53,18 +33,6 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
-            }
-        }
-
-        val jsMain by getting {
-            compilerOptions {
-                explicitApi = ExplicitApiMode.Strict
-                allWarningsAsErrors = true
-            }
-
-            dependencies {
-                implementation(project(":tasks-kotlin"))
-                implementation(libs.kotlinx.coroutines.core)
             }
         }
     }

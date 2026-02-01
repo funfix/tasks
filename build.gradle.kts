@@ -44,7 +44,6 @@ dokka {
 
 dependencies {
     dokka(project(":tasks-jvm"))
-    dokka(project(":tasks-kotlin"))
     dokka(project(":tasks-kotlin-coroutines"))
 }
 

@@ -19,4 +19,3 @@ test-watch:
 test-coverage:
 	./gradlew clean build jacocoTestReport koverHtmlReportJvm
 	open tasks-jvm/build/reports/jacoco/test/html/index.html
-	open ./tasks-kotlin/build/reports/kover/htmlJvm/index.html
