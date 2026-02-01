@@ -56,6 +56,7 @@ kotlin {
 
     tasks.withType<KotlinCompile> {
         compilerOptions {
+            // Set on a project-by-project basis
             // explicitApiMode = ExplicitApiMode.Strict
             // allWarningsAsErrors = true
             jvmTarget.set(JvmTarget.JVM_17)
