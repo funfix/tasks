@@ -1,20 +1,20 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.Objects;
-import java.util.concurrent.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * Provides utilities for working with [Executor] instances, optimized
  * for common use-cases.
  */
-@NullMarked
 public final class TaskExecutors {
     private static volatile @Nullable Executor sharedVirtualIORef = null;
     private static volatile @Nullable Executor sharedPlatformIORef = null;
@@ -76,6 +76,7 @@ public final class TaskExecutors {
      * On Java 21 and above, the created {@code Executor} will run tasks on virtual threads.
      * On older JVM versions, it returns a plain {@code Executors.newCachedThreadPool}.
      */
+    @SuppressWarnings({"deprecation", "EmptyCatch"})
     public static ExecutorService unlimitedThreadPoolForIO(final String prefix) {
         if (VirtualThreads.areVirtualThreadsSupported())
             try {
@@ -99,7 +100,7 @@ public final class TaskExecutors {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-@NullMarked
+@SuppressWarnings("JavaLangInvokeHandleSignature")
 final class VirtualThreads {
     private static final @Nullable MethodHandle newThreadPerTaskExecutorMethodHandle;
 

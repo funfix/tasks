@@ -7,14 +7,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.funfix.tasks.jvm.TestSettings.CONCURRENCY_REPEATS;
+import static org.funfix.tasks.jvm.TestSettings.TIMEOUT;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AwaitSignalTest {
-    final int repeat = 1000;
     @Test
     void singleThreaded() throws InterruptedException, TimeoutException {
-        for (int i = 0; i < repeat; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var latch = new AwaitSignal();
             latch.signal();
             latch.await(TimeUnit.SECONDS.toMillis(5));
@@ -23,7 +24,7 @@ public class AwaitSignalTest {
 
     @Test
     void multiThreaded() throws InterruptedException {
-        for (int i = 0; i < repeat; i++) {
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
             final var wasStarted = new CountDownLatch(1);
             final var latch = new AwaitSignal();
             final var hasError = new AtomicBoolean(false);
@@ -39,7 +40,7 @@ public class AwaitSignalTest {
             t.start();
             wasStarted.await();
             latch.signal();
-            t.join(TimedAwait.TIMEOUT.toMillis());
+            t.join(TIMEOUT.toMillis());
             assertFalse(t.isAlive(), "isAlive");
             assertFalse(hasError.get());
         }
@@ -47,19 +48,21 @@ public class AwaitSignalTest {
 
     @Test
     void canBeInterrupted() throws InterruptedException {
-        final var latch = new AwaitSignal();
-        final var wasInterrupted = new AtomicBoolean(false);
-        final var t = new Thread(() -> {
-            try {
-                latch.await();
-            } catch (InterruptedException e) {
-                wasInterrupted.set(true);
-            }
-        });
-        t.start();
-        t.interrupt();
-        t.join(TimedAwait.TIMEOUT.toMillis());
-        assertFalse(t.isAlive(), "isAlive");
-        assertTrue(wasInterrupted.get());
+        for (int i = 0; i < CONCURRENCY_REPEATS; i++) {
+            final var latch = new AwaitSignal();
+            final var wasInterrupted = new AtomicBoolean(false);
+            final var t = new Thread(() -> {
+                try {
+                    latch.await();
+                } catch (InterruptedException e) {
+                    wasInterrupted.set(true);
+                }
+            });
+            t.start();
+            t.interrupt();
+            t.join(TIMEOUT.toMillis());
+            assertFalse(t.isAlive(), "isAlive");
+            assertTrue(wasInterrupted.get());
+        }
     }
 }

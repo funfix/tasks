@@ -1,6 +1,5 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.ExecutionException;
@@ -8,7 +7,6 @@ import java.util.concurrent.ExecutionException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
-@NullMarked
 public class OutcomeTest {
     @Test
     void outcomeBuildSuccess() {
@@ -16,8 +14,7 @@ public class OutcomeTest {
         final Outcome<String> outcome2 = Outcome.success("value");
         assertEquals(outcome1, outcome2);
 
-        if (outcome2 instanceof Outcome.Success) {
-            final var success = (Outcome.Success<String>) outcome2;
+        if (outcome2 instanceof Outcome.Success<String> success) {
             assertEquals("value", success.value());
         } else {
             fail("Expected Success");
@@ -60,8 +57,7 @@ public class OutcomeTest {
         final Outcome<String> outcome2 = Outcome.failure(e);
         assertEquals(outcome1, outcome2);
 
-        if (outcome2 instanceof Outcome.Failure) {
-            final var failure = (Outcome.Failure<String>) outcome2;
+        if (outcome2 instanceof Outcome.Failure<String> failure) {
             assertEquals("error", failure.exception().getMessage());
         } else {
             fail("Expected Failure");
