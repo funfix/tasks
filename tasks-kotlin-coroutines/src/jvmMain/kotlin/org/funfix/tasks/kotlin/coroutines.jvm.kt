@@ -3,21 +3,6 @@
 
 package org.funfix.tasks.kotlin
 
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.asExecutor
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import org.funfix.tasks.jvm.Cancellable
-import org.funfix.tasks.jvm.CompletionCallback
-import org.funfix.tasks.jvm.Outcome
-import org.funfix.tasks.jvm.Task
-import org.funfix.tasks.jvm.TaskCancellationException
-import org.funfix.tasks.jvm.UncaughtExceptionHandler
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.ContinuationInterceptor
@@ -25,6 +10,9 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellableContinuation
+import org.funfix.tasks.jvm.*
 
 /**
  * Similar with `runBlocking`, however this is a "suspended" function,
@@ -141,7 +129,7 @@ internal class CoroutineAsCompletionCallback<T>(
 /**
  * Internal API: gets the current [kotlinx.coroutines.CoroutineDispatcher] from the coroutine context.
  */
-internal suspend fun currentDispatcher(): kotlinx.coroutines.CoroutineDispatcher {
+internal suspend fun currentDispatcher(): CoroutineDispatcher {
     val continuationInterceptor = currentCoroutineContext()[ContinuationInterceptor]
-    return continuationInterceptor as? kotlinx.coroutines.CoroutineDispatcher ?: Dispatchers.Default
+    return continuationInterceptor as? CoroutineDispatcher ?: Dispatchers.Default
 }
