@@ -3,7 +3,14 @@ plugins {
     id("tasks.versions")
 }
 
+// Configure maven publishing to not use automatic Dokka jar generation
 mavenPublishing {
+    coordinates(
+        groupId = group.toString(),
+        artifactId = "tasks-jvm",
+        version = version.toString()
+    )
+    
     pom {
         name.set("Funfix Tasks (JVM)")
         description.set("Task datatype, meant for cross-language interoperability.")

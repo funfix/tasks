@@ -1,6 +1,8 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URI
+import com.vanniktech.maven.publish.KotlinMultiplatform
+import com.vanniktech.maven.publish.JavadocJar as VanniktechJavadocJar
 
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
@@ -37,6 +39,30 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     dependsOn(deleteDokkaOutputDir, tasks.named("dokkaGeneratePublicationHtml"))
     from(dokkaOutputDir)
+}
+
+// Configure maven publishing to use custom javadocJar instead of auto-generated Dokka V1 task
+mavenPublishing {
+    configure(
+        KotlinMultiplatform(
+            javadocJar = VanniktechJavadocJar.None(),
+            sourcesJar = true
+        )
+    )
+}
+
+// Add the custom javadocJar to all publications
+afterEvaluate {
+    publishing {
+        publications {
+            withType<MavenPublication> {
+                // Only add javadocJar if this is not a sources/javadoc publication
+                if (!name.contains("SourcesElements") && !name.contains("JavadocElements")) {
+                    artifact(javadocJar)
+                }
+            }
+        }
+    }
 }
 
 java {
