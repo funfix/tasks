@@ -47,6 +47,8 @@ java {
 kotlin {
     jvm {}
 
+    /*
+    // Target should be DISABLED!
     js(IR) {
         browser {
             testTask {
@@ -56,6 +58,7 @@ kotlin {
             }
         }
     }
+    */
 
     tasks.withType<JavaCompile> {
         sourceCompatibility = JavaVersion.VERSION_17.majorVersion
