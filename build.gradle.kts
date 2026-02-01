@@ -43,8 +43,14 @@ dokka {
 }
 
 dependencies {
-    dokka(project(":tasks-jvm"))
-    dokka(project(":tasks-kotlin-coroutines"))
+    // Aggregating project dokka tasks here triggers Dokka V1 tasks in subprojects
+    // which fail when Dokka V2 mode is enabled. Instead, generate docs per
+    // subproject (they already configure their own dokkaPublication tasks).
+    // If an aggregated site is needed, run the v2 `dokkaGenerate` tasks from
+    // the root or create a dedicated aggregation task that depends on
+    // `dokkaGeneratePublicationHtml` for each subproject.
+    // dokka(project(":tasks-jvm"))
+    // dokka(project(":tasks-kotlin-coroutines"))
 }
 
 tasks.named<DependencyUpdatesTask>("dependencyUpdates").configure {
