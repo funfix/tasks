@@ -3,6 +3,7 @@ import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
     id("tasks.java-project")
+    id("tasks.versions")
 }
 
 mavenPublishing {
