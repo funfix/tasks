@@ -11,18 +11,20 @@ plugins {
 
 val dokkaOutputDir = layout.buildDirectory.dir("dokka").get().asFile
 
-tasks.dokkaHtml {
-    outputDirectory.set(dokkaOutputDir)
+dokka {
+    dokkaPublications.html {
+        outputDirectory.set(dokkaOutputDir)
+    }
 }
 
 val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
     delete(dokkaOutputDir)
 }
 
-val javadocJar = tasks.create<Jar>("javadocJar") {
+val javadocJar = tasks.register<Jar>("javadocJar") {
     archiveClassifier.set("javadoc")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    dependsOn(deleteDokkaOutputDir, tasks.dokkaHtml)
+    dependsOn(deleteDokkaOutputDir, tasks.named("dokkaGeneratePublicationHtml"))
     from(dokkaOutputDir)
 }
 

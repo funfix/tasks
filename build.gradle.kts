@@ -25,8 +25,10 @@ buildscript {
 //    }
 //}
 
-tasks.dokkaHtmlMultiModule {
-    outputDirectory.set(file("build/dokka"))
+dokka {
+    dokkaPublications.html {
+        outputDirectory.set(file("build/dokka"))
+    }
 }
 
 tasks.named<DependencyUpdatesTask>("dependencyUpdates").configure {
