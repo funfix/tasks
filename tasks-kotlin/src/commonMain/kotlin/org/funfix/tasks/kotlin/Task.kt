@@ -104,17 +104,16 @@ public expect fun <T> Task<T>.runAsync(
  * The created task will execute the given function on the current
  * thread, by using a "trampoline" to avoid stack overflows. This may
  * be useful if the computation for initiating the async process is
- * expected to be fast. However, if the computation can block the
- * current thread, it is recommended to use [fromForkedAsync] instead,
- * which will initiate the computation by yielding first (i.e., on the
- * JVM this means the execution will start on a different thread).
+ * expected to be fast. If the computation can block the current
+ * thread, consider ensuring the task runs on a different executor
+ * (for example via [ensureRunningOnExecutor] or by wrapping the
+ * blocking portion in a `fromBlockingIO` task).
  *
  * @param start is the function that will trigger the async computation,
  * injecting a callback that will be used to signal the result, and an
  * executor that can be used for creating additional threads.
  *
  * @return a new task that will execute the given builder function upon execution
- * @see fromForkedAsync
  */
 public expect fun <T> Task.Companion.fromAsync(
     start: (Executor, Callback<T>) -> Cancellable

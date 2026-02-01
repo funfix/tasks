@@ -5,10 +5,10 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * Similar with `runBlocking`, however this is a "suspended" function,
- * to be executed in the context of [kotlinx.coroutines].
+ * to be executed in the context of kotlinx.coroutines.
  *
  * NOTES:
- * - The [kotlinx.coroutines.CoroutineDispatcher], made available via the
+ * - The `kotlinx.coroutines.CoroutineDispatcher`, made available via the
  *   "coroutine context", is used to execute the task, being passed to
  *   the task's implementation as an `Executor`.
  * - The coroutine's cancellation protocol cooperates with that of [Task],
