@@ -59,7 +59,7 @@ kotlin {
             // explicitApiMode = ExplicitApiMode.Strict
             // allWarningsAsErrors = true
             jvmTarget.set(JvmTarget.JVM_17)
-            freeCompilerArgs.add("-Xjvm-default=all")
+            freeCompilerArgs.add("-jvm-default=enable")
         }
         kotlinJavaToolchain.toolchain.use(
             javaLauncher = javaToolchains.launcherFor {

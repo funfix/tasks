@@ -39,6 +39,8 @@ public abstract interface class org/funfix/tasks/kotlin/Outcome {
 public final class org/funfix/tasks/kotlin/Outcome$Cancellation : org/funfix/tasks/kotlin/Outcome {
 	public static final field INSTANCE Lorg/funfix/tasks/kotlin/Outcome$Cancellation;
 	public fun equals (Ljava/lang/Object;)Z
+	public synthetic fun getOrThrow ()Ljava/lang/Object;
+	public fun getOrThrow ()Ljava/lang/Void;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -49,6 +51,10 @@ public final class org/funfix/tasks/kotlin/Outcome$Companion {
 	public final fun success (Ljava/lang/Object;)Lorg/funfix/tasks/kotlin/Outcome;
 }
 
+public final class org/funfix/tasks/kotlin/Outcome$DefaultImpls {
+	public static fun getOrThrow (Lorg/funfix/tasks/kotlin/Outcome;)Ljava/lang/Object;
+}
+
 public final class org/funfix/tasks/kotlin/Outcome$Failure : org/funfix/tasks/kotlin/Outcome {
 	public fun <init> (Ljava/lang/Throwable;)V
 	public final fun component1 ()Ljava/lang/Throwable;
@@ -56,6 +62,8 @@ public final class org/funfix/tasks/kotlin/Outcome$Failure : org/funfix/tasks/ko
 	public static synthetic fun copy$default (Lorg/funfix/tasks/kotlin/Outcome$Failure;Ljava/lang/Throwable;ILjava/lang/Object;)Lorg/funfix/tasks/kotlin/Outcome$Failure;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getException ()Ljava/lang/Throwable;
+	public synthetic fun getOrThrow ()Ljava/lang/Object;
+	public fun getOrThrow ()Ljava/lang/Void;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -66,6 +74,7 @@ public final class org/funfix/tasks/kotlin/Outcome$Success : org/funfix/tasks/ko
 	public final fun copy (Ljava/lang/Object;)Lorg/funfix/tasks/kotlin/Outcome$Success;
 	public static synthetic fun copy$default (Lorg/funfix/tasks/kotlin/Outcome$Success;Ljava/lang/Object;ILjava/lang/Object;)Lorg/funfix/tasks/kotlin/Outcome$Success;
 	public fun equals (Ljava/lang/Object;)Z
+	public fun getOrThrow ()Ljava/lang/Object;
 	public final fun getValue ()Ljava/lang/Object;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
