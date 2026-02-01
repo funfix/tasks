@@ -247,6 +247,8 @@ class CoroutinesJvmTest {
             started.await()
             job.cancel()
             wasTriggered.await()
+            
+            assertTrue(job.isCancelled)
         } finally {
             executor.shutdown()
         }
