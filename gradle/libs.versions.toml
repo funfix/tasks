@@ -10,6 +10,9 @@ publish = "0.29.0"
 jspecify = "1.0.0"
 lombok = "1.18.36"
 binary-compatibility-validator = "0.16.2"
+errorprone-plugin = "4.3.0"
+errorprone = "2.41.0"
+errorprone-nullaway = "0.12.8"
 
 [libraries]
 # Plugins specified in buildSrc/build.gradle.kts
@@ -20,6 +23,7 @@ gradle-versions-plugin = { module = "com.github.ben-manes:gradle-versions-plugin
 vanniktech-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "publish" }
 # org.jetbrains.kotlinx.binary-compatibility-validator
 binary-compatibility-validator-plugin = { module = "org.jetbrains.kotlinx.binary-compatibility-validator:org.jetbrains.kotlinx.binary-compatibility-validator.gradle.plugin", version.ref = "binary-compatibility-validator" }
+errorprone-gradle-plugin = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version.ref = "errorprone-plugin" }
 
 # Actual libraries
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
@@ -29,3 +33,5 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone"}
+errorprone-nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "errorprone-nullaway" }

@@ -1,7 +1,9 @@
 package org.funfix.tasks.jvm;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -19,7 +21,7 @@ public class LoomTest {
         try {
             final var latch = new CountDownLatch(1);
             final var isVirtual = new AtomicBoolean(false);
-            final var name = new AtomicReference<String>();
+            final var name = new AtomicReference<@Nullable String>();
 
             commonPool.execute(() -> {
                 isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
@@ -30,8 +32,8 @@ public class LoomTest {
             TimedAwait.latchAndExpectCompletion(latch);
             assertTrue(isVirtual.get(), "isVirtual");
             assertTrue(
-                    name.get().matches("tasks-io-virtual-\\d+"),
-                    "name.matches(\"tasks-io-virtual-\\\\d+\")"
+                Objects.requireNonNull(name.get()).matches("tasks-io-virtual-\\d+"),
+                "name.matches(\"tasks-io-virtual-\\\\d+\")"
             );
         } finally {
             commonPool.shutdown();
@@ -47,7 +49,7 @@ public class LoomTest {
 
         final var latch = new CountDownLatch(1);
         final var isVirtual = new AtomicBoolean(false);
-        final var name = new AtomicReference<String>();
+        final var name = new AtomicReference<@Nullable String>();
 
         f.newThread(() -> {
             isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
@@ -58,7 +60,7 @@ public class LoomTest {
         TimedAwait.latchAndExpectCompletion(latch);
         assertTrue(isVirtual.get(), "isVirtual");
         assertTrue(
-                name.get().matches("my-vt-\\d+"),
+                Objects.requireNonNull(name.get()).matches("my-vt-\\d+"),
                 "name.matches(\"my-vt-\\\\d+\")"
         );
     }
@@ -72,7 +74,7 @@ public class LoomTest {
         try {
             final var latch = new CountDownLatch(1);
             final var isVirtual = new AtomicBoolean(false);
-            final var name = new AtomicReference<String>();
+            final var name = new AtomicReference<@Nullable String>();
             executor.execute(() -> {
                 isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
                 name.set(Thread.currentThread().getName());
@@ -82,7 +84,7 @@ public class LoomTest {
             TimedAwait.latchAndExpectCompletion(latch);
             assertTrue(isVirtual.get(), "isVirtual");
             assertTrue(
-                    name.get().matches("my-vt-\\d+"),
+                    Objects.requireNonNull(name.get()).matches("my-vt-\\d+"),
                     "name.matches(\"my-vt-\\\\d+\")"
             );
         } finally {
@@ -119,7 +121,7 @@ public class LoomTest {
 
             final var latch = new CountDownLatch(1);
             final var isVirtual = new AtomicBoolean(true);
-            final var name = new AtomicReference<String>();
+            final var name = new AtomicReference<@Nullable String>();
 
             commonPool.execute(() -> {
                 isVirtual.set(VirtualThreads.isVirtualThread(Thread.currentThread()));
@@ -130,7 +132,7 @@ public class LoomTest {
             TimedAwait.latchAndExpectCompletion(latch);
             assertFalse(isVirtual.get(), "isVirtual");
             assertTrue(
-                    name.get().matches("^tasks-io-platform-\\d+$"),
+                    Objects.requireNonNull(name.get()).matches("^tasks-io-platform-\\d+$"),
                     "name.matches(\"^tasks-io-platform-\\\\d+$\")"
             );
         } finally {

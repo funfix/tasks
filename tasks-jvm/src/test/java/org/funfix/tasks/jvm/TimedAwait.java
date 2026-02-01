@@ -1,23 +1,12 @@
 package org.funfix.tasks.jvm;
 
-import org.jspecify.annotations.NullMarked;
-
-import java.time.Duration;
 import java.util.concurrent.*;
 
+import static org.funfix.tasks.jvm.TestSettings.TIMEOUT;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
-@NullMarked
 public class TimedAwait {
-    public static Duration TIMEOUT;
-
-    static {
-        if (System.getenv("CI") != null)
-            TIMEOUT = Duration.ofSeconds(20);
-        else
-            TIMEOUT = Duration.ofSeconds(10);
-    }
-
     @SuppressWarnings("ResultOfMethodCallIgnored")
     static void latchNoExpectations(final CountDownLatch latch) throws InterruptedException {
         latch.await(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
@@ -38,6 +27,19 @@ public class TimedAwait {
         try {
             future.get(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
         } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static void fiberAndExpectCancellation(final Fiber<?> fiber)
+        throws InterruptedException {
+        try {
+            fiber.awaitBlockingTimed(TIMEOUT);
+            fail("Fiber should have been cancelled");
+        } catch (final TaskCancellationException ignored) {
+        } catch (final TimeoutException e) {
+            fail("Fiber should have been cancelled", e);
+        } catch (final ExecutionException e) {
             throw new RuntimeException(e);
         }
     }
