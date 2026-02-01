@@ -1,21 +1,30 @@
 [versions]
-versions-plugin = "0.51.0"
-publish-plugin = "0.29.0"
-errorprone-plugin = "4.3.0"
-errorprone = "2.41.0"
-errorprone-nullaway = "0.12.8"
-
+arrow = "2.2.1.1"
+binary-compatibility-validator = "0.16.2"
+dokka = "2.1.0"
 jetbrains-annotations = "26.0.2"
 jspecify = "1.0.0"
+junit-jupiter = "6.0.2"
+kotlin = "2.3.0"
+kover = "0.9.5"
+lombok = "1.18.36"
+publish-plugin = "0.29.0"
+versions-plugin = "0.51.0"
+kotlinx-coroutines = "1.10.2"
 
 [libraries]
 # Plugins specified in buildSrc/build.gradle.kts
+binary-compatibility-validator-plugin = { module = "org.jetbrains.kotlinx.binary-compatibility-validator:org.jetbrains.kotlinx.binary-compatibility-validator.gradle.plugin", version.ref = "binary-compatibility-validator" }
+dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
 gradle-versions-plugin = { module = "com.github.ben-manes:gradle-versions-plugin", version.ref = "versions-plugin" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kover-gradle-plugin = { module = "org.jetbrains.kotlinx:kover-gradle-plugin", version.ref = "kover" }
 vanniktech-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "publish-plugin" }
-errorprone-gradle-plugin = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version.ref = "errorprone-plugin" }
-errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone"}
-errorprone-nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "errorprone-nullaway" }
 
 # Actual libraries
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+arrow-fx-coroutines = { module = "io.arrow-kt:arrow-fx-coroutines", version.ref = "arrow" }

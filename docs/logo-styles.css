@@ -1,0 +1,6 @@
+/* Override Dokka logo to use Funfix PNG */
+:root {
+    --dokka-logo-image-url: url('../images/funfix-512.png');
+    --dokka-logo-height: 32px;
+    --dokka-logo-width: 32px;
+}

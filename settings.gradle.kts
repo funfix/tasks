@@ -1,6 +1,7 @@
 rootProject.name = "tasks"
 
 include("tasks-jvm")
+include("tasks-kotlin-coroutines")
 
 pluginManagement {
     repositories {

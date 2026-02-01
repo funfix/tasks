@@ -2,6 +2,9 @@ name: Publish Release
 
 on: workflow_dispatch
 
+permissions:
+  contents: write
+
 jobs:
   publish-release:
     runs-on: ubuntu-latest
@@ -12,7 +15,7 @@ jobs:
         with:
           java-version: 17
           distribution: 'temurin'
-      - name: Publish Snapshot
+      - name: Publish to Maven Central
         run: ./gradlew -PbuildRelease=true build publish --no-daemon
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
