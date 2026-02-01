@@ -47,7 +47,7 @@ private class DispatcherExecutor(val dispatcher: CoroutineDispatcher) : Executor
         if (dispatcher.isDispatchNeeded(EmptyCoroutineContext)) {
             dispatcher.dispatch(
                 EmptyCoroutineContext,
-                kotlinx.coroutines.Runnable { command.run() }
+                { command.run() }
             )
         } else {
             command.run()

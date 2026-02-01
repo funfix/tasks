@@ -2,6 +2,8 @@
 
 package org.funfix.tasks.kotlin
 
+import kotlin.js.Promise
+
 public actual class PlatformTask<T>(
     private val f: (Executor, (Outcome<T>) -> Unit) -> Cancellable
 ) {
@@ -71,3 +73,187 @@ public actual fun <T> Task<T>.ensureRunningOnExecutor(executor: Executor?): Task
         }
         cRef
     })
+
+private fun promiseFailure(cause: Any?): Throwable =
+    when (cause) {
+        is Throwable -> cause
+        null -> RuntimeException("Promise rejected")
+        else -> RuntimeException(cause.toString())
+    }
+
+/**
+ * Creates a task from a JavaScript [Promise] builder.
+ *
+ * Contract:
+ * - The resulting task is not cancellable; cancellation does not
+ *   affect the underlying promise.
+ * - Completion mirrors the promise outcome: resolve maps to
+ *   [Outcome.Success], reject maps to [Outcome.Failure].
+ *
+ * Example:
+ * ```kotlin
+ * val task = Task.fromPromise {
+ *   Promise { resolve, _ -> resolve(1) }
+ * }
+ * ```
+ */
+public fun <T> Task.Companion.fromPromise(
+    builder: () -> Promise<T>
+): Task<T> =
+    Task.fromAsync { _, callback ->
+        var isDone = false
+        try {
+            val promise = builder()
+            promise.then(
+                { value ->
+                    if (!isDone) {
+                        isDone = true
+                        callback(Outcome.Success(value))
+                    }
+                },
+                { error ->
+                    if (!isDone) {
+                        isDone = true
+                        callback(Outcome.Failure(promiseFailure(error)))
+                    }
+                }
+            )
+        } catch (e: Throwable) {
+            callback(Outcome.Failure(e))
+        }
+        Cancellable.empty
+    }
+
+/**
+ * Creates a task from a [CancellablePromise] builder.
+ *
+ * Contract:
+ * - Cancellation triggers the provided [Cancellable], but the resulting
+ *   task only completes when [CancellablePromise.join] completes.
+ * - If [CancellablePromise.join] rejects, the task fails with that error.
+ * - Otherwise, if cancellation was requested, the task completes with
+ *   [Outcome.Cancellation].
+ * - Otherwise, the task mirrors [CancellablePromise.promise].
+ *
+ * Example:
+ * ```kotlin
+ * val task = Task.fromCancellablePromise {
+ *   val promise = Promise { resolve, _ -> resolve(1) }
+ *   val join = Promise<Unit> { resolve, _ ->
+ *     promise.then({ resolve(Unit) }, { resolve(Unit) })
+ *   }
+ *   CancellablePromise(promise, join, Cancellable.empty)
+ * }
+ * ```
+ */
+public fun <T> Task.Companion.fromCancellablePromise(
+    builder: () -> CancellablePromise<T>
+): Task<T> =
+    Task.fromAsync { _, callback ->
+        var isDone = false
+        var isCancelled = false
+        var token: Cancellable = Cancellable.empty
+        try {
+            val value = builder()
+            token = value.cancellable
+            value.join.then(
+                {
+                    if (!isDone) {
+                        if (isCancelled) {
+                            isDone = true
+                            callback(Outcome.Cancellation)
+                        } else {
+                            value.promise.then(
+                                { result ->
+                                    if (!isDone) {
+                                        isDone = true
+                                        callback(Outcome.Success(result))
+                                    }
+                                },
+                                { error ->
+                                    if (!isDone) {
+                                        isDone = true
+                                        callback(Outcome.Failure(promiseFailure(error)))
+                                    }
+                                }
+                            )
+                        }
+                    }
+                },
+                { error ->
+                    if (!isDone) {
+                        isDone = true
+                        callback(Outcome.Failure(promiseFailure(error)))
+                    }
+                }
+            )
+        } catch (e: Throwable) {
+            callback(Outcome.Failure(e))
+        }
+        Cancellable {
+            isCancelled = true
+            token.cancel()
+        }
+    }
+
+/**
+ * Executes the task and returns its result as a JavaScript [Promise].
+ *
+ * Contract:
+ * - [Outcome.Success] resolves the promise.
+ * - [Outcome.Failure] rejects the promise with the original exception.
+ * - [Outcome.Cancellation] rejects with [TaskCancellationException].
+ *
+ * Example:
+ * ```kotlin
+ * Task.fromAsync<Int> { _, cb ->
+ *   cb(Outcome.Success(1))
+ *   Cancellable.empty
+ * }.runToPromise()
+ * ```
+ */
+public fun <T> Task<T>.runToPromise(): Promise<T> =
+    Promise { resolve, reject ->
+        runAsync { outcome ->
+            when (outcome) {
+                is Outcome.Success -> resolve(outcome.value)
+                is Outcome.Failure -> reject(outcome.exception)
+                is Outcome.Cancellation -> reject(TaskCancellationException())
+            }
+        }
+    }
+
+/**
+ * Executes the task and returns a [CancellablePromise].
+ *
+ * The resulting [CancellablePromise.join] completes regardless of whether
+ * the task succeeds, fails, or is cancelled.
+ *
+ * Example:
+ * ```kotlin
+ * val cp = Task.fromAsync<Int> { _, cb ->
+ *   cb(Outcome.Success(1))
+ *   Cancellable.empty
+ * }.runToCancellablePromise()
+ * cp.cancelAndJoin()
+ * ```
+ */
+public fun <T> Task<T>.runToCancellablePromise(): CancellablePromise<T> {
+    var token: Cancellable = Cancellable.empty
+    val promise = Promise<T> { resolve, reject ->
+        token = runAsync { outcome ->
+            when (outcome) {
+                is Outcome.Success -> resolve(outcome.value)
+                is Outcome.Failure -> reject(outcome.exception)
+                is Outcome.Cancellation -> reject(TaskCancellationException())
+            }
+        }
+    }
+    val join = Promise<Unit> { resolve, _ ->
+        promise.then(
+            { resolve(Unit) },
+            { resolve(Unit) }
+        )
+    }
+    return CancellablePromise(promise, join, Cancellable { token.cancel() })
+}
