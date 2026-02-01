@@ -1,8 +1,7 @@
 package org.funfix.tasks.kotlin
 
-import java.util.concurrent.CountDownLatch
+import arrow.fx.coroutines.CountDownLatch
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import kotlin.test.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.runTest
@@ -166,7 +165,7 @@ class CoroutinesJvmTest {
     @Test
     fun `runSuspending cancels task when coroutine job is cancelled`() = runTest {
         val started = CompletableDeferred<Unit>()
-        val latch = CountDownLatch(1)
+        val latch = java.util.concurrent.CountDownLatch(1)
         val task = Task.fromBlockingIO {
             started.complete(Unit)
             latch.await()
@@ -227,15 +226,12 @@ class CoroutinesJvmTest {
         val latch = CountDownLatch(1)
         val wasTriggered = CountDownLatch(1)
         val task = suspendAsTask {
-            runInterruptible {
-                started.countDown()
-                try {
-                    assertFalse("Should have been cancelled") {
-                        latch.await(10, TimeUnit.SECONDS)
-                    }
-                } catch (_: InterruptedException) {
-                    wasTriggered.countDown()
-                }
+            started.countDown()
+            try {
+                latch.await()
+                fail("should have been cancelled")
+            } catch (_: CancellationException) {
+                wasTriggered.countDown()
             }
         }
 
@@ -243,13 +239,8 @@ class CoroutinesJvmTest {
             task.runSuspending()
         }
 
-        assertTrue("coroutine not started") {
-            started.await(10, TimeUnit.SECONDS)
-        }
-
+        started.await()
         job.cancel()
-        assertTrue("cancellation not triggered") {
-            wasTriggered.await(10, TimeUnit.SECONDS)
-        }
+        wasTriggered.await()
     }
 }
