@@ -27,6 +27,7 @@ buildscript {
 
 dokka {
     dokkaPublications.html {
+        includes.from(layout.buildDirectory.file("dokka/introduction.md"))
         outputDirectory.set(file("build/dokka"))
     }
 
@@ -36,8 +37,20 @@ dokka {
             "docs/favicon.ico"
         )
         customStyleSheets.from("docs/logo-styles.css")
+        templatesDir.set(file("docs/dokka-templates"))
         footerMessage.set("© Alexandru Nedelcu")
     }
+}
+
+tasks.register<Copy>("generateDokkaIntroduction") {
+    from("docs/introduction.template.md")
+    into(layout.buildDirectory.dir("dokka"))
+    rename { "introduction.md" }
+    expand(mapOf("version" to projectVersion))
+}
+
+tasks.named("dokkaGeneratePublicationHtml") {
+    dependsOn("generateDokkaIntroduction")
 }
 
 dependencies {
