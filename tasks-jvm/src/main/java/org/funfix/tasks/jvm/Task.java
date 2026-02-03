@@ -473,9 +473,29 @@ public final class Task<T extends @Nullable Object> {
         return new Task<>((cont) -> cont.onSuccess(value));
     }
 
+    /**
+     * Creates a task that completes with the given error.
+     */
+    public static <T extends @Nullable Object> Task<T> failed(final Throwable error) {
+        return new Task<>((cont) -> cont.onFailure(error));
+    }
+
+    /**
+     * Creates a task that is already canceled.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T extends @Nullable Object> Task<T> cancelled() {
+        return (Task<T>) CANCELLED;
+    }
+
     /** Reusable "void" task that does nothing, completing immediately. */
     @SuppressWarnings({"NullAway", "DataFlowIssue"})
-    public static final Task<Void> NOOP = Task.pure(null);
+    public static final Task<Void> NOOP =
+        Task.pure(null);
+
+    /** Reusable cancelled task instance. */
+    private static final Task<Object> CANCELLED =
+        new Task<>(CompletionCallback::onCancellation);
 }
 
 /**
