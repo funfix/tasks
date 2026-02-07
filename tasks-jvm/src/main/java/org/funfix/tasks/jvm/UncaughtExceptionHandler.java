@@ -5,13 +5,14 @@ package org.funfix.tasks.jvm;
  */
 public final class UncaughtExceptionHandler {
     public static void rethrowIfFatal(final Throwable e) {
-        if (e instanceof StackOverflowError) {
-            // Stack-overflows should be reported as-is, instead of crashing
-            // the process
-            return;
-        }
-        if (e instanceof Error error) {
+        if (e instanceof VirtualMachineError error) {
             throw error;
+        }
+        if (e instanceof ThreadDeath death) {
+            throw death;
+        }
+        if (e instanceof LinkageError linkage) {
+            throw linkage;
         }
     }
 
