@@ -301,7 +301,7 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
 @ApiStatus.Internal
 final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
     private final TaskExecutor executor;
-    private final Continuation<T> continuation;
+    private final TaskContext<T> context;
     private final MutableCancellable cancellableRef;
     private final AtomicReference<State<T>> stateRef;
 
@@ -309,7 +309,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         this.cancellableRef = new MutableCancellable(this::fiberCancel);
         this.stateRef = new AtomicReference<>(State.start());
         this.executor = executor;
-        this.continuation = new CancellableContinuation<>(
+        this.context = new CancellableTaskContext<>(
             executor,
             new AsyncContinuationCallback<>(
                 new FiberCallback<>(executor, stateRef),
@@ -435,16 +435,16 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
 
     static <T extends @Nullable Object> Fiber<T> start(
         final Executor executor,
-        final AsyncContinuationFun<T> createFun
+        final TaskStartFun<T> createFun
     ) {
         final var taskExecutor = TaskExecutor.from(executor);
         final var fiber = new ExecutedFiber<T>(taskExecutor);
         taskExecutor.execute(() -> {
             try {
-                createFun.invoke(fiber.continuation);
+                createFun.invoke(fiber.context);
             } catch (final Throwable e) {
                 UncaughtExceptionHandler.rethrowIfFatal(e);
-                fiber.continuation.onFailure(e);
+                fiber.context.onFailure(e);
             }
         });
         return fiber;

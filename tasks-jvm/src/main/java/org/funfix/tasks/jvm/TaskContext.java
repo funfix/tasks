@@ -8,16 +8,16 @@ import java.util.concurrent.Executor;
 /**
  * INTERNAL API.
  * <p>
- * Continuation objects are used to complete tasks, or for registering
+ * Task context objects used to complete tasks, or for registering
  * {@link Cancellable} references that can be used to interrupt running tasks.
  * <p>
- * {@code Continuation} objects get injected in {@link AsyncFun} functions.
+ * {@code TaskContext} objects get injected in {@link AsyncFun} functions.
  * See {@link Task#fromAsync(AsyncFun)}.
  *
  * @param <T> is the type of the value that the task will complete with
  */
 @ApiStatus.Internal
-interface Continuation<T extends @Nullable Object>
+interface TaskContext<T extends @Nullable Object>
     extends CompletionCallback<T> {
 
     /**
@@ -30,14 +30,17 @@ interface Continuation<T extends @Nullable Object>
      * Registers a {@link Cancellable} reference that can be used to interrupt
      * a running task.
      *
-     * @param cancellable is the reference to the cancellable object that this
-     *                    continuation will register.
+     * @param cancellable is the reference to the cancellable object, registered
+     *                    to be invoked when the running task gets canceled.
+     *
+     * @return a {@link Cancellable} reference that can be used to unregister
+     *         the given {@code cancellable} reference, if it was registered
+     *         successfully (the task isn't already completed/canceled),
+     *         or {@code null} otherwise.
      */
     @Nullable Cancellable registerCancellable(Cancellable cancellable);
 
-    CancellableForwardRef registerForwardCancellable();
-
-    Continuation<T> withExecutorOverride(TaskExecutor executor);
+    TaskContext<T> withExecutorOverride(TaskExecutor executor);
 
     void registerExtraCallback(CompletionCallback<T> extraCallback);
 }
@@ -47,22 +50,22 @@ interface Continuation<T extends @Nullable Object>
  */
 @ApiStatus.Internal
 @FunctionalInterface
-interface AsyncContinuationFun<T extends @Nullable Object> {
-    void invoke(Continuation<T> continuation);
+interface TaskStartFun<T extends @Nullable Object> {
+    void invoke(TaskContext<T> context);
 }
 
 /**
  * INTERNAL API.
  */
 @ApiStatus.Internal
-final class CancellableContinuation<T extends @Nullable Object>
-    implements Continuation<T>, Cancellable {
+final class CancellableTaskContext<T extends @Nullable Object>
+    implements TaskContext<T>, Cancellable {
 
     private final ContinuationCallback<T> callback;
     private final MutableCancellable cancellableRef;
     private final TaskExecutor executor;
 
-    public CancellableContinuation(
+    public CancellableTaskContext(
         final TaskExecutor executor,
         final ContinuationCallback<T> callback
     ) {
@@ -73,7 +76,7 @@ final class CancellableContinuation<T extends @Nullable Object>
         );
     }
 
-    CancellableContinuation(
+    CancellableTaskContext(
         final TaskExecutor executor,
         final ContinuationCallback<T> callback,
         final MutableCancellable cancellable
@@ -91,11 +94,6 @@ final class CancellableContinuation<T extends @Nullable Object>
     @Override
     public void cancel() {
         cancellableRef.cancel();
-    }
-
-    @Override
-    public CancellableForwardRef registerForwardCancellable() {
-        return cancellableRef.newCancellableRef();
     }
 
     @Override
@@ -124,8 +122,8 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
-    public Continuation<T> withExecutorOverride(TaskExecutor executor) {
-        return new CancellableContinuation<>(
+    public TaskContext<T> withExecutorOverride(TaskExecutor executor) {
+        return new CancellableTaskContext<>(
             executor,
             callback,
             cancellableRef

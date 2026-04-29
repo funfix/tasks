@@ -13,10 +13,10 @@ import java.util.concurrent.*;
  * Represents a function that can be executed asynchronously.
  */
 public final class Task<T extends @Nullable Object> {
-    private final AsyncContinuationFun<T> createFun;
+    private final TaskStartFun<T> startFun;
 
-    private Task(final AsyncContinuationFun<T> createFun) {
-        this.createFun = createFun;
+    private Task(final TaskStartFun<T> startFun) {
+        this.startFun = startFun;
     }
 
     /**
@@ -38,10 +38,10 @@ public final class Task<T extends @Nullable Object> {
      */
     public Task<T> ensureRunningOnExecutor(final @Nullable Executor executor) {
         return new Task<>((cont) -> {
-            final Continuation<T> cont2 = executor != null
+            final TaskContext<T> cont2 = executor != null
                 ? cont.withExecutorOverride(TaskExecutor.from(executor))
                 : cont;
-            cont2.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont2));
+            cont2.getExecutor().resumeOnExecutor(() -> startFun.invoke(cont2));
         });
     }
 
@@ -91,7 +91,7 @@ public final class Task<T extends @Nullable Object> {
             @SuppressWarnings("unchecked")
             final var extraCallback = (CompletionCallback<T>) Objects.requireNonNull(callback);
             cont.registerExtraCallback(extraCallback);
-            cont.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont));
+            cont.getExecutor().resumeOnExecutor(() -> startFun.invoke(cont));
         });
     }
 
@@ -103,7 +103,7 @@ public final class Task<T extends @Nullable Object> {
     ) {
         return new Task<>((cont) -> {
             cont.registerCancellable(cancellable);
-            cont.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont));
+            cont.getExecutor().resumeOnExecutor(() -> startFun.invoke(cont));
         });
     }
 
@@ -125,7 +125,7 @@ public final class Task<T extends @Nullable Object> {
             executor != null ? executor : TaskExecutors.sharedBlockingIO()
         );
         @SuppressWarnings("unchecked")
-        final var cont = new CancellableContinuation<>(
+        final var cont = new CancellableTaskContext<>(
             taskExecutor,
             new AsyncContinuationCallback<>(
                 (CompletionCallback<T>) callback,
@@ -134,7 +134,7 @@ public final class Task<T extends @Nullable Object> {
         );
         taskExecutor.execute(() -> {
             try {
-                createFun.invoke(cont);
+                startFun.invoke(cont);
             } catch (final Throwable e) {
                 UncaughtExceptionHandler.rethrowIfFatal(e);
                 cont.onFailure(e);
@@ -171,7 +171,7 @@ public final class Task<T extends @Nullable Object> {
     public Fiber<T> runFiber(final @Nullable Executor executor) {
         return ExecutedFiber.start(
             executor != null ? executor : TaskExecutors.sharedBlockingIO(),
-            createFun
+            startFun
         );
     }
 
@@ -215,8 +215,8 @@ public final class Task<T extends @Nullable Object> {
         final var taskExecutor = TaskExecutor.from(
             executor != null ? executor : TaskExecutors.sharedBlockingIO()
         );
-        final var cont = new CancellableContinuation<>(taskExecutor, blockingCallback);
-        createFun.invoke(cont);
+        final var cont = new CancellableTaskContext<>(taskExecutor, blockingCallback);
+        startFun.invoke(cont);
         TaskLocalContext.signalTheStartOfBlockingCall();
         return blockingCallback.await(cont);
     }
@@ -272,8 +272,8 @@ public final class Task<T extends @Nullable Object> {
         final var taskExecutor = TaskExecutor.from(
             executor != null ? executor : TaskExecutors.sharedBlockingIO()
         );
-        final var cont = new CancellableContinuation<>(taskExecutor, blockingCallback);
-        taskExecutor.execute(() -> createFun.invoke(cont));
+        final var cont = new CancellableTaskContext<>(taskExecutor, blockingCallback);
+        taskExecutor.execute(() -> startFun.invoke(cont));
         return blockingCallback.await(cont, timeout);
     }
 
@@ -321,7 +321,7 @@ public final class Task<T extends @Nullable Object> {
         return new Task<>((cont) ->
             Trampoline.execute(() -> {
                 try {
-                    cont.registerForwardCancellable().set(
+                    cont.registerCancellable(
                         start.invoke(cont.getExecutor(), cont)
                     );
                 } catch (final Throwable e) {
@@ -356,7 +356,6 @@ public final class Task<T extends @Nullable Object> {
                 if (th.isInterrupted()) {
                     throw new InterruptedException();
                 }
-                //noinspection DataFlowIssue
                 cont.onSuccess(result);
             } catch (final InterruptedException | TaskCancellationException e) {
                 cont.onCancellation();
@@ -462,14 +461,13 @@ public final class Task<T extends @Nullable Object> {
     public static <T extends @Nullable Object> Task<T> fromCancellableFuture(
         final DelayedFun<CancellableFuture<? extends T>> builder
     ) {
-        return new Task<>(new TaskFromCancellableFuture<>(builder));
+        return new Task<>(new TaskStartFromCancellableFuture<>(builder));
     }
 
     /**
      * Creates a task that completes with the given static/pure value.
      */
     public static <T extends @Nullable Object> Task<T> pure(final T value) {
-        //noinspection DataFlowIssue
         return new Task<>((cont) -> cont.onSuccess(value));
     }
 
@@ -486,28 +484,26 @@ public final class Task<T extends @Nullable Object> {
  * breakage between minor version updates.
  */
 @ApiStatus.Internal
-final class TaskFromCancellableFuture<T extends @Nullable Object>
-    implements AsyncContinuationFun<T> {
+final class TaskStartFromCancellableFuture<T extends @Nullable Object>
+    implements TaskStartFun<T> {
 
     private final DelayedFun<CancellableFuture<? extends T>> builder;
 
-    public TaskFromCancellableFuture(DelayedFun<CancellableFuture<? extends T>> builder) {
+    public TaskStartFromCancellableFuture(DelayedFun<CancellableFuture<? extends T>> builder) {
         this.builder = builder;
     }
 
     @Override
-    public void invoke(Continuation<T> continuation) {
+    public void invoke(TaskContext<T> context) {
         try {
-            final var cancellableRef =
-                continuation.registerForwardCancellable();
             final var cancellableFuture =
                 Objects.requireNonNull(builder.invoke());
             final CompletableFuture<? extends T> future =
-                getCompletableFuture(cancellableFuture, continuation);
+                getCompletableFuture(cancellableFuture, context);
             final Cancellable cancellable =
                 cancellableFuture.cancellable();
 
-            cancellableRef.set(() -> {
+            context.registerCancellable(() -> {
                 try {
                     future.cancel(true);
                 } finally {
@@ -516,7 +512,7 @@ final class TaskFromCancellableFuture<T extends @Nullable Object>
             });
         } catch (Throwable e) {
             UncaughtExceptionHandler.rethrowIfFatal(e);
-            continuation.onFailure(e);
+            context.onFailure(e);
         }
     }
 

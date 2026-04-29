@@ -53,19 +53,6 @@ final class CancellableUtils {
 }
 
 /**
- * Represents a forward reference to a {@link Cancellable} that was already
- * registered and needs to be filled in later.
- * <p>
- * <strong>INTERNAL API:</strong> Internal apis are subject to change or removal
- * without any notice. When code depends on internal APIs, it is subject to
- * breakage between minor version updates.
- */
-@ApiStatus.Internal
-interface CancellableForwardRef extends Cancellable {
-    void set(Cancellable cancellable);
-}
-
-/**
  * INTERNAL API.
  * <p>
  * <strong>WARN:</strong> Internal apis are subject to change or removal without
@@ -95,38 +82,6 @@ final class MutableCancellable implements Cancellable {
                 UncaughtExceptionHandler.logOrRethrow(e);
             }
             state = active.rest;
-        }
-    }
-
-    public CancellableForwardRef newCancellableRef() {
-        final var current = ref.get();
-        if (current instanceof State.Closed) {
-            return new CancellableForwardRef() {
-                @Override
-                public void set(Cancellable cancellable) {
-                    cancellable.cancel();
-                }
-                @Override
-                public void cancel() {}
-            };
-        } else if (current instanceof State.Active active) {
-            return new CancellableForwardRef() {
-                @Override
-                public void set(Cancellable cancellable) {
-                    registerOrdered(
-                        active.order,
-                        cancellable,
-                        active
-                    );
-                }
-
-                @Override
-                public void cancel() {
-                    unregister(active.order);
-                }
-            };
-        } else {
-            throw new IllegalStateException("Invalid state: " + current);
         }
     }
 
@@ -172,29 +127,6 @@ final class MutableCancellable implements Cancellable {
                     return;
                 }
             } else if (current instanceof State.Closed) {
-                return;
-            } else {
-                throw new IllegalStateException("Invalid state: " + current);
-            }
-        }
-    }
-
-    private void registerOrdered(
-        final long order,
-        final Cancellable newToken,
-        State current
-    ) {
-        while (true) {
-            if (current instanceof State.Active active) {
-                // Double-check ordering
-                if (active.order != order) { return; }
-                // Try to update
-                final var update = new State.Active(newToken, order + 1, null);
-                if (ref.compareAndSet(current, update)) { return; }
-                // Retry
-                current = ref.get();
-            } else if (current instanceof State.Closed) {
-                newToken.cancel();
                 return;
             } else {
                 throw new IllegalStateException("Invalid state: " + current);
