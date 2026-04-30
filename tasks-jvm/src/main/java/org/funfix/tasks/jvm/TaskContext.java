@@ -61,13 +61,13 @@ interface TaskStartFun<T extends @Nullable Object> {
 final class CancellableTaskContext<T extends @Nullable Object>
     implements TaskContext<T>, Cancellable {
 
-    private final ContinuationCallback<T> callback;
+    private final TaskContextCallback<T> callback;
     private final MutableCancellable cancellableRef;
     private final TaskExecutor executor;
 
     public CancellableTaskContext(
         final TaskExecutor executor,
-        final ContinuationCallback<T> callback
+        final TaskContextCallback<T> callback
     ) {
         this(
             executor,
@@ -78,7 +78,7 @@ final class CancellableTaskContext<T extends @Nullable Object>
 
     CancellableTaskContext(
         final TaskExecutor executor,
-        final ContinuationCallback<T> callback,
+        final TaskContextCallback<T> callback,
         final MutableCancellable cancellable
     ) {
         this.executor = executor;

@@ -142,7 +142,7 @@ final class ManyCompletionCallback<T extends @Nullable Object>
 }
 
 @ApiStatus.Internal
-interface ContinuationCallback<T extends @Nullable Object>
+interface TaskContextCallback<T extends @Nullable Object>
     extends CompletionCallback<T>, Serializable {
 
     /**
@@ -153,8 +153,8 @@ interface ContinuationCallback<T extends @Nullable Object>
 }
 
 @ApiStatus.Internal
-final class AsyncContinuationCallback<T extends @Nullable Object>
-    implements ContinuationCallback<T>, Runnable {
+final class AsyncTaskContextCallback<T extends @Nullable Object>
+    implements TaskContextCallback<T>, Runnable {
 
     private final AtomicBoolean isWaiting = new AtomicBoolean(true);
     private final AtomicReference<CompletionCallback<T>> listenerRef;
@@ -165,7 +165,7 @@ final class AsyncContinuationCallback<T extends @Nullable Object>
     private @Nullable Throwable failureCause;
     private boolean isCancelled = false;
 
-    public AsyncContinuationCallback(
+    public AsyncTaskContextCallback(
         final CompletionCallback<T> listener,
         final TaskExecutor executor
     ) {
@@ -232,12 +232,12 @@ final class AsyncContinuationCallback<T extends @Nullable Object>
         }
     }
 
-    public static <T> ContinuationCallback<T> protect(
+    public static <T> TaskContextCallback<T> protect(
         final TaskExecutor executor,
         final CompletionCallback<T> listener
     ) {
         Objects.requireNonNull(listener, "listener");
-        return new AsyncContinuationCallback<>(
+        return new AsyncTaskContextCallback<>(
             listener,
             executor
         );
@@ -268,7 +268,7 @@ final class AsyncContinuationCallback<T extends @Nullable Object>
  */
 @ApiStatus.Internal
 final class BlockingCompletionCallback<T extends @Nullable Object>
-    extends AbstractQueuedSynchronizer implements ContinuationCallback<T> {
+    extends AbstractQueuedSynchronizer implements TaskContextCallback<T> {
 
     private final AtomicBoolean isDone =
         new AtomicBoolean(false);

@@ -311,7 +311,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         this.executor = executor;
         this.context = new CancellableTaskContext<>(
             executor,
-            new AsyncContinuationCallback<>(
+            new AsyncTaskContextCallback<>(
                 new FiberCallback<>(executor, stateRef),
                 executor
             ),

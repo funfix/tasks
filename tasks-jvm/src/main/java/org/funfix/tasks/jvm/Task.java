@@ -127,7 +127,7 @@ public final class Task<T extends @Nullable Object> {
         @SuppressWarnings("unchecked")
         final var cont = new CancellableTaskContext<>(
             taskExecutor,
-            new AsyncContinuationCallback<>(
+            new AsyncTaskContextCallback<>(
                 (CompletionCallback<T>) callback,
                 taskExecutor
             )
