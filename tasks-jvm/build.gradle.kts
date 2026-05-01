@@ -1,6 +1,12 @@
+import net.ltgt.gradle.errorprone.CheckSeverity
+import net.ltgt.gradle.errorprone.errorprone
+import net.ltgt.gradle.nullaway.nullaway
+
 plugins {
     id("tasks.java-project")
     id("tasks.versions")
+    id("net.ltgt.errorprone")
+    id("net.ltgt.nullaway")
 }
 
 mavenPublishing {
@@ -14,6 +20,8 @@ dependencies {
     api(libs.jspecify)
 
     compileOnly(libs.jetbrains.annotations)
+    errorprone(libs.errorprone.core)
+    errorprone(libs.nullaway)
 
     testImplementation(platform("org.junit:junit-bom:6.0.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -37,6 +45,22 @@ tasks.withType<JavaCompile> {
 //        "-Werror"
     ))
     
+}
+
+tasks.named<JavaCompile>("compileJava") {
+    options.errorprone {
+        check("RequireExplicitNullMarking", CheckSeverity.ERROR)
+        nullaway {
+            error()
+            onlyNullMarked = true
+        }
+    }
+}
+
+tasks.named<JavaCompile>("compileTestJava") {
+    options.errorprone.nullaway {
+        disable()
+    }
 }
 
 tasks.register<Test>("testsOn21") {

@@ -1,5 +1,7 @@
 package org.funfix.tasks.jvm;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.function.Function;
 
 /**
@@ -15,10 +17,11 @@ public interface CloseableFun extends AutoCloseable {
      * Converts this blocking finalizer into an asynchronous one
      * that can be used for initializing {@link Resource.Acquired}.
      */
-    default Function<ExitCase, Task<Void>> toAsync() {
+    default Function<ExitCase, Task<@Nullable Void>> toAsync() {
+        // NullAway does not propagate the @Nullable Void type witness into the lambda body.
         @SuppressWarnings("NullAway")
-        final Function<ExitCase, Task<Void>> r =
-            exitCase -> TaskUtils.taskUninterruptibleBlockingIO(() -> {
+        final Function<ExitCase, Task<@Nullable Void>> r =
+            exitCase -> TaskUtils.<@Nullable Void>taskUninterruptibleBlockingIO(() -> {
                 close(exitCase);
                 return null;
             });

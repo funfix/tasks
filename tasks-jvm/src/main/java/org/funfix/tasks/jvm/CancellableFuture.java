@@ -22,7 +22,7 @@ public record CancellableFuture<T extends @Nullable Object>(
     CompletableFuture<? extends T> future,
     Cancellable cancellable
 ) {
-    public <U> CancellableFuture<U> transform(
+    public <U extends @Nullable Object> CancellableFuture<U> transform(
         Function<? super CompletableFuture<? extends T>, ? extends CompletableFuture<? extends U>> fn
     ) {
         return new CancellableFuture<>(fn.apply(future), cancellable);

@@ -183,6 +183,7 @@ final class AsyncContinuationCallback<T extends @Nullable Object>
     }
 
     @Override
+    // NullAway does not connect the nullable state fields with the completion branch that populated them.
     @SuppressWarnings("NullAway")
     public void run() {
         if (this.outcome != null) {
@@ -239,7 +240,7 @@ final class AsyncContinuationCallback<T extends @Nullable Object>
         }
     }
 
-    public static <T> ContinuationCallback<T> protect(
+    public static <T extends @Nullable Object> ContinuationCallback<T> protect(
         final TaskExecutor executor,
         final CompletionCallback<T> listener
     ) {
@@ -250,6 +251,7 @@ final class AsyncContinuationCallback<T extends @Nullable Object>
         );
     }
 
+    // NullAway treats AtomicReference.get() as nullable between the read and compare-and-set.
     @SuppressWarnings("NullAway")
     public void registerExtraCallback(CompletionCallback<T> extraCallback) {
         while (true) {
@@ -289,6 +291,7 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
     @Nullable
     private InterruptedException interrupted = null;
 
+    // NullAway cannot prove that a successful completion stored the nullable-bounded T result.
     @SuppressWarnings("NullAway")
     private void notifyOutcome() {
         final var extraCallback = extraCallbackRef.getAndSet(null);
@@ -360,6 +363,7 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
         void apply(boolean isCancelled) throws InterruptedException, TimeoutException;
     }
 
+    // NullAway cannot prove await completion initialized nullable-bounded T before returning.
     @SuppressWarnings("NullAway")
     private T awaitInline(final Cancellable cancelToken, final AwaitFunction await)
         throws InterruptedException, ExecutionException, TimeoutException {

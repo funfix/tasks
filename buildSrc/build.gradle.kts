@@ -23,7 +23,8 @@ fun version(k: String) =
 dependencies {
     implementation(libs.gradle.versions.plugin)
     implementation(libs.vanniktech.publish.plugin)
-    // removed errorprone plugin
+    implementation(libs.errorprone.gradle.plugin)
+    implementation(libs.nullaway.gradle.plugin)
     // Provide plugins used by precompiled script plugins so their ids are available
     implementation(libs.kotlin.gradle.plugin)
     implementation(libs.kover.gradle.plugin)
