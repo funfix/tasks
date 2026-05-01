@@ -43,6 +43,10 @@ public interface Continuation<T extends @Nullable Object>
     void invokeOnCancellation(Cancellable finalizer);
 }
 
+/**
+ * INTERNAL API.
+ */
+@ApiStatus.Internal
 interface InternalContinuation<T extends @Nullable Object>
     extends Continuation<T> {
 
