@@ -11,14 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * This is a token that can be used for interrupting a scheduled or
  * a running task.
  * <p>
- * {@code Cancellable} is used in several roles:
- * <ul>
- *   <li>As an external handle returned by {@link Task#runAsync} to cancel a task.</li>
- *   <li>As a cancellation finalizer registered via {@link Continuation#invokeOnCancellation}.</li>
- *   <li>As an internal mechanism for deregistration and cleanup.</li>
- * </ul>
- *
- * <p>The contract for {@code cancel} is:
+ * The contract for {@code cancel} is:
  * <ol>
  *   <li>Its execution is idempotent, meaning that calling it multiple times
  *   has the same effect as calling it once.</li>
