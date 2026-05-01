@@ -44,12 +44,12 @@ tasks.withType<JavaCompile> {
         "-Xlint:deprecation",
 //        "-Werror"
     ))
-    
 }
 
 tasks.named<JavaCompile>("compileJava") {
     options.errorprone {
-        check("RequireExplicitNullMarking", CheckSeverity.ERROR)
+        disableAllChecks = true
+        check("NullAway", CheckSeverity.ERROR)
         nullaway {
             error()
             onlyNullMarked = true
@@ -58,8 +58,11 @@ tasks.named<JavaCompile>("compileJava") {
 }
 
 tasks.named<JavaCompile>("compileTestJava") {
-    options.errorprone.nullaway {
-        disable()
+    options.errorprone {
+        disableAllChecks = true
+        nullaway {
+            disable()
+        }
     }
 }
 
