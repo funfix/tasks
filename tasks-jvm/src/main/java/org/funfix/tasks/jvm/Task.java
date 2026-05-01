@@ -38,10 +38,10 @@ public final class Task<T extends @Nullable Object> {
      */
     public Task<T> ensureRunningOnExecutor(final @Nullable Executor executor) {
         return new Task<>((cont) -> {
-            final Continuation<T> cont2 = executor != null
+            final InternalContinuation<T> cont2 = executor != null
                 ? cont.withExecutorOverride(TaskExecutor.from(executor))
                 : cont;
-            cont2.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont2));
+            cont2.getTaskExecutor().resumeOnExecutor(() -> createFun.invoke(cont2));
         });
     }
 
@@ -91,7 +91,7 @@ public final class Task<T extends @Nullable Object> {
             @SuppressWarnings("unchecked")
             final var extraCallback = (CompletionCallback<T>) Objects.requireNonNull(callback);
             cont.registerExtraCallback(extraCallback);
-            cont.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont));
+            cont.getTaskExecutor().resumeOnExecutor(() -> createFun.invoke(cont));
         });
     }
 
@@ -102,15 +102,15 @@ public final class Task<T extends @Nullable Object> {
         final Cancellable cancellable
     ) {
         return new Task<>((cont) -> {
-            cont.registerCancellable(cancellable);
-            cont.getExecutor().resumeOnExecutor(() -> createFun.invoke(cont));
+            cont.invokeOnCancellation(cancellable);
+            cont.getTaskExecutor().resumeOnExecutor(() -> createFun.invoke(cont));
         });
     }
 
     /**
      * Executes the task asynchronously.
      * <p>
-     * This method ensures that the start starts execution on a different thread,
+     * This method ensures that the task starts execution on a different thread,
      * managed by the given executor.
      *
      * @param callback will be invoked when the task completes
@@ -163,7 +163,7 @@ public final class Task<T extends @Nullable Object> {
      * Similar to {@link #runAsync(Executor, CompletionCallback)}, this method
      * starts the execution on a different thread.
      *
-     * @param executor is the {@link Fiber} that may be used to run the task
+     * @param executor is the {@link Executor} that may be used to run the task
      * @return a {@link Fiber} that can be used to wait for the outcome,
      * or to cancel the running fiber.
      */
@@ -259,10 +259,10 @@ public final class Task<T extends @Nullable Object> {
      * @throws ExecutionException   if the task fails with an exception
      * @throws InterruptedException if the current thread is interrupted.
      *                              The running task is also cancelled, and this method does not
-     *                              return until `onCancel` is signaled.
+     *                              return until `onCancellation` is signaled.
      * @throws TimeoutException     if the task doesn't complete within the
      *                              specified timeout. The running task is also cancelled on timeout,
-     *                              and this method does not returning until `onCancel` is signaled.
+     *                              and this method does not return until `onCancellation` is signaled.
      */
     public T runBlockingTimed(
         final @Nullable Executor executor,
@@ -291,10 +291,10 @@ public final class Task<T extends @Nullable Object> {
      * @throws ExecutionException   if the task fails with an exception
      * @throws InterruptedException if the current thread is interrupted.
      *                              The running task is also cancelled, and this method does not
-     *                              return until `onCancel` is signaled.
+     *                              return until `onCancellation` is signaled.
      * @throws TimeoutException     if the task doesn't complete within the
      *                              specified timeout. The running task is also cancelled on timeout,
-     *                              and this method does not returning until `onCancel` is signaled.
+     *                              and this method does not return until `onCancellation` is signaled.
      */
     public T runBlockingTimed(final Duration timeout)
         throws ExecutionException, InterruptedException, TimeoutException {
@@ -311,19 +311,20 @@ public final class Task<T extends @Nullable Object> {
      *     <li>Trampolined execution to avoid stack-overflows</li>
      * </ol>
      * <p>
+     * The provided {@link AsyncFun} receives a {@link Continuation} which
+     * provides the executor and methods to signal completion or register
+     * cancellation cleanup.
      *
      * @param start is the function that will trigger the async computation,
-     *              injecting a callback that will be used to signal the result,
-     *              and an executor that can be used for creating additional threads.
+     *              injecting a {@link Continuation} that will be used to signal
+     *              the result and manage cancellation.
      * @return a new task that will execute the given builder function upon execution
      */
     public static <T extends @Nullable Object> Task<T> fromAsync(final AsyncFun<? extends T> start) {
         return new Task<>((cont) ->
             Trampoline.execute(() -> {
                 try {
-                    cont.registerForwardCancellable().set(
-                        start.invoke(cont.getExecutor(), cont)
-                    );
+                    start.invoke(cont);
                 } catch (final Throwable e) {
                     UncaughtExceptionHandler.rethrowIfFatal(e);
                     cont.onFailure(e);
@@ -340,23 +341,17 @@ public final class Task<T extends @Nullable Object> {
     public static <T extends @Nullable Object> Task<T> fromBlockingIO(final DelayedFun<? extends T> run) {
         return new Task<>((cont) -> {
             Thread th = Thread.currentThread();
-            final var registration = cont.registerCancellable(th::interrupt);
-            if (registration == null) {
+            cont.invokeOnCancellation(th::interrupt);
+            if (th.isInterrupted()) {
                 cont.onCancellation();
                 return;
             }
             try {
-                T result;
-                try {
-                    TaskLocalContext.signalTheStartOfBlockingCall();
-                    result = run.invoke();
-                } finally {
-                    registration.cancel();
-                }
+                TaskLocalContext.signalTheStartOfBlockingCall();
+                T result = run.invoke();
                 if (th.isInterrupted()) {
                     throw new InterruptedException();
                 }
-                //noinspection DataFlowIssue
                 cont.onSuccess(result);
             } catch (final InterruptedException | TaskCancellationException e) {
                 cont.onCancellation();
@@ -497,18 +492,14 @@ final class TaskFromCancellableFuture<T extends @Nullable Object>
     }
 
     @Override
-    public void invoke(Continuation<T> continuation) {
+    public void invoke(InternalContinuation<T> continuation) {
         try {
-            final var cancellableRef =
-                continuation.registerForwardCancellable();
-            final var cancellableFuture =
-                Objects.requireNonNull(builder.invoke());
+            final var cancellableFuture = Objects.requireNonNull(builder.invoke());
             final CompletableFuture<? extends T> future =
                 getCompletableFuture(cancellableFuture, continuation);
-            final Cancellable cancellable =
-                cancellableFuture.cancellable();
+            final Cancellable cancellable = cancellableFuture.cancellable();
 
-            cancellableRef.set(() -> {
+            continuation.invokeOnCancellation(() -> {
                 try {
                     future.cancel(true);
                 } finally {

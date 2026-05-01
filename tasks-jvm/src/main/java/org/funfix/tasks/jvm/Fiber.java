@@ -301,7 +301,7 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
 @ApiStatus.Internal
 final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
     private final TaskExecutor executor;
-    private final Continuation<T> continuation;
+    private final InternalContinuation<T> continuation;
     private final MutableCancellable cancellableRef;
     private final AtomicReference<State<T>> stateRef;
 

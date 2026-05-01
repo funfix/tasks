@@ -10,6 +10,13 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * This is a token that can be used for interrupting a scheduled or
  * a running task.
+ * <p>
+ * {@code Cancellable} is used in several roles:
+ * <ul>
+ *   <li>As an external handle returned by {@link Task#runAsync} to cancel a task.</li>
+ *   <li>As a cancellation finalizer registered via {@link Continuation#invokeOnCancellation}.</li>
+ *   <li>As an internal mechanism for deregistration and cleanup.</li>
+ * </ul>
  *
  * <p>The contract for {@code cancel} is:
  * <ol>
@@ -53,19 +60,6 @@ final class CancellableUtils {
 }
 
 /**
- * Represents a forward reference to a {@link Cancellable} that was already
- * registered and needs to be filled in later.
- * <p>
- * <strong>INTERNAL API:</strong> Internal apis are subject to change or removal
- * without any notice. When code depends on internal APIs, it is subject to
- * breakage between minor version updates.
- */
-@ApiStatus.Internal
-interface CancellableForwardRef extends Cancellable {
-    void set(Cancellable cancellable);
-}
-
-/**
  * INTERNAL API.
  * <p>
  * <strong>WARN:</strong> Internal apis are subject to change or removal without
@@ -86,118 +80,67 @@ final class MutableCancellable implements Cancellable {
 
     @Override
     public void cancel() {
-        var state = ref.getAndSet(State.Closed.INSTANCE);
-        while (state instanceof State.Active active) {
-            try {
-                active.token.cancel();
-            } catch (Exception e) {
-                UncaughtExceptionHandler.logOrRethrow(e);
+        while (true) {
+            final var current = ref.get();
+            if (current instanceof State.Active active) {
+                if (ref.compareAndSet(current, State.Cancelled.INSTANCE)) {
+                    invokeAll(active);
+                    return;
+                }
+            } else if (current instanceof State.Cancelled || current instanceof State.Completed) {
+                return;
+            } else {
+                throw new IllegalStateException("Invalid state: " + current);
             }
-            state = active.rest;
         }
     }
 
-    public CancellableForwardRef newCancellableRef() {
-        final var current = ref.get();
-        if (current instanceof State.Closed) {
-            return new CancellableForwardRef() {
-                @Override
-                public void set(Cancellable cancellable) {
-                    cancellable.cancel();
+    void complete() {
+        while (true) {
+            final var current = ref.get();
+            if (current instanceof State.Active) {
+                if (ref.compareAndSet(current, State.Completed.INSTANCE)) {
+                    return;
                 }
-                @Override
-                public void cancel() {}
-            };
-        } else if (current instanceof State.Active active) {
-            return new CancellableForwardRef() {
-                @Override
-                public void set(Cancellable cancellable) {
-                    registerOrdered(
-                        active.order,
-                        cancellable,
-                        active
-                    );
-                }
-
-                @Override
-                public void cancel() {
-                    unregister(active.order);
-                }
-            };
-        } else {
-            throw new IllegalStateException("Invalid state: " + current);
+            } else if (current instanceof State.Cancelled || current instanceof State.Completed) {
+                return;
+            } else {
+                throw new IllegalStateException("Invalid state: " + current);
+            }
         }
     }
 
-    public @Nullable Cancellable register(Cancellable token) {
+    public void register(Cancellable token) {
         Objects.requireNonNull(token, "token");
         while (true) {
             final var current = ref.get();
             if (current instanceof State.Active active) {
                 final var newOrder = active.order + 1;
                 final var update = new State.Active(token, newOrder, active);
-                if (ref.compareAndSet(current, update)) { return () -> unregister(newOrder); }
-            } else if (current instanceof State.Closed) {
-                token.cancel();
-                return null;
-            } else {
-                throw new IllegalStateException("Invalid state: " + current);
-            }
-        }
-    }
-
-    private void unregister(final long order) {
-        while (true) {
-            final var current = ref.get();
-            if (current instanceof State.Active active) {
-                State.@Nullable Active cursor = active;
-                State.@Nullable Active acc = null;
-                while (cursor != null) {
-                    if (cursor.order != order) {
-                        acc = new State.Active(cursor.token, cursor.order, acc);
-                    }
-                    cursor = cursor.rest;
-                }
-                // Reversing
-                State.@Nullable Active update = null;
-                while (acc != null) {
-                    update = new State.Active(acc.token, acc.order, update);
-                    acc = acc.rest;
-                }
-                if (update == null) {
-                    update = new State.Active(Cancellable.getEmpty(), 0, null);
-                }
-                if (ref.compareAndSet(current, update)) {
-                    return;
-                }
-            } else if (current instanceof State.Closed) {
-                return;
-            } else {
-                throw new IllegalStateException("Invalid state: " + current);
-            }
-        }
-    }
-
-    private void registerOrdered(
-        final long order,
-        final Cancellable newToken,
-        State current
-    ) {
-        while (true) {
-            if (current instanceof State.Active active) {
-                // Double-check ordering
-                if (active.order != order) { return; }
-                // Try to update
-                final var update = new State.Active(newToken, order + 1, null);
                 if (ref.compareAndSet(current, update)) { return; }
-                // Retry
-                current = ref.get();
-            } else if (current instanceof State.Closed) {
-                newToken.cancel();
+            } else if (current instanceof State.Cancelled) {
+                invoke(token);
+                return;
+            } else if (current instanceof State.Completed) {
                 return;
             } else {
                 throw new IllegalStateException("Invalid state: " + current);
             }
+        }
+    }
+
+    private static void invokeAll(State.@Nullable Active active) {
+        while (active != null) {
+            invoke(active.token);
+            active = active.rest;
+        }
+    }
+
+    private static void invoke(Cancellable token) {
+        try {
+            token.cancel();
+        } catch (Exception e) {
+            UncaughtExceptionHandler.logOrRethrow(e);
         }
     }
 
@@ -208,8 +151,12 @@ final class MutableCancellable implements Cancellable {
             @Nullable Active rest
         ) implements State {}
 
-        record Closed() implements State {
-            static final Closed INSTANCE = new Closed();
+        record Cancelled() implements State {
+            static final Cancelled INSTANCE = new Cancelled();
+        }
+
+        record Completed() implements State {
+            static final Completed INSTANCE = new Completed();
         }
     }
 }
