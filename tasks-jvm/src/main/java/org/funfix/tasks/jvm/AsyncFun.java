@@ -27,5 +27,5 @@ import java.io.Serializable;
 @FunctionalInterface
 @NonBlocking
 public interface AsyncFun<T extends @Nullable Object> extends Serializable {
-    void invoke(Continuation<? super T> continuation);
+    void invoke(final Continuation<? super T> continuation);
 }

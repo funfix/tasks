@@ -487,12 +487,12 @@ final class TaskFromCancellableFuture<T extends @Nullable Object>
 
     private final DelayedFun<CancellableFuture<? extends T>> builder;
 
-    public TaskFromCancellableFuture(DelayedFun<CancellableFuture<? extends T>> builder) {
+    public TaskFromCancellableFuture(final DelayedFun<CancellableFuture<? extends T>> builder) {
         this.builder = builder;
     }
 
     @Override
-    public void invoke(InternalContinuation<T> continuation) {
+    public void invoke(final InternalContinuation<T> continuation) {
         try {
             final var cancellableFuture = Objects.requireNonNull(builder.invoke());
             final CompletableFuture<? extends T> future =
@@ -513,8 +513,8 @@ final class TaskFromCancellableFuture<T extends @Nullable Object>
     }
 
     private static <T extends @Nullable Object> CompletableFuture<? extends T> getCompletableFuture(
-        CancellableFuture<? extends T> cancellableFuture,
-        CompletionCallback<? super T> callback
+        final CancellableFuture<? extends T> cancellableFuture,
+        final CompletionCallback<? super T> callback
     ) {
         CompletableFuture<? extends T> future = cancellableFuture.future();
         future.whenComplete((value, error) -> {

@@ -41,12 +41,12 @@ final class Trampoline {
     public static final Executor INSTANCE =
         new TaskExecutor() {
             @Override
-            public void resumeOnExecutor(Runnable runnable) {
+            public void resumeOnExecutor(final Runnable runnable) {
                 execute(runnable);
             }
 
             @Override
-            public void execute(Runnable command) {
+            public void execute(final Runnable command) {
                 var current = queue.get();
                 if (current == null) {
                     current = new ArrayDeque<>();
