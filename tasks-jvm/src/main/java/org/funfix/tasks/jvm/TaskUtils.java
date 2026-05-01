@@ -12,15 +12,15 @@ final class TaskUtils {
     static <T extends @Nullable Object> Task<T> taskUninterruptibleBlockingIO(
         final DelayedFun<? extends T> func
     ) {
-        return Task.fromAsync((ec, callback) -> {
+        return Task.fromAsync((continuation) -> {
             try {
-                callback.onSuccess(func.invoke());
+                continuation.onSuccess(func.invoke());
             } catch (final InterruptedException e) {
-                callback.onCancellation();
-            } catch (final Exception e) {
-                callback.onFailure(e);
+                continuation.onCancellation();
+            } catch (final Throwable e) {
+                UncaughtExceptionHandler.rethrowIfFatal(e);
+                continuation.onFailure(e);
             }
-            return () -> {};
         });
     }
 

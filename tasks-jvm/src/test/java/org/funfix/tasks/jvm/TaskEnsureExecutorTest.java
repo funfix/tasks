@@ -82,10 +82,10 @@ public class TaskEnsureExecutorTest {
             Task.fromBlockingIO(() -> Thread.currentThread().getName())
                 .ensureRunningOnExecutor(ec1)
                 .runAsync(ec2, (CompletionCallback<String>) outcome -> {
-                    if (outcome instanceof Outcome.Success<String> value) {
+                    if (outcome instanceof Outcome.Success<? extends String> value) {
                         threadName1.set(value.value());
                         threadName2.set(Thread.currentThread().getName());
-                    } else if (outcome instanceof Outcome.Failure<String> f) {
+                    } else if (outcome instanceof Outcome.Failure<?> f) {
                         UncaughtExceptionHandler.logOrRethrow(f.exception());
                     }
                     isDone.countDown();
@@ -118,7 +118,7 @@ public class TaskEnsureExecutorTest {
         );
 
         final var isComplete = new CountDownLatch(1);
-        final var r2 = new AtomicReference<@Nullable Outcome<String>>(null);
+        final var r2 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
         fiber.awaitAsync(outcome -> {
             r2.set(outcome);
             isComplete.countDown();

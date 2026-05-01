@@ -301,7 +301,7 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
 @ApiStatus.Internal
 final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
     private final TaskExecutor executor;
-    private final Continuation<T> continuation;
+    private final InternalContinuation<T> continuation;
     private final MutableCancellable cancellableRef;
     private final AtomicReference<State<T>> stateRef;
 
@@ -389,7 +389,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         ) implements State<T> {}
 
         record Completed<T extends @Nullable Object>(
-            Outcome<T> outcome
+            Outcome<? extends T> outcome
         ) implements State<T> {}
 
         default void triggerListeners(TaskExecutor executor) {
@@ -478,7 +478,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         }
 
         @Override
-        public void onOutcome(Outcome<T> outcome) {
+        public void onOutcome(Outcome<? extends T> outcome) {
             while (true) {
                 State<T> current = stateRef.get();
                 if (current instanceof State.Active) {
@@ -493,7 +493,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
                         return;
                     }
                 } else if (current instanceof State.Completed) {
-                    if (outcome instanceof Outcome.Failure<T> failure) {
+                    if (outcome instanceof Outcome.Failure<?> failure) {
                         UncaughtExceptionHandler.logOrRethrow(failure.exception());
                     }
                     return;

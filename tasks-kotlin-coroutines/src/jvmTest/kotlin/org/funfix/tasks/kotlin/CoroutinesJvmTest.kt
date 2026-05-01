@@ -5,7 +5,6 @@ import java.util.concurrent.Executors
 import kotlin.test.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.runTest
-import org.funfix.tasks.jvm.Cancellable
 import org.funfix.tasks.jvm.Outcome
 import org.funfix.tasks.jvm.Task
 import org.funfix.tasks.jvm.TaskCancellationException
@@ -13,9 +12,8 @@ import org.funfix.tasks.jvm.TaskCancellationException
 class CoroutinesJvmTest {
     @Test
     fun `runSuspending signals Success`() = runTest {
-        val task = Task.fromAsync { _, cb ->
-            cb.onSuccess(42)
-            Cancellable {}
+        val task = Task.fromAsync { continuation ->
+            continuation.onSuccess(42)
         }
 
         val result = task.runSuspending()
@@ -26,9 +24,8 @@ class CoroutinesJvmTest {
     @Test
     fun `runSuspending signals Failure`() = runTest {
         val ex = RuntimeException("Boom")
-        val task = Task.fromAsync<Int> { _, cb ->
-            cb.onFailure(ex)
-            Cancellable {}
+        val task = Task.fromAsync<Int> { continuation ->
+            continuation.onFailure(ex)
         }
 
         val thrown = assertFailsWith<RuntimeException> { task.runSuspending() }
@@ -41,11 +38,11 @@ class CoroutinesJvmTest {
     fun `runSuspending cancels the task token`() = runTest {
         val cancelled = CompletableDeferred<Unit>()
         val started = CompletableDeferred<Unit>()
-        val task = Task.fromAsync<Int> { _, cb ->
+        val task = Task.fromAsync<Int> { continuation ->
             started.complete(Unit)
-            Cancellable {
+            continuation.invokeOnCancellation {
                 cancelled.complete(Unit)
-                cb.onCancellation()
+                continuation.onCancellation()
             }
         }
 
@@ -62,7 +59,7 @@ class CoroutinesJvmTest {
         val task = suspendAsTask {
             21 + 21
         }
-        val deferred = CompletableDeferred<Outcome<Int>>()
+        val deferred = CompletableDeferred<Outcome<out Int>>()
         task.runAsync { outcome -> deferred.complete(outcome) }
 
         assertEquals(Outcome.Success(42), deferred.await())
@@ -74,7 +71,7 @@ class CoroutinesJvmTest {
         val task = suspendAsTask<Int> {
             throw ex
         }
-        val deferred = CompletableDeferred<Outcome<Int>>()
+        val deferred = CompletableDeferred<Outcome<out Int>>()
         task.runAsync { outcome -> deferred.complete(outcome) }
 
         assertEquals(Outcome.Failure(ex), deferred.await())
@@ -87,7 +84,7 @@ class CoroutinesJvmTest {
             started.complete(Unit)
             awaitCancellation()
         }
-        val deferred = CompletableDeferred<Outcome<Unit>>()
+        val deferred = CompletableDeferred<Outcome<out Unit>>()
         val cancel = task.runAsync { outcome -> deferred.complete(outcome) }
 
         started.await()
@@ -119,9 +116,8 @@ class CoroutinesJvmTest {
 
     @Test
     fun `runSuspending translates async callback success`() = runTest {
-        val task = Task.fromAsync { _, cb ->
-            cb.onSuccess(42)
-            Cancellable {}
+        val task = Task.fromAsync { continuation ->
+            continuation.onSuccess(42)
         }
 
         assertEquals(42, task.runSuspending())
@@ -130,9 +126,8 @@ class CoroutinesJvmTest {
     @Test
     fun `runSuspending translates async callback failure`() = runTest {
         val ex = RuntimeException("Boom")
-        val task = Task.fromAsync<Int> { _, cb ->
-            cb.onFailure(ex)
-            Cancellable {}
+        val task = Task.fromAsync<Int> { continuation ->
+            continuation.onFailure(ex)
         }
 
         val thrown = assertFailsWith<RuntimeException> { task.runSuspending() }
@@ -142,9 +137,8 @@ class CoroutinesJvmTest {
 
     @Test
     fun `runSuspending resumes with task cancellation`() = runTest {
-        val task = Task.fromAsync<Int> { _, cb ->
-            cb.onCancellation()
-            Cancellable {}
+        val task = Task.fromAsync<Int> { continuation ->
+            continuation.onCancellation()
         }
 
         assertFailsWith<CancellationException> { task.runSuspending() }
@@ -153,7 +147,7 @@ class CoroutinesJvmTest {
     @Test
     fun `runSuspending forwards runAsync failure`() = runTest {
         val ex = RuntimeException("Boom")
-        val task = Task.fromAsync<Int> { _, _ ->
+        val task = Task.fromAsync<Int> {
             throw ex
         }
 
@@ -192,7 +186,7 @@ class CoroutinesJvmTest {
         val task = suspendAsTask<Unit> {
             throw CancellationException("cancelled")
         }
-        val deferred = CompletableDeferred<Outcome<Unit>>()
+        val deferred = CompletableDeferred<Outcome<out Unit>>()
         task.runAsync { outcome -> deferred.complete(outcome) }
 
         assertEquals(Outcome.Cancellation(), deferred.await())
@@ -203,7 +197,7 @@ class CoroutinesJvmTest {
         val task = suspendAsTask<Unit> {
             throw TaskCancellationException("stop")
         }
-        val deferred = CompletableDeferred<Outcome<Unit>>()
+        val deferred = CompletableDeferred<Outcome<out Unit>>()
         task.runAsync { outcome -> deferred.complete(outcome) }
 
         assertEquals(Outcome.Cancellation(), deferred.await())
@@ -214,7 +208,7 @@ class CoroutinesJvmTest {
         val task = suspendAsTask<Unit> {
             throw InterruptedException("stop")
         }
-        val deferred = CompletableDeferred<Outcome<Unit>>()
+        val deferred = CompletableDeferred<Outcome<out Unit>>()
         task.runAsync { outcome -> deferred.complete(outcome) }
 
         assertEquals(Outcome.Cancellation(), deferred.await())

@@ -55,26 +55,26 @@ public suspend fun <T> Task<T>.runSuspending(
 public fun <T> suspendAsTask(
     coroutineContext: CoroutineContext = EmptyCoroutineContext,
     block: suspend () -> T
-): Task<T> = Task.fromAsync { executor, callback ->
+): Task<T> = Task.fromAsync { continuation ->
     val job = GlobalScope.launch(
-        executor.asCoroutineDispatcher() + coroutineContext
+        continuation.executor.asCoroutineDispatcher() + coroutineContext
     ) {
         try {
             val r = block()
-            callback.onSuccess(r)
+            continuation.onSuccess(r)
         } catch (e: Throwable) {
             UncaughtExceptionHandler.rethrowIfFatal(e)
             when (e) {
                 is CancellationException,
                 is TaskCancellationException,
                 is InterruptedException ->
-                    callback.onCancellation()
+                    continuation.onCancellation()
                 else ->
-                    callback.onFailure(e)
+                    continuation.onFailure(e)
             }
         }
     }
-    Cancellable {
+    continuation.invokeOnCancellation {
         job.cancel()
     }
 }
@@ -95,7 +95,7 @@ internal class CoroutineAsCompletionCallback<T>(
             false
         }
 
-    override fun onOutcome(outcome: Outcome<T>) {
+    override fun onOutcome(outcome: Outcome<out T>) {
         when (outcome) {
             is Outcome.Success -> onSuccess(outcome.value())
             is Outcome.Failure -> onFailure(outcome.exception())

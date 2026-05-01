@@ -35,12 +35,11 @@ abstract class BaseTaskCreateTest {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
-        final Task<String> task = fromAsyncTask((executor, cb) -> {
-            cb.onSuccess("Hello, world!");
+        final Task<String> task = fromAsyncTask((continuation) -> {
+            continuation.onSuccess("Hello, world!");
             // callback is idempotent
-            cb.onSuccess("Hello, world! (2)");
+            continuation.onSuccess("Hello, world! (2)");
             noErrors.countDown();
-            return Cancellable.getEmpty();
         });
 
         final String result = task.runBlockingTimed(TIMEOUT);
@@ -53,13 +52,12 @@ abstract class BaseTaskCreateTest {
     void failed() throws InterruptedException {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
-        final Task<String> task = fromAsyncTask((executor, cb) -> {
+        final Task<String> task = fromAsyncTask((continuation) -> {
             Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
-            cb.onFailure(new RuntimeException("Sample exception"));
+            continuation.onFailure(new RuntimeException("Sample exception"));
             // callback is idempotent
-            cb.onFailure(new RuntimeException("Sample exception (2)"));
+            continuation.onFailure(new RuntimeException("Sample exception (2)"));
             noErrors.countDown();
-            return Cancellable.getEmpty();
         });
         try {
             if (executor != null)
@@ -85,12 +83,14 @@ abstract class BaseTaskCreateTest {
         final var noErrors = new CountDownLatch(1);
         final var reportedException = new AtomicReference<@Nullable Throwable>(null);
 
-        final Task<String> task = fromAsyncTask((executor, cb) -> () -> {
-            Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
-            cb.onCancellation();
-            // callback is idempotent
-            cb.onCancellation();
-            noErrors.countDown();
+        final Task<String> task = fromAsyncTask((continuation) -> {
+            continuation.invokeOnCancellation(() -> {
+                Thread.setDefaultUncaughtExceptionHandler((t, ex) -> reportedException.set(ex));
+                continuation.onCancellation();
+                // callback is idempotent
+                continuation.onCancellation();
+                noErrors.countDown();
+            });
         });
 
         final var fiber =

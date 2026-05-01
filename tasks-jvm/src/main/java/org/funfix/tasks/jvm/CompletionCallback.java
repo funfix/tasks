@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -28,10 +27,8 @@ public interface CompletionCallback<
 > extends Serializable {
     /**
      * Signals the completion of the task.
-     *
-     * @param outcome
      */
-    void onOutcome(Outcome<T> outcome);
+    void onOutcome(Outcome<? extends T> outcome);
 
     /**
      * Must be called when the task completes successfully.
@@ -63,7 +60,7 @@ public interface CompletionCallback<
      */
     static <T extends @Nullable Object> CompletionCallback<T> empty() {
         return outcome -> {
-            if (outcome instanceof Outcome.Failure<T> f) {
+            if (outcome instanceof Outcome.Failure<?> f) {
                 UncaughtExceptionHandler.logOrRethrow(f.exception());
             }
         };
@@ -104,7 +101,7 @@ final class ManyCompletionCallback<
     }
 
     @Override
-    public void onOutcome(Outcome<T> outcome) {
+    public void onOutcome(Outcome<? extends T> outcome) {
         for (final CompletionCallback<T> listener : listeners) {
             try {
                 listener.onOutcome(outcome);
@@ -169,7 +166,7 @@ final class AsyncContinuationCallback<
     private final AtomicReference<CompletionCallback<T>> listenerRef;
     private final TaskExecutor executor;
 
-    private @Nullable Outcome<T> outcome;
+    private @Nullable Outcome<? extends T> outcome;
     private @Nullable T successValue;
     private @Nullable Throwable failureCause;
     private boolean isCancelled = false;
@@ -205,12 +202,12 @@ final class AsyncContinuationCallback<
     }
 
     @Override
-    public void onOutcome(final Outcome<T> outcome) {
+    public void onOutcome(final Outcome<? extends T> outcome) {
         Objects.requireNonNull(outcome, "outcome");
         if (isWaiting.getAndSet(false)) {
             this.outcome = outcome;
             executor.resumeOnExecutor(this);
-        } else if (outcome instanceof Outcome.Failure<T> f) {
+        } else if (outcome instanceof Outcome.Failure<?> f) {
             UncaughtExceptionHandler.logOrRethrow(f.exception());
         }
     }
@@ -341,10 +338,10 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
     }
 
     @Override
-    public void onOutcome(Outcome<T> outcome) {
-        if (outcome instanceof Outcome.Success<T> success) {
+    public void onOutcome(Outcome<? extends T> outcome) {
+        if (outcome instanceof Outcome.Success<? extends T> success) {
             onSuccess(success.value());
-        } else if (outcome instanceof Outcome.Failure<T> failure) {
+        } else if (outcome instanceof Outcome.Failure<?> failure) {
             onFailure(failure.exception());
         } else {
             onCancellation();

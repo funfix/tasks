@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Objects;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.funfix.tasks.jvm.TestSettings.TIMEOUT;
@@ -67,24 +68,84 @@ abstract class TaskFromBlockingIOTestBase {
     }
 
     @Test
-    public void isCancellable() throws InterruptedException, ExecutionException, Fiber.NotCompletedException {
+    public void isCancellable() throws InterruptedException, ExecutionException, Fiber.NotCompletedException, TimeoutException {
         Objects.requireNonNull(executor);
-        final var latch = new CountDownLatch(1);
+        final var wasStarted = new CountDownLatch(1);
+        final var wasInterrupted = new CountDownLatch(1);
+        final var interrupted = new AtomicBoolean(false);
         @SuppressWarnings("NullAway")
         final var task = Task.fromBlockingIO(() -> {
-            latch.countDown();
-            Thread.sleep(30000);
-            return null;
+            wasStarted.countDown();
+            try {
+                Thread.sleep(5000);
+                return null;
+            } catch (final InterruptedException e) {
+                interrupted.set(true);
+                wasInterrupted.countDown();
+                throw e;
+            }
         });
         final var fiber = task.runFiber(executor);
-        TimedAwait.latchAndExpectCompletion(latch, "latch");
+        TimedAwait.latchAndExpectCompletion(wasStarted, "wasStarted");
 
         fiber.cancel();
-        fiber.joinBlocking();
+        fiber.joinBlockingTimed(TIMEOUT);
         try {
             fiber.getResultOrThrow();
             fail("Should have thrown a CancellationException");
         } catch (final TaskCancellationException ignored) {}
+        TimedAwait.latchAndExpectCompletion(wasInterrupted, "wasInterrupted");
+        assertTrue(interrupted.get(), "Blocking thread should have been interrupted");
+    }
+
+    @Test
+    public void runBlockingSuccessDoesNotLeaveCurrentThreadInterrupted()
+        throws ExecutionException, InterruptedException {
+
+        Objects.requireNonNull(executor);
+        Thread.interrupted();
+
+        final var result = Task.fromBlockingIO(() -> "Hello, world!")
+            .runBlocking(executor);
+
+        assertEquals("Hello, world!", result);
+        assertFalse(Thread.currentThread().isInterrupted());
+    }
+
+    @Test
+    public void cancellationBeforeBlockingWorkStartsIsHandled()
+        throws InterruptedException, ExecutionException, Fiber.NotCompletedException, TimeoutException {
+
+        final var gate = new CountDownLatch(1);
+        final var blockingWorkStarted = new AtomicBoolean(false);
+        final ExecutorService queuedExecutor = Executors.newSingleThreadExecutor();
+        try {
+            final Future<?> blocker = queuedExecutor.submit(() -> {
+                try {
+                    TimedAwait.latchAndExpectCompletion(gate, "gate");
+                } catch (final InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            });
+
+            final var fiber = Task.fromBlockingIO(() -> {
+                blockingWorkStarted.set(true);
+                return "unexpected";
+            }).runFiber(queuedExecutor);
+
+            fiber.cancel();
+            gate.countDown();
+            TimedAwait.future(blocker);
+            fiber.joinBlockingTimed(TIMEOUT);
+
+            try {
+                fiber.getResultOrThrow();
+                fail("Should have thrown a TaskCancellationException");
+            } catch (final TaskCancellationException ignored) {}
+            assertFalse(blockingWorkStarted.get(), "Blocking work should not have started");
+        } finally {
+            queuedExecutor.shutdownNow();
+        }
     }
 }
 

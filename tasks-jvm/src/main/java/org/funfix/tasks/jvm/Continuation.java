@@ -6,38 +6,53 @@ import org.jspecify.annotations.Nullable;
 import java.util.concurrent.Executor;
 
 /**
- * INTERNAL API.
- * <p>
  * Continuation objects are used to complete tasks, or for registering
  * {@link Cancellable} references that can be used to interrupt running tasks.
  * <p>
  * {@code Continuation} objects get injected in {@link AsyncFun} functions.
  * See {@link Task#fromAsync(AsyncFun)}.
+ * <p>
+ * The {@code Continuation} provides the execution context and the means to
+ * signal the task's outcome. It also allows registering cleanup actions
+ * that run if the task is cancelled.
  *
  * @param <T> is the type of the value that the task will complete with
  */
-@ApiStatus.Internal
-interface Continuation<T extends @Nullable Object>
+public interface Continuation<T extends @Nullable Object>
     extends CompletionCallback<T> {
 
     /**
      * Returns the {@link Executor} that the task can use to run its
      * asynchronous computation.
      */
-    TaskExecutor getExecutor();
+    Executor getExecutor();
 
     /**
-     * Registers a {@link Cancellable} reference that can be used to interrupt
-     * a running task.
+     * Registers a finalizer that is invoked if the running task is cancelled
+     * before completion.
+     * <p>
+     * The finalizer is called only for cancellation before completion.
+     * If cancellation already happened, the finalizer may be called immediately.
+     * The finalizer is not called after success, failure, or terminal completion.
+     * <p>
+     * Finalizers must be idempotent, fast, non-blocking, and thread-safe.
+     * Exceptions from finalizers are handled via {@link UncaughtExceptionHandler}.
      *
-     * @param cancellable is the reference to the cancellable object that this
-     *                    continuation will register.
+     * @param finalizer the cleanup action to run on cancellation
      */
-    @Nullable Cancellable registerCancellable(Cancellable cancellable);
+    @Nullable Cancellable invokeOnCancellation(Cancellable finalizer);
+}
 
-    CancellableForwardRef registerForwardCancellable();
+/**
+ * INTERNAL API.
+ */
+@ApiStatus.Internal
+interface InternalContinuation<T extends @Nullable Object>
+    extends Continuation<T> {
 
-    Continuation<T> withExecutorOverride(TaskExecutor executor);
+    TaskExecutor getTaskExecutor();
+
+    InternalContinuation<T> withExecutorOverride(TaskExecutor executor);
 
     void registerExtraCallback(CompletionCallback<T> extraCallback);
 }
@@ -48,7 +63,7 @@ interface Continuation<T extends @Nullable Object>
 @ApiStatus.Internal
 @FunctionalInterface
 interface AsyncContinuationFun<T extends @Nullable Object> {
-    void invoke(Continuation<T> continuation);
+    void invoke(InternalContinuation<T> continuation);
 }
 
 /**
@@ -56,7 +71,7 @@ interface AsyncContinuationFun<T extends @Nullable Object> {
  */
 @ApiStatus.Internal
 final class CancellableContinuation<T extends @Nullable Object>
-    implements Continuation<T>, Cancellable {
+    implements InternalContinuation<T>, Cancellable {
 
     private final ContinuationCallback<T> callback;
     private final MutableCancellable cancellableRef;
@@ -84,7 +99,12 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
-    public TaskExecutor getExecutor() {
+    public Executor getExecutor() {
+        return this.executor;
+    }
+
+    @Override
+    public TaskExecutor getTaskExecutor() {
         return this.executor;
     }
 
@@ -94,37 +114,36 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
-    public CancellableForwardRef registerForwardCancellable() {
-        return cancellableRef.newCancellableRef();
+    public @Nullable Cancellable invokeOnCancellation(Cancellable finalizer) {
+        return cancellableRef.register(finalizer);
     }
 
     @Override
-    public @Nullable Cancellable registerCancellable(Cancellable cancellable) {
-        return this.cancellableRef.register(cancellable);
-    }
-
-    @Override
-    public void onOutcome(Outcome<T> outcome) {
+    public void onOutcome(Outcome<? extends T> outcome) {
+        cancellableRef.complete();
         callback.onOutcome(outcome);
     }
 
     @Override
     public void onSuccess(T value) {
+        cancellableRef.complete();
         callback.onSuccess(value);
     }
 
     @Override
     public void onFailure(Throwable e) {
+        cancellableRef.complete();
         callback.onFailure(e);
     }
 
     @Override
     public void onCancellation() {
+        cancellableRef.complete();
         callback.onCancellation();
     }
 
     @Override
-    public Continuation<T> withExecutorOverride(TaskExecutor executor) {
+    public InternalContinuation<T> withExecutorOverride(TaskExecutor executor) {
         return new CancellableContinuation<>(
             executor,
             callback,
