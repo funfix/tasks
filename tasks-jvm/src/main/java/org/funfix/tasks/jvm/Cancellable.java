@@ -129,8 +129,8 @@ final class MutableCancellable implements Cancellable {
                             break;
                         }
                     } else {
-                        // Once in `Closing`, concurrent updates are only allowed
-                        // to go Closing -> Closing
+                        // Once in `Cancelling`, concurrent updates are only allowed
+                        // to go Cancelling -> Cancelling
                         final var name = current != null ? current.getClass().getName() : "null";
                         throw new IllegalStateException("Bug — found: " + name);
                     }

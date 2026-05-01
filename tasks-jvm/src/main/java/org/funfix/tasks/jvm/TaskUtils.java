@@ -17,7 +17,8 @@ final class TaskUtils {
                 continuation.onSuccess(func.invoke());
             } catch (final InterruptedException e) {
                 continuation.onCancellation();
-            } catch (final Exception e) {
+            } catch (final Throwable e) {
+                UncaughtExceptionHandler.rethrowIfFatal(e);
                 continuation.onFailure(e);
             }
         });
