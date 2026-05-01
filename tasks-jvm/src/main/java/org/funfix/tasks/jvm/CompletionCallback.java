@@ -35,7 +35,7 @@ public interface CompletionCallback<
      *
      * @param value is the successful result of the task, to be signaled
      */
-    default void onSuccess(T value) {
+    default void onSuccess(final T value) {
         onOutcome(Outcome.success(value));
     }
 
@@ -44,7 +44,7 @@ public interface CompletionCallback<
      *
      * @param e is the exception that the task failed with
      */
-    default void onFailure(Throwable e) {
+    default void onFailure(final Throwable e) {
         onOutcome(Outcome.failure(e));
     }
 
@@ -93,7 +93,7 @@ final class ManyCompletionCallback<
     }
 
     ManyCompletionCallback<T> withExtraListener(
-        CompletionCallback<T> extraListener
+        final CompletionCallback<T> extraListener
     ) {
         Objects.requireNonNull(extraListener, "extraListener");
         final var newListeners = this.listeners.prepend(extraListener);
@@ -101,29 +101,29 @@ final class ManyCompletionCallback<
     }
 
     @Override
-    public void onOutcome(Outcome<? extends T> outcome) {
+    public void onOutcome(final Outcome<? extends T> outcome) {
         for (final CompletionCallback<T> listener : listeners) {
             try {
                 listener.onOutcome(outcome);
-            } catch (Throwable e) {
+            } catch (final Throwable e) {
                 UncaughtExceptionHandler.logOrRethrow(e);
             }
         }
     }
 
     @Override
-    public void onSuccess(T value) {
+    public void onSuccess(final T value) {
         for (final CompletionCallback<T> listener : listeners) {
             try {
                 listener.onSuccess(value);
-            } catch (Throwable e) {
+            } catch (final Throwable e) {
                 UncaughtExceptionHandler.logOrRethrow(e);
             }
         }
     }
 
     @Override
-    public void onFailure(Throwable e) {
+    public void onFailure(final Throwable e) {
         Objects.requireNonNull(e, "e");
         for (final CompletionCallback<T> listener : listeners) {
             try {
@@ -249,7 +249,7 @@ final class AsyncContinuationCallback<
 
     // NullAway treats AtomicReference.get() as nullable between the read and compare-and-set.
     @SuppressWarnings("NullAway")
-    public void registerExtraCallback(CompletionCallback<T> extraCallback) {
+    public void registerExtraCallback(final CompletionCallback<T> extraCallback) {
         while (true) {
             final var current = listenerRef.get();
             if (current instanceof ManyCompletionCallback<T> many) {
@@ -338,7 +338,7 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
     }
 
     @Override
-    public void onOutcome(Outcome<? extends T> outcome) {
+    public void onOutcome(final Outcome<? extends T> outcome) {
         if (outcome instanceof Outcome.Success<? extends T> success) {
             onSuccess(success.value());
         } else if (outcome instanceof Outcome.Failure<?> failure) {
@@ -361,7 +361,7 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
 
     @FunctionalInterface
     interface AwaitFunction {
-        void apply(boolean isCancelled)
+        void apply(final boolean isCancelled)
             throws InterruptedException, TimeoutException;
     }
 
@@ -427,7 +427,7 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
     }
 
     @Override
-    public void registerExtraCallback(CompletionCallback<T> extraCallback) {
+    public void registerExtraCallback(final CompletionCallback<T> extraCallback) {
         while (true) {
             final var current = extraCallbackRef.get();
             if (current == null) {

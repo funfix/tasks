@@ -114,24 +114,24 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
-    public @Nullable Cancellable invokeOnCancellation(Cancellable finalizer) {
+    public @Nullable Cancellable invokeOnCancellation(final Cancellable finalizer) {
         return cancellableRef.register(finalizer);
     }
 
     @Override
-    public void onOutcome(Outcome<? extends T> outcome) {
+    public void onOutcome(final Outcome<? extends T> outcome) {
         cancellableRef.complete();
         callback.onOutcome(outcome);
     }
 
     @Override
-    public void onSuccess(T value) {
+    public void onSuccess(final T value) {
         cancellableRef.complete();
         callback.onSuccess(value);
     }
 
     @Override
-    public void onFailure(Throwable e) {
+    public void onFailure(final Throwable e) {
         cancellableRef.complete();
         callback.onFailure(e);
     }
@@ -143,7 +143,7 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
-    public InternalContinuation<T> withExecutorOverride(TaskExecutor executor) {
+    public InternalContinuation<T> withExecutorOverride(final TaskExecutor executor) {
         return new CancellableContinuation<>(
             executor,
             callback,
@@ -152,7 +152,7 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
-    public void registerExtraCallback(CompletionCallback<T> extraCallback) {
+    public void registerExtraCallback(final CompletionCallback<T> extraCallback) {
         callback.registerExtraCallback(extraCallback);
     }
 }

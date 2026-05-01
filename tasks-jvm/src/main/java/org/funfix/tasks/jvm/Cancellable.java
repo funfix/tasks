@@ -159,7 +159,7 @@ final class MutableCancellable implements Cancellable {
         }
     }
 
-    public @Nullable Cancellable register(Cancellable token) {
+    public @Nullable Cancellable register(final Cancellable token) {
         Objects.requireNonNull(token, "token");
         while (true) {
             final var current = ref.get();
@@ -214,7 +214,7 @@ final class MutableCancellable implements Cancellable {
         }
     }
 
-    private static void invoke(Cancellable token) {
+    private static void invoke(final Cancellable token) {
         try {
             token.cancel();
         } catch (Throwable e) {
@@ -228,7 +228,7 @@ final class MutableCancellable implements Cancellable {
             long order,
             @Nullable Active rest
         ) implements State {
-            Active register(Cancellable token) {
+            Active register(final Cancellable token) {
                 final var newOrder = order + 1;
                 return new State.Active(token, newOrder, this);
             }
@@ -237,7 +237,7 @@ final class MutableCancellable implements Cancellable {
         record Cancelling(
             @Nullable Active toCancel
         ) implements State {
-            Cancelling register(Cancellable token) {
+            Cancelling register(final Cancellable token) {
                 final var newOrder = toCancel != null ? toCancel.order + 1 : 1;
                 return new State.Cancelling(
                     new State.Active(token, newOrder, toCancel)

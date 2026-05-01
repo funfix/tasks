@@ -33,7 +33,7 @@ public interface CloseableFun extends AutoCloseable {
         close(ExitCase.succeeded());
     }
 
-    static CloseableFun fromAutoCloseable(AutoCloseable resource) {
+    static CloseableFun fromAutoCloseable(final AutoCloseable resource) {
         return ignored -> resource.close();
     }
 

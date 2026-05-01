@@ -21,7 +21,7 @@ public class TaskCancellationException extends Exception {
         super();
     }
 
-    public TaskCancellationException(@Nullable String message) {
+    public TaskCancellationException(final @Nullable String message) {
         super(message);
     }
 }

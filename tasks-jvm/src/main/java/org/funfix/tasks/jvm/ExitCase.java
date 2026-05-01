@@ -48,7 +48,7 @@ public sealed interface ExitCase {
         return Completed.INSTANCE;
     }
 
-    static ExitCase failed(Throwable error) {
+    static ExitCase failed(final Throwable error) {
         return new Failed(error);
     }
 

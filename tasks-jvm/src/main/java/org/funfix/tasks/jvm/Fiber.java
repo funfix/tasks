@@ -71,7 +71,7 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
      * does not cancel the fiber itself.
      */
     @NonBlocking
-    default Cancellable awaitAsync(CompletionCallback<? super T> callback) {
+    default Cancellable awaitAsync(final CompletionCallback<? super T> callback) {
         return joinAsync(() -> {
             try {
                 final var result = getResultOrThrow();
@@ -392,7 +392,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
             Outcome<? extends T> outcome
         ) implements State<T> {}
 
-        default void triggerListeners(TaskExecutor executor) {
+        default void triggerListeners(final TaskExecutor executor) {
             if (this instanceof Active<T> ref) {
                 for (final var listener : ref.listeners) {
                     executor.resumeOnExecutor(listener);
@@ -463,12 +463,12 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         }
 
         @Override
-        public void onSuccess(T value) {
+        public void onSuccess(final T value) {
             onOutcome(Outcome.success(value));
         }
 
         @Override
-        public void onFailure(Throwable e) {
+        public void onFailure(final Throwable e) {
             onOutcome(Outcome.failure(e));
         }
 
@@ -478,7 +478,7 @@ final class ExecutedFiber<T extends @Nullable Object> implements Fiber<T> {
         }
 
         @Override
-        public void onOutcome(Outcome<? extends T> outcome) {
+        public void onOutcome(final Outcome<? extends T> outcome) {
             while (true) {
                 State<T> current = stateRef.get();
                 if (current instanceof State.Active) {

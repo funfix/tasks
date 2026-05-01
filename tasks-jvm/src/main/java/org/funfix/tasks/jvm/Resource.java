@@ -169,7 +169,7 @@ public final class Resource<T extends @Nullable Object> {
     @Blocking
     @SuppressWarnings("ConstantValue")
     public <R extends @Nullable Object> R useBlocking(
-        @Nullable Executor executor,
+        final @Nullable Executor executor,
         final ProcessFun<? super T, ? extends R> process
     ) throws InterruptedException, ExecutionException {
         Objects.requireNonNull(process, "use");
@@ -268,7 +268,7 @@ public final class Resource<T extends @Nullable Object> {
      * <p>
      * @see Task#pure(Object)
      */
-    public static <T extends @Nullable Object> Resource<T> pure(T value) {
+    public static <T extends @Nullable Object> Resource<T> pure(final T value) {
         return Resource.fromAsync(Task.pure(Acquired.pure(value)));
     }
 
@@ -338,7 +338,7 @@ public final class Resource<T extends @Nullable Object> {
          * Creates a "pure" {@code Acquired} instance with the given value —
          * i.e., it just wraps a value with the release function being a no-op.
          */
-        public static <T extends @Nullable Object> Acquired<T> pure(T value) {
+        public static <T extends @Nullable Object> Acquired<T> pure(final T value) {
             return new Acquired<>(value, NOOP);
         }
 
@@ -349,8 +349,8 @@ public final class Resource<T extends @Nullable Object> {
          * @see Resource#fromBlockingIO(DelayedFun)
          */
         public static <T extends @Nullable Object> Acquired<T> fromBlockingIO(
-            T resource,
-            CloseableFun release
+            final T resource,
+            final CloseableFun release
         ) {
             Objects.requireNonNull(resource, "resource");
             Objects.requireNonNull(release, "release");

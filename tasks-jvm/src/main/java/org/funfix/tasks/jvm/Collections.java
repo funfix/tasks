@@ -12,11 +12,11 @@ import java.util.function.Predicate;
 sealed abstract class ImmutableStack<T extends @Nullable Object> implements Iterable<T>
     permits ImmutableStack.Cons, ImmutableStack.Nil {
 
-    final ImmutableStack<T> prepend(T value) {
+    final ImmutableStack<T> prepend(final T value) {
         return new Cons<>(value, this);
     }
 
-    final ImmutableStack<T> prependAll(Iterable<? extends T> values) {
+    final ImmutableStack<T> prependAll(final Iterable<? extends T> values) {
         ImmutableStack<T> result = this;
         for (T t : values) {
             result = result.prepend(t);
@@ -56,13 +56,13 @@ sealed abstract class ImmutableStack<T extends @Nullable Object> implements Iter
         final T head;
         final ImmutableStack<T> tail;
 
-        Cons(T head, ImmutableStack<T> tail) {
+        Cons(final T head, final ImmutableStack<T> tail) {
             this.head = head;
             this.tail = tail;
         }
 
         @Override
-        public boolean equals(Object o) {
+        public boolean equals(final Object o) {
             if (!(o instanceof Cons<?> cons)) return false;
             return Objects.equals(head, cons.head) && Objects.equals(tail, cons.tail);
         }
@@ -82,7 +82,7 @@ sealed abstract class ImmutableStack<T extends @Nullable Object> implements Iter
         }
 
         @Override
-        public boolean equals(Object obj) {
+        public boolean equals(final Object obj) {
             return obj instanceof Nil<?>;
         }
     }
@@ -137,12 +137,12 @@ final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
     private final ImmutableStack<T> toEnqueue;
     private final ImmutableStack<T> toDequeue;
 
-    private ImmutableQueue(ImmutableStack<T> toEnqueue, ImmutableStack<T> toDequeue) {
+    private ImmutableQueue(final ImmutableStack<T> toEnqueue, final ImmutableStack<T> toDequeue) {
         this.toEnqueue = toEnqueue;
         this.toDequeue = toDequeue;
     }
 
-    ImmutableQueue<T> enqueue(T value) {
+    ImmutableQueue<T> enqueue(final T value) {
         return new ImmutableQueue<>(toEnqueue.prepend(value), toDequeue);
     }
 
@@ -184,7 +184,7 @@ final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
         return toEnqueue.isEmpty() && toDequeue.isEmpty();
     }
 
-    ImmutableQueue<T> filter(Predicate<? super T> predicate) {
+    ImmutableQueue<T> filter(final Predicate<? super T> predicate) {
         ImmutableQueue<T> result = empty();
         for (T t : this) {
             if (predicate.test(t)) {
@@ -236,7 +236,7 @@ final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(final Object obj) {
         if (obj instanceof ImmutableQueue<?> that) {
             return toList().equals(that.toList());
         } else {
