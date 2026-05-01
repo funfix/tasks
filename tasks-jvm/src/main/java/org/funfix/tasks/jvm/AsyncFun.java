@@ -10,7 +10,7 @@ import java.io.Serializable;
  * <p>
  * The injected {@link Continuation} provides:
  * <ul>
- *   <li>An {@link java.util.concurrent.Executor} for scheduling work</li>
+ *   <li>An {@code Executor} for scheduling work / introduce async boundaries.</li>
  *   <li>Methods to signal completion ({@link Continuation#onSuccess}, {@link Continuation#onFailure}, {@link Continuation#onCancellation})</li>
  *   <li>A way to register cancellation finalizers ({@link Continuation#invokeOnCancellation})</li>
  * </ul>
@@ -18,7 +18,7 @@ import java.io.Serializable;
  * Example:
  * <pre>{@code
  * Task.fromAsync(continuation -> {
- *     java.util.concurrent.Executor executor = continuation.getExecutor();
+ *     final Executor executor = continuation.getExecutor();
  *     continuation.invokeOnCancellation(() -> System.out.println("cleanup"));
  *     executor.execute(() -> continuation.onSuccess("ok"));
  * });
