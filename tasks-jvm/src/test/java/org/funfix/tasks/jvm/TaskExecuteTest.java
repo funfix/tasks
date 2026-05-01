@@ -17,7 +17,7 @@ public class TaskExecuteTest {
         final var latch =
             new CountDownLatch(1);
         final var outcomeRef =
-            new AtomicReference<@Nullable Outcome<String>>(null);
+            new AtomicReference<@Nullable Outcome<? extends String>>(null);
 
         final var task = Task.fromBlockingIO(() -> "Hello!");
         task.runAsync(outcome -> {
@@ -35,7 +35,7 @@ public class TaskExecuteTest {
         final var latch =
             new CountDownLatch(1);
         final var outcomeRef =
-            new AtomicReference<@Nullable Outcome<String>>(null);
+            new AtomicReference<@Nullable Outcome<? extends String>>(null);
         final var expectedError =
             new RuntimeException("Error");
 

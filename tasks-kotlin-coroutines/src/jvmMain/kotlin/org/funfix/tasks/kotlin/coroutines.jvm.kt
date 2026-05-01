@@ -95,7 +95,7 @@ internal class CoroutineAsCompletionCallback<T>(
             false
         }
 
-    override fun onOutcome(outcome: Outcome<T>) {
+    override fun onOutcome(outcome: Outcome<out T>) {
         when (outcome) {
             is Outcome.Success -> onSuccess(outcome.value())
             is Outcome.Failure -> onFailure(outcome.exception())

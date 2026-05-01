@@ -296,7 +296,7 @@ abstract class BaseFiberTest {
             final var fiber = startFiber(() -> 1);
             final var result = new AtomicInteger(0);
             fiber.awaitAsync(outcome -> {
-                if (outcome instanceof Outcome.Success<Integer> success) {
+                if (outcome instanceof Outcome.Success<? extends Integer> success) {
                     //noinspection DataFlowIssue
                     result.set(success.value());
                     latch.countDown();
@@ -320,7 +320,7 @@ abstract class BaseFiberTest {
             });
             final var result = new AtomicReference<@Nullable Throwable>(null);
             fiber.awaitAsync(outcome -> {
-                if (outcome instanceof Outcome.Failure<Integer> failure) {
+                if (outcome instanceof Outcome.Failure<?> failure) {
                     result.set(failure.exception());
                     latch.countDown();
                 } else {
@@ -353,9 +353,9 @@ abstract class BaseFiberTest {
 
             final var awaitLatch = new CountDownLatch(1);
             fiber.awaitAsync(outcome -> {
-                if (outcome instanceof Outcome.Cancellation<String>) {
+                if (outcome instanceof Outcome.Cancellation<?>) {
                     wasInterrupted.incrementAndGet();
-                } else if (outcome instanceof Outcome.Failure<String> failure) {
+                } else if (outcome instanceof Outcome.Failure<?> failure) {
                     UncaughtExceptionHandler.logOrRethrow(failure.exception());
                 }
                 awaitLatch.countDown();

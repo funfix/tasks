@@ -151,7 +151,7 @@ public class ContinuationCancellationTest {
             TaskExecutor.from(Runnable::run),
             new ContinuationCallback<>() {
                 @Override
-                public void onOutcome(Outcome<String> outcome) {}
+                public void onOutcome(Outcome<? extends String> outcome) {}
 
                 @Override
                 public void registerExtraCallback(CompletionCallback<String> extraCallback) {}

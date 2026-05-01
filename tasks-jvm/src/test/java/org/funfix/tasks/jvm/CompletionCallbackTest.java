@@ -52,7 +52,7 @@ public class CompletionCallbackTest {
                 }
 
                 @Override
-                public void onOutcome(Outcome<String> outcome) {
+                public void onOutcome(Outcome<? extends String> outcome) {
                     outcomeRef.set(outcome);
                     called.incrementAndGet();
                 }
@@ -91,7 +91,7 @@ public class CompletionCallbackTest {
                 }
 
                 @Override
-                public void onOutcome(Outcome<String> outcome) {
+                public void onOutcome(Outcome<? extends String> outcome) {
                     outcomeRef.set(outcome);
                     called.incrementAndGet();
                 }
@@ -139,7 +139,7 @@ public class CompletionCallbackTest {
                 }
 
                 @Override
-                public void onOutcome(Outcome<String> outcome) {
+                public void onOutcome(Outcome<? extends String> outcome) {
                     outcomeRef.set(outcome);
                     called.incrementAndGet();
                 }

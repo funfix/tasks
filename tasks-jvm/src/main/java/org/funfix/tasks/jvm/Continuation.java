@@ -119,7 +119,7 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
-    public void onOutcome(Outcome<T> outcome) {
+    public void onOutcome(Outcome<? extends T> outcome) {
         cancellableRef.complete();
         callback.onOutcome(outcome);
     }

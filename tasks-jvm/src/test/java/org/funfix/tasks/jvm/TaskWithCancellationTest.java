@@ -15,7 +15,7 @@ public class TaskWithCancellationTest {
     void testTaskWithCancellation() throws InterruptedException {
         for (int r = 0; r < TestSettings.CONCURRENCY_REPEATS; r++) {
             final var cancelTokensRef = new ConcurrentLinkedQueue<Integer>();
-            final var outcomeRef = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var outcomeRef = new AtomicReference<@Nullable Outcome<? extends String>>(null);
 
             final var startedLatch = new CountDownLatch(1);
             final var taskLatch = new CountDownLatch(1);

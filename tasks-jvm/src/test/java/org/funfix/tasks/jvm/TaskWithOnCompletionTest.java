@@ -18,8 +18,8 @@ public class TaskWithOnCompletionTest {
     @Test
     void guaranteeOnSuccess() throws ExecutionException, InterruptedException {
         for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
-            final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
-            final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var ref1 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
+            final var ref2 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
             final var outcome1 = Task
                 .fromBlockingIO(() -> "Success")
                 .withOnComplete(ref1::set)
@@ -35,8 +35,8 @@ public class TaskWithOnCompletionTest {
     @Test
     void guaranteeOnSuccessWithFibers() throws ExecutionException, InterruptedException, TaskCancellationException {
         for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
-            final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
-            final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var ref1 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
+            final var ref2 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
             final var fiber = Task
                 .fromBlockingIO(() -> "Success")
                 .withOnComplete(ref1::set)
@@ -52,8 +52,8 @@ public class TaskWithOnCompletionTest {
     @Test
     void guaranteeOnSuccessWithBlockingIO() throws ExecutionException, InterruptedException, TimeoutException {
         for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
-            final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
-            final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var ref1 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
+            final var ref2 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
             final var r = Task
                 .fromBlockingIO(() -> "Success")
                 .withOnComplete(ref1::set)
@@ -70,8 +70,8 @@ public class TaskWithOnCompletionTest {
     @Test
     void guaranteeOnFailure() throws InterruptedException {
         for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
-            final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
-            final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var ref1 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
+            final var ref2 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
             final var error = new RuntimeException("Failure");
 
             try {
@@ -94,8 +94,8 @@ public class TaskWithOnCompletionTest {
     @Test
     void guaranteeOnFailureWithFibers() throws InterruptedException, TaskCancellationException {
         for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
-            final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
-            final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var ref1 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
+            final var ref2 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
             final var error = new RuntimeException("Failure");
 
             try {
@@ -119,8 +119,8 @@ public class TaskWithOnCompletionTest {
     @Test
     void guaranteeOnFailureBlockingIO() throws InterruptedException {
         for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
-            final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
-            final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var ref1 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
+            final var ref2 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
             final var error = new RuntimeException("Failure");
 
             try {
@@ -143,8 +143,8 @@ public class TaskWithOnCompletionTest {
     @Test
     void guaranteeOnCancellation() throws InterruptedException, ExecutionException, TimeoutException {
         for (int t = 0; t < CONCURRENCY_REPEATS; t++) {
-            final var ref1 = new AtomicReference<@Nullable Outcome<String>>(null);
-            final var ref2 = new AtomicReference<@Nullable Outcome<String>>(null);
+            final var ref1 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
+            final var ref2 = new AtomicReference<@Nullable Outcome<? extends String>>(null);
             final var latch = new CountDownLatch(1);
 
             final var task = Task

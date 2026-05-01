@@ -59,7 +59,7 @@ class CoroutinesJvmTest {
         val task = suspendAsTask {
             21 + 21
         }
-        val deferred = CompletableDeferred<Outcome<Int>>()
+        val deferred = CompletableDeferred<Outcome<out Int>>()
         task.runAsync { outcome -> deferred.complete(outcome) }
 
         assertEquals(Outcome.Success(42), deferred.await())
@@ -71,7 +71,7 @@ class CoroutinesJvmTest {
         val task = suspendAsTask<Int> {
             throw ex
         }
-        val deferred = CompletableDeferred<Outcome<Int>>()
+        val deferred = CompletableDeferred<Outcome<out Int>>()
         task.runAsync { outcome -> deferred.complete(outcome) }
 
         assertEquals(Outcome.Failure(ex), deferred.await())
@@ -84,7 +84,7 @@ class CoroutinesJvmTest {
             started.complete(Unit)
             awaitCancellation()
         }
-        val deferred = CompletableDeferred<Outcome<Unit>>()
+        val deferred = CompletableDeferred<Outcome<out Unit>>()
         val cancel = task.runAsync { outcome -> deferred.complete(outcome) }
 
         started.await()
@@ -186,7 +186,7 @@ class CoroutinesJvmTest {
         val task = suspendAsTask<Unit> {
             throw CancellationException("cancelled")
         }
-        val deferred = CompletableDeferred<Outcome<Unit>>()
+        val deferred = CompletableDeferred<Outcome<out Unit>>()
         task.runAsync { outcome -> deferred.complete(outcome) }
 
         assertEquals(Outcome.Cancellation(), deferred.await())
@@ -197,7 +197,7 @@ class CoroutinesJvmTest {
         val task = suspendAsTask<Unit> {
             throw TaskCancellationException("stop")
         }
-        val deferred = CompletableDeferred<Outcome<Unit>>()
+        val deferred = CompletableDeferred<Outcome<out Unit>>()
         task.runAsync { outcome -> deferred.complete(outcome) }
 
         assertEquals(Outcome.Cancellation(), deferred.await())
@@ -208,7 +208,7 @@ class CoroutinesJvmTest {
         val task = suspendAsTask<Unit> {
             throw InterruptedException("stop")
         }
-        val deferred = CompletableDeferred<Outcome<Unit>>()
+        val deferred = CompletableDeferred<Outcome<out Unit>>()
         task.runAsync { outcome -> deferred.complete(outcome) }
 
         assertEquals(Outcome.Cancellation(), deferred.await())
