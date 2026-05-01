@@ -56,6 +56,9 @@ project/local-plugins.sbt
 .sbt-scripted/
 local.sbt
 
+# OpenCode
+.sisyphus
+
 # Bloop
 .bsp
 
