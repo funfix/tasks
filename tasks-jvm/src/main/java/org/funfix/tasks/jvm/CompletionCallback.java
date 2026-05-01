@@ -1,6 +1,7 @@
 package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.io.Serializable;
@@ -22,10 +23,16 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  *
  * @param <T> is the type of the value that the task will complete with
  */
+@NullMarked
 @FunctionalInterface
 public interface CompletionCallback<T extends @Nullable Object>
     extends Serializable {
 
+    /**
+     * Signals the completion of the task.
+     *
+     * @param outcome
+     */
     void onOutcome(Outcome<T> outcome);
 
     /**

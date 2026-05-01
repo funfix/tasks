@@ -1,13 +1,12 @@
 package org.funfix.tasks.jvm;
 
-import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.concurrent.ExecutionException;
+import org.junit.jupiter.api.Test;
+
 public class PureTest {
+
     @Test
     void pureTask() throws ExecutionException, InterruptedException {
         final var task = Task.pure(42);
