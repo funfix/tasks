@@ -11,7 +11,7 @@ import java.util.function.Function;
  */
 @FunctionalInterface
 public interface CloseableFun extends AutoCloseable {
-    void close(final ExitCase exitCase) throws Exception;
+    void close(ExitCase exitCase) throws Exception;
 
     /**
      * Converts this blocking finalizer into an asynchronous one

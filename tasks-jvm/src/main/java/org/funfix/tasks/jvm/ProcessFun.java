@@ -10,5 +10,5 @@ import org.jspecify.annotations.Nullable;
  */
 @FunctionalInterface
 public interface ProcessFun<In extends @Nullable Object, Out extends  @Nullable Object> {
-    Out call(final In input) throws Exception;
+    Out call(In input) throws Exception;
 }

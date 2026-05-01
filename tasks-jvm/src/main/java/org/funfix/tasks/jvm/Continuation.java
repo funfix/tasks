@@ -40,7 +40,7 @@ public interface Continuation<T extends @Nullable Object>
      *
      * @param finalizer the cleanup action to run on cancellation
      */
-    @Nullable Cancellable invokeOnCancellation(final Cancellable finalizer);
+    @Nullable Cancellable invokeOnCancellation(Cancellable finalizer);
 }
 
 /**
@@ -52,9 +52,9 @@ interface InternalContinuation<T extends @Nullable Object>
 
     TaskExecutor getTaskExecutor();
 
-    InternalContinuation<T> withExecutorOverride(final TaskExecutor executor);
+    InternalContinuation<T> withExecutorOverride(TaskExecutor executor);
 
-    void registerExtraCallback(final CompletionCallback<T> extraCallback);
+    void registerExtraCallback(CompletionCallback<T> extraCallback);
 }
 
 /**
@@ -63,7 +63,7 @@ interface InternalContinuation<T extends @Nullable Object>
 @ApiStatus.Internal
 @FunctionalInterface
 interface AsyncContinuationFun<T extends @Nullable Object> {
-    void invoke(final InternalContinuation<T> continuation);
+    void invoke(InternalContinuation<T> continuation);
 }
 
 /**

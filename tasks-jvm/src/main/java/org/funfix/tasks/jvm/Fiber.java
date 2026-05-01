@@ -53,7 +53,7 @@ public interface Fiber<T extends @Nullable Object> extends Cancellable {
      * does not cancel the fiber itself.
      */
     @NonBlocking
-    Cancellable joinAsync(final Runnable onComplete);
+    Cancellable joinAsync(Runnable onComplete);
 
     /**
      * Waits until the fiber completes, and then runs the given callback

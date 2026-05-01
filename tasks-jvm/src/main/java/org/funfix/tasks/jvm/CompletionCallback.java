@@ -28,7 +28,7 @@ public interface CompletionCallback<
     /**
      * Signals the completion of the task.
      */
-    void onOutcome(final Outcome<? extends T> outcome);
+    void onOutcome(Outcome<? extends T> outcome);
 
     /**
      * Must be called when the task completes successfully.
@@ -154,7 +154,7 @@ interface ContinuationCallback<
      * Registers an extra callback to be invoked when the task completes.
      * This is useful for chaining callbacks or adding additional listeners.
      */
-    void registerExtraCallback(final CompletionCallback<T> extraCallback);
+    void registerExtraCallback(CompletionCallback<T> extraCallback);
 }
 
 @ApiStatus.Internal
