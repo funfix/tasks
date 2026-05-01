@@ -474,8 +474,9 @@ public final class Task<T extends @Nullable Object> {
     }
 
     /** Reusable "void" task that does nothing, completing immediately. */
+    // NullAway does not accept the null sentinel even with the explicit @Nullable Void type witness.
     @SuppressWarnings({"NullAway", "DataFlowIssue"})
-    public static final Task<Void> NOOP = Task.pure(null);
+    public static final Task<@Nullable Void> NOOP = Task.<@Nullable Void>pure(null);
 }
 
 /**
@@ -520,7 +521,7 @@ final class TaskFromCancellableFuture<T extends @Nullable Object>
         }
     }
 
-    private static <T> CompletableFuture<? extends T> getCompletableFuture(
+    private static <T extends @Nullable Object> CompletableFuture<? extends T> getCompletableFuture(
         CancellableFuture<? extends T> cancellableFuture,
         CompletionCallback<? super T> callback
     ) {

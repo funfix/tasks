@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "jspecify-nullness": {
+      "source": "alexandru/skills",
+      "sourceType": "github",
+      "skillPath": "skills/jspecify-nullness/SKILL.md",
+      "computedHash": "7cd2c85c83bdec95a36ea222db3dce9afc83f8b82b0c3e05602982e364095b46"
+    }
+  }
+}

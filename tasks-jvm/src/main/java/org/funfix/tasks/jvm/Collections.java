@@ -73,7 +73,7 @@ sealed abstract class ImmutableStack<T extends @Nullable Object> implements Iter
         }
     }
 
-    static final class Nil<T> extends ImmutableStack<T> {
+    static final class Nil<T extends @Nullable Object> extends ImmutableStack<T> {
         Nil() {}
 
         @Override
@@ -87,7 +87,7 @@ sealed abstract class ImmutableStack<T extends @Nullable Object> implements Iter
         }
     }
 
-    static <T> ImmutableStack<T> empty() {
+    static <T extends @Nullable Object> ImmutableStack<T> empty() {
         return new Nil<>();
     }
 
@@ -158,6 +158,7 @@ final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
         }
     }
 
+    // NullAway cannot refine ImmutableStack.head() after the explicit non-empty checks.
     @SuppressWarnings("NullAway")
     T peek() throws NoSuchElementException {
         if (!toDequeue.isEmpty()) {
@@ -248,7 +249,7 @@ final class ImmutableQueue<T extends @Nullable Object> implements Iterable<T> {
         return toList().hashCode();
     }
 
-    static <T> ImmutableQueue<T> empty() {
+    static <T extends @Nullable Object> ImmutableQueue<T> empty() {
         return new ImmutableQueue<>(ImmutableStack.empty(), ImmutableStack.empty());
     }
 }

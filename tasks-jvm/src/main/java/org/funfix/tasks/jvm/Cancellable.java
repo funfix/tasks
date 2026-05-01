@@ -2,7 +2,7 @@ package org.funfix.tasks.jvm;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NonBlocking;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -86,7 +86,6 @@ final class MutableCancellable implements Cancellable {
 
     @Override
     public void cancel() {
-        @Nullable
         var state = ref.getAndSet(State.Closed.INSTANCE);
         while (state instanceof State.Active active) {
             try {
@@ -151,8 +150,8 @@ final class MutableCancellable implements Cancellable {
         while (true) {
             final var current = ref.get();
             if (current instanceof State.Active active) {
-                @Nullable var cursor = active;
-                @Nullable State.Active acc = null;
+                State.@Nullable Active cursor = active;
+                State.@Nullable Active acc = null;
                 while (cursor != null) {
                     if (cursor.order != order) {
                         acc = new State.Active(cursor.token, cursor.order, acc);
@@ -160,7 +159,7 @@ final class MutableCancellable implements Cancellable {
                     cursor = cursor.rest;
                 }
                 // Reversing
-                @Nullable State.Active update = null;
+                State.@Nullable Active update = null;
                 while (acc != null) {
                     update = new State.Active(acc.token, acc.order, update);
                     acc = acc.rest;
