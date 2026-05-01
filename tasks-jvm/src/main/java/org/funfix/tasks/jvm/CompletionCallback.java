@@ -1,9 +1,5 @@
 package org.funfix.tasks.jvm;
 
-import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
-
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
@@ -12,6 +8,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
+import org.jetbrains.annotations.ApiStatus;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a callback that will be invoked when a task completes.
@@ -23,11 +22,10 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  *
  * @param <T> is the type of the value that the task will complete with
  */
-@NullMarked
 @FunctionalInterface
-public interface CompletionCallback<T extends @Nullable Object>
-    extends Serializable {
-
+public interface CompletionCallback<
+    T extends @Nullable Object
+> extends Serializable {
     /**
      * Signals the completion of the task.
      *
@@ -73,8 +71,9 @@ public interface CompletionCallback<T extends @Nullable Object>
 }
 
 @ApiStatus.Internal
-final class ManyCompletionCallback<T extends @Nullable Object>
-    implements CompletionCallback<T> {
+final class ManyCompletionCallback<
+    T extends @Nullable Object
+> implements CompletionCallback<T> {
 
     private final ImmutableStack<CompletionCallback<T>> listeners;
 
@@ -96,7 +95,9 @@ final class ManyCompletionCallback<T extends @Nullable Object>
         this.listeners = listeners;
     }
 
-    ManyCompletionCallback<T> withExtraListener(CompletionCallback<T> extraListener) {
+    ManyCompletionCallback<T> withExtraListener(
+        CompletionCallback<T> extraListener
+    ) {
         Objects.requireNonNull(extraListener, "extraListener");
         final var newListeners = this.listeners.prepend(extraListener);
         return new ManyCompletionCallback<>(newListeners);
@@ -149,9 +150,9 @@ final class ManyCompletionCallback<T extends @Nullable Object>
 }
 
 @ApiStatus.Internal
-interface ContinuationCallback<T extends @Nullable Object>
-    extends CompletionCallback<T>, Serializable {
-
+interface ContinuationCallback<
+    T extends @Nullable Object
+> extends CompletionCallback<T>, Serializable {
     /**
      * Registers an extra callback to be invoked when the task completes.
      * This is useful for chaining callbacks or adding additional listeners.
@@ -160,8 +161,9 @@ interface ContinuationCallback<T extends @Nullable Object>
 }
 
 @ApiStatus.Internal
-final class AsyncContinuationCallback<T extends @Nullable Object>
-    implements ContinuationCallback<T>, Runnable {
+final class AsyncContinuationCallback<
+    T extends @Nullable Object
+> implements ContinuationCallback<T>, Runnable {
 
     private final AtomicBoolean isWaiting = new AtomicBoolean(true);
     private final AtomicReference<CompletionCallback<T>> listenerRef;
@@ -245,10 +247,7 @@ final class AsyncContinuationCallback<T extends @Nullable Object>
         final CompletionCallback<T> listener
     ) {
         Objects.requireNonNull(listener, "listener");
-        return new AsyncContinuationCallback<>(
-            listener,
-            executor
-        );
+        return new AsyncContinuationCallback<>(listener, executor);
     }
 
     // NullAway treats AtomicReference.get() as nullable between the read and compare-and-set.
@@ -261,7 +260,12 @@ final class AsyncContinuationCallback<T extends @Nullable Object>
                 if (listenerRef.compareAndSet(current, update)) {
                     return;
                 }
-            } else if (listenerRef.compareAndSet(current, new ManyCompletionCallback<>(current, extraCallback))) {
+            } else if (
+                listenerRef.compareAndSet(
+                    current,
+                    new ManyCompletionCallback<>(current, extraCallback)
+                )
+            ) {
                 return;
             }
         }
@@ -277,17 +281,21 @@ final class AsyncContinuationCallback<T extends @Nullable Object>
  */
 @ApiStatus.Internal
 final class BlockingCompletionCallback<T extends @Nullable Object>
-    extends AbstractQueuedSynchronizer implements ContinuationCallback<T> {
+    extends AbstractQueuedSynchronizer
+    implements ContinuationCallback<T>
+{
 
-    private final AtomicBoolean isDone =
-        new AtomicBoolean(false);
-    private final AtomicReference<@Nullable CompletionCallback<T>> extraCallbackRef =
-        new AtomicReference<>(null);
+    private final AtomicBoolean isDone = new AtomicBoolean(false);
+    private final AtomicReference<
+        @Nullable CompletionCallback<T>
+    > extraCallbackRef = new AtomicReference<>(null);
 
     @Nullable
     private T result = null;
+
     @Nullable
     private Throwable error = null;
+
     @Nullable
     private InterruptedException interrupted = null;
 
@@ -295,17 +303,13 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
     @SuppressWarnings("NullAway")
     private void notifyOutcome() {
         final var extraCallback = extraCallbackRef.getAndSet(null);
-        if (extraCallback != null)
-            try {
-                if (error != null)
-                    extraCallback.onFailure(error);
-                else if (interrupted != null)
-                    extraCallback.onCancellation();
-                else
-                    extraCallback.onSuccess(result);
-            } catch (Throwable e) {
-                UncaughtExceptionHandler.logOrRethrow(e);
-            }
+        if (extraCallback != null) try {
+            if (error != null) extraCallback.onFailure(error);
+            else if (interrupted != null) extraCallback.onCancellation();
+            else extraCallback.onSuccess(result);
+        } catch (Throwable e) {
+            UncaughtExceptionHandler.logOrRethrow(e);
+        }
         releaseShared(1);
     }
 
@@ -360,14 +364,16 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
 
     @FunctionalInterface
     interface AwaitFunction {
-        void apply(boolean isCancelled) throws InterruptedException, TimeoutException;
+        void apply(boolean isCancelled)
+            throws InterruptedException, TimeoutException;
     }
 
     // NullAway cannot prove await completion initialized nullable-bounded T before returning.
     @SuppressWarnings("NullAway")
-    private T awaitInline(final Cancellable cancelToken, final AwaitFunction await)
-        throws InterruptedException, ExecutionException, TimeoutException {
-
+    private T awaitInline(
+        final Cancellable cancelToken,
+        final AwaitFunction await
+    ) throws InterruptedException, ExecutionException, TimeoutException {
         TaskLocalContext.signalTheStartOfBlockingCall();
         var isCancelled = false;
         TimeoutException timedOut = null;
@@ -378,8 +384,7 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
             } catch (final TimeoutException | InterruptedException e) {
                 if (!isCancelled) {
                     isCancelled = true;
-                    if (e instanceof TimeoutException te)
-                        timedOut = te;
+                    if (e instanceof TimeoutException te) timedOut = te;
                     cancelToken.cancel();
                 }
             }
@@ -396,9 +401,12 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
         return result;
     }
 
-    public T await(final Cancellable cancelToken) throws InterruptedException, ExecutionException {
+    public T await(final Cancellable cancelToken)
+        throws InterruptedException, ExecutionException {
         try {
-            return awaitInline(cancelToken, isCancelled -> acquireSharedInterruptibly(1));
+            return awaitInline(cancelToken, isCancelled ->
+                acquireSharedInterruptibly(1)
+            );
         } catch (final TimeoutException e) {
             throw new IllegalStateException("Unexpected timeout", e);
         }
@@ -406,11 +414,12 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
 
     public T await(final Cancellable cancelToken, final Duration timeout)
         throws ExecutionException, InterruptedException, TimeoutException {
-
         return awaitInline(cancelToken, isCancelled -> {
             if (!isCancelled) {
                 if (!tryAcquireSharedNanos(1, timeout.toNanos())) {
-                    throw new TimeoutException("Task timed-out after " + timeout);
+                    throw new TimeoutException(
+                        "Task timed-out after " + timeout
+                    );
                 }
             } else {
                 // Waiting without a timeout, since at this point it's waiting
@@ -433,7 +442,12 @@ final class BlockingCompletionCallback<T extends @Nullable Object>
                 if (extraCallbackRef.compareAndSet(current, update)) {
                     return;
                 }
-            } else if (extraCallbackRef.compareAndSet(current, new ManyCompletionCallback<>(current, extraCallback))) {
+            } else if (
+                extraCallbackRef.compareAndSet(
+                    current,
+                    new ManyCompletionCallback<>(current, extraCallback)
+                )
+            ) {
                 return;
             }
         }
