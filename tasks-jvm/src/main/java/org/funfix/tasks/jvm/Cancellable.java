@@ -61,33 +61,91 @@ final class CancellableUtils {
  */
 @ApiStatus.Internal
 final class MutableCancellable implements Cancellable {
-    private final AtomicReference<State> ref;
+    private final AtomicReference<@Nullable State> ref;
 
-    MutableCancellable(final Cancellable initialRef) {
+    MutableCancellable(final @Nullable Cancellable initialRef) {
         ref = new AtomicReference<>(new State.Active(initialRef, 0, null));
     }
 
     MutableCancellable() {
-        this(CancellableUtils.EMPTY);
+        this(null);
     }
 
+    /**
+     * Cancels all registered cancellation tokens.
+     * <p>
+     * Tries to execute the finalizers on the same thread, for as long as
+     * possible. Normally, `Cancellation` tokens should not be expensive
+     * (non-blocking), but we can't force this via the compiler, and it's
+     * best to avoid concurrency issues if possible. Although, note that
+     * this is not a contract that we can provide. E.g., if the task
+     * was canceled, we're forced to cancel future cancellation tokens
+     * on the thread calling `register`.
+     */
     @Override
     public void cancel() {
         while (true) {
             final var current = ref.get();
             if (current instanceof State.Active active) {
-                if (ref.compareAndSet(current, State.Cancelled.INSTANCE)) {
-                    invokeAll(active);
+                final var update = new State.Cancelling(
+                    // Adding a dummy that preserves the `order` for incoming
+                    // subscriptions.
+                    new State.Active(null, active.order, null)
+                );
+                if (ref.compareAndSet(current, update)) {
+                    // NOTE: this will eventually set the state to Cancelled
+                    // (after managing to cancel all tokens)
+                    startCancellationOfEverything(active);
                     return;
                 }
-            } else if (current instanceof State.Cancelled || current instanceof State.Completed) {
-                return;
             } else {
-                throw new IllegalStateException("Invalid state: " + current);
+                return;
             }
         }
     }
 
+    private void startCancellationOfEverything(State.@Nullable Active active) {
+        while (active != null) {
+            if (active.token != null) {
+                invoke(active.token);
+            }
+            active = active.rest;
+            // Tries fetching more tokens, since the state may have been updated
+            if (active == null) {
+                // Kind of hacky, but we need the loop due to the CAS
+                while (true) {
+                    final var current = ref.get();
+                    if (current instanceof State.Cancelling cancelling) {
+                        // We could have newly registered cancellable references.
+                        // If we have, then active != null and will get processed.
+                        active = cancelling.toCancel;
+                        final var update = active == null
+                            // If not, closing the loop with a final update
+                            ? State.Cancelled.INSTANCE
+                            : new State.Cancelling(null);
+                        // If CAS succeeds, we break from the loop
+                        // otherwise a concurrent update happened, so continue
+                        if (ref.compareAndSet(current, update)) {
+                            break;
+                        }
+                    } else {
+                        // Once in `Closing`, concurrent updates are only allowed
+                        // to go Closing -> Closing
+                        final var name = current != null ? current.getClass().getName() : "null";
+                        throw new IllegalStateException("Bug — found: " + name);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * The purpose of this method is to be called when invoking the methods
+     * on {@code CompletionCallback} in order to prevent leaks.
+     * <p>
+     * NOTE: in case a concurrent `cancel()` has already happened,
+     * then `complete()` becomes a NO-OP.
+     */
     void complete() {
         while (true) {
             final var current = ref.get();
@@ -95,54 +153,97 @@ final class MutableCancellable implements Cancellable {
                 if (ref.compareAndSet(current, State.Completed.INSTANCE)) {
                     return;
                 }
-            } else if (current instanceof State.Cancelled || current instanceof State.Completed) {
-                return;
             } else {
-                throw new IllegalStateException("Invalid state: " + current);
+                return;
             }
         }
     }
 
-    public void register(Cancellable token) {
+    public @Nullable Cancellable register(Cancellable token) {
         Objects.requireNonNull(token, "token");
         while (true) {
             final var current = ref.get();
             if (current instanceof State.Active active) {
-                final var newOrder = active.order + 1;
-                final var update = new State.Active(token, newOrder, active);
-                if (ref.compareAndSet(current, update)) { return; }
+                final var update = active.register(token);
+                if (ref.compareAndSet(current, update)) {
+                    return () -> unregister(update.order);
+                }
+            } else if (current instanceof State.Cancelling cancelling) {
+                final var update = cancelling.register(token);
+                if (ref.compareAndSet(current, update)) {
+                    return null;
+                }
             } else if (current instanceof State.Cancelled) {
                 invoke(token);
-                return;
+                return null;
             } else if (current instanceof State.Completed) {
-                return;
+                return null;
             } else {
                 throw new IllegalStateException("Invalid state: " + current);
             }
         }
     }
 
-    private static void invokeAll(State.@Nullable Active active) {
-        while (active != null) {
-            invoke(active.token);
-            active = active.rest;
+    private void unregister(final long order) {
+        while (true) {
+            final var current = ref.get();
+            if (current instanceof State.Active active) {
+                State.@Nullable Active cursor = active;
+                State.@Nullable Active newListReversed = null;
+                while (cursor != null) {
+                    if (cursor.order != order) {
+                        newListReversed = new State.Active(cursor.token, cursor.order, newListReversed);
+                    }
+                    cursor = cursor.rest;
+                }
+                // Reversing
+                State.@Nullable Active update = null;
+                while (newListReversed != null) {
+                    update = new State.Active(newListReversed.token, newListReversed.order, update);
+                    newListReversed = newListReversed.rest;
+                }
+                if (update == null) {
+                    update = new State.Active(null, 0, null);
+                }
+                if (ref.compareAndSet(current, update)) {
+                    return;
+                }
+            } else {
+                return;
+            }
         }
     }
 
     private static void invoke(Cancellable token) {
         try {
             token.cancel();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             UncaughtExceptionHandler.logOrRethrow(e);
         }
     }
 
     sealed interface State {
         record Active(
-            Cancellable token,
+            @Nullable Cancellable token,
             long order,
             @Nullable Active rest
-        ) implements State {}
+        ) implements State {
+            Active register(Cancellable token) {
+                final var newOrder = order + 1;
+                return new State.Active(token, newOrder, this);
+            }
+        }
+
+        record Cancelling(
+            @Nullable Active toCancel
+        ) implements State {
+            Cancelling register(Cancellable token) {
+                final var newOrder = toCancel != null ? toCancel.order + 1 : 1;
+                return new State.Cancelling(
+                    new State.Active(token, newOrder, toCancel)
+                );
+            }
+        }
 
         record Cancelled() implements State {
             static final Cancelled INSTANCE = new Cancelled();

@@ -40,7 +40,7 @@ public interface Continuation<T extends @Nullable Object>
      *
      * @param finalizer the cleanup action to run on cancellation
      */
-    void invokeOnCancellation(Cancellable finalizer);
+    @Nullable Cancellable invokeOnCancellation(Cancellable finalizer);
 }
 
 /**
@@ -114,8 +114,8 @@ final class CancellableContinuation<T extends @Nullable Object>
     }
 
     @Override
-    public void invokeOnCancellation(Cancellable finalizer) {
-        cancellableRef.register(finalizer);
+    public @Nullable Cancellable invokeOnCancellation(Cancellable finalizer) {
+        return cancellableRef.register(finalizer);
     }
 
     @Override
