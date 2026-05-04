@@ -2,7 +2,7 @@
 arrow = "2.2.2.1"
 binary-compatibility-validator = "0.18.1"
 dokka = "2.2.0"
-errorprone = "2.49.0"
+errorprone = "2.42.0" # DO NOT upgrade beyond 2.42.0 — it is the last version supporting JDK 17
 errorprone-plugin = "5.1.0"
 jetbrains-annotations = "26.1.0"
 jspecify = "1.0.0"
