@@ -35,6 +35,11 @@ jobs:
           distribution: temurin
       - uses: sbt/setup-sbt@v1
 
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Load prompt file
         id: load-prompt
         run: |
