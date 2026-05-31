@@ -14,26 +14,10 @@ Use the **jspecify-nullness** skill when working with JSpecify annotations, null
 
 ## Acceptance Criteria
 
-For all work to be considered complete:
+Work is not done until `make check-all` passes.
+
 ```sh
-./gradlew check
+make check-all
 ```
 
-## HOW-TOs
 
-### Update project's dependencies
-
-```bash
-make dependency-updates-ci
-```
-
-This will generate these reports:
-- For the Gradle project(s):
-  - `./build/dependencyUpdates/report.html`
-  - `./tasks-jvm/build/dependencyUpdates/report.html`
-  - `./tasks-kotlin-coroutines/build/dependencyUpdates/report.html`
-
-RULES: 
-- Never upgrade major versions (semver), instead ask the user or warn them!!!
-- Never upgrade to SNAPSHOT, RC, or milestone versions.
-- Fix breakage, but apply good judgement.
