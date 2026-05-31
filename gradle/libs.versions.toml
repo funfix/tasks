@@ -11,7 +11,7 @@ kover = "0.9.8"
 nullaway = "0.13.4"
 nullaway-plugin = "3.0.0"
 publish-plugin = "0.36.0"
-versions-plugin = "0.53.0"
+versions-plugin = "0.54.0"
 kotlinx-coroutines = "1.11.0"
 
 [libraries]
