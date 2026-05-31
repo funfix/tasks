@@ -1,7 +1,10 @@
-.PHONY: build
+.PHONY: build check-all
 
 build:
 	./gradlew build
+
+check-all:
+	./gradlew check
 
 dependency-updates:
 	./gradlew dependencyUpdates \
