@@ -31,6 +31,12 @@ module.exports = {
       allowedVersions: "/^\\d+(?:\\.\\d+)+$/",
     },
     {
+      description: "Pin Error Prone to 2.42.x (last version supporting JDK 17)",
+      matchManagers: ["gradle"],
+      matchPackageNames: ["com.google.errorprone:error_prone_core"],
+      allowedVersions: "/^2\\.42\\.\\d+$/",
+    },
+    {
       description: "Keep Scala on the 3.3.x line",
       matchManagers: ["sbt"],
       matchPackageNames: ["org.scala-lang:scala3-library_3"],
