@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$repo_root"
+
+: "${PUBLISH_STABLE_VERSION:?PUBLISH_STABLE_VERSION is required}"
+: "${RELEASE_REF:?RELEASE_REF is required}"
+
+if [[ ! -f gradle.properties ]]; then
+  printf '%s\n' "gradle.properties is missing" >&2
+  exit 1
+fi
+
+project_version=""
+while IFS='=' read -r property_name property_value; do
+  if [[ "$property_name" == "project.version" ]]; then
+    project_version="$property_value"
+    break
+  fi
+done < gradle.properties
+
+if [[ -z "$project_version" ]]; then
+  printf '%s\n' "project.version is missing from gradle.properties" >&2
+  exit 1
+fi
+
+if [[ "$project_version" == *-SNAPSHOT ]]; then
+  printf '%s\n' "project.version must contain the base version without -SNAPSHOT" >&2
+  exit 1
+fi
+
+: "${GITHUB_TOKEN:?GITHUB_TOKEN is required}"
+: "${ORG_GRADLE_PROJECT_mavenCentralUsername:?Maven Central username is required}"
+: "${ORG_GRADLE_PROJECT_mavenCentralPassword:?Maven Central password is required}"
+: "${ORG_GRADLE_PROJECT_signingInMemoryKeyId:?Signing key ID is required}"
+: "${ORG_GRADLE_PROJECT_signingInMemoryKeyPassword:?Signing key password is required}"
+: "${ORG_GRADLE_PROJECT_signingInMemoryKey:?Signing key is required}"
+
+stable_version="${PUBLISH_STABLE_VERSION,,}"
+case "$stable_version" in
+  true|1|yes)
+    expected_ref="refs/tags/v${project_version}"
+    if [[ "$RELEASE_REF" != "$expected_ref" ]]; then
+      printf 'stable release ref must be %s, got %s\n' "$expected_ref" "$RELEASE_REF" >&2
+      exit 1
+    fi
+
+    git fetch --depth=100 origin +refs/tags/*:refs/tags/*
+    tag_commit="$(git rev-parse --verify "${expected_ref}^{commit}")"
+    head_commit="$(git rev-parse HEAD)"
+    if [[ "$tag_commit" != "$head_commit" ]]; then
+      printf 'tag %s does not point at HEAD\n' "$expected_ref" >&2
+      exit 1
+    fi
+
+    printf 'Effective version: %s\n' "$project_version"
+    printf 'Effective ref: %s\n' "$RELEASE_REF"
+    ./gradlew -PbuildRelease=true build publishAndReleaseToMavenCentral --no-daemon
+    ;;
+  false|0|no)
+    printf 'Effective version: %s-SNAPSHOT\n' "$project_version"
+    printf 'Effective ref: %s\n' "$RELEASE_REF"
+    ./gradlew build publishToMavenCentral --no-daemon
+    ;;
+  *)
+    printf 'PUBLISH_STABLE_VERSION must be true, 1, yes, false, 0, or no\n' >&2
+    exit 1
+    ;;
+esac
