@@ -2,6 +2,8 @@ module.exports = {
   platform: "github",
   repositories: ["funfix/tasks"],
   branchPrefix: "renovate/",
+  gitAuthor: "Renovate Bot <renovate@funfix.org>",
+  gitIgnoredAuthors: ["github-actions[bot]@users.noreply.github.com"],
   onboarding: false,
   requireConfig: "optional",
   recreateWhen: "always",
