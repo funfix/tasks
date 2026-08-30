@@ -45,7 +45,6 @@ jobs:
         env:
           PUBLISH_STABLE_VERSION: ${{ inputs.stable_version }}
           RELEASE_REF: ${{ inputs.ref_to_publish }}
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_PASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}

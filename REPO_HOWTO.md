@@ -24,7 +24,6 @@ enable `stable_version`.
 
 The manual publish workflow uses these secrets:
 
-- `GH_TOKEN`
 - `MAVEN_USERNAME`
 - `MAVEN_PASSWORD`
 - `SIGNING_KEY_ID`
