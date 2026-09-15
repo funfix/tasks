@@ -33,6 +33,12 @@ module.exports = {
       allowedVersions: "/^\\d+(?:\\.\\d+)+$/",
     },
     {
+      description: "Pin JDK version to 17",
+      matchManagers: ["github-actions"],
+      matchPackageNames: ["java-jdk"],
+      allowedVersions: "17",
+    },
+    {
       description: "Pin Error Prone to 2.42.x (last version supporting JDK 17)",
       matchManagers: ["gradle"],
       matchPackageNames: ["com.google.errorprone:error_prone_core"],
