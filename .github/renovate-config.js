@@ -14,7 +14,7 @@ module.exports = {
 
   enabledManagers: ["github-actions", "gradle", "gradle-wrapper"],
 
-  ignorePaths: ["**/.gradle/**"],
+  ignorePaths: ["**/.gradle/**", ".github/workflows/*.lock.yml"],
 
   packageRules: [
     {
