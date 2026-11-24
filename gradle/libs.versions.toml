@@ -1,14 +1,14 @@
 [versions]
-arrow = "2.2.3"
+arrow = "2.3.0.1"
 binary-compatibility-validator = "0.18.2"
-dokka = "2.2.0"
+dokka = "2.3.0"
 errorprone = "2.42.0" # DO NOT upgrade beyond 2.42.0 — it is the last version supporting JDK 17
-errorprone-plugin = "5.1.1"
+errorprone-plugin = "5.2.0"
 jetbrains-annotations = "26.1.0"
 jspecify = "1.0.1"
 kotlin = "2.4.21"
 kover = "0.9.11"
-nullaway = "0.14.2"
+nullaway = "0.14.3"
 nullaway-plugin = "3.3.0"
 publish-plugin = "0.37.0"
 versions-plugin = "0.54.0"
